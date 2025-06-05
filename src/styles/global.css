@@ -1,0 +1,86 @@
+/* src/styles/globals.css */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Modern color system */
+    --background: 10 10 10;           /* #0a0a0a */
+    --surface: 17 17 17;              /* #111111 */
+    --surface-hover: 26 26 26;        /* #1a1a1a */
+    --border: 38 38 38;               /* #262626 */
+    --border-focus: 64 64 64;         /* #404040 */
+    
+    --text-primary: 255 255 255;      /* #ffffff */
+    --text-secondary: 161 161 161;    /* #a1a1a1 */
+    --text-muted: 115 115 115;        /* #737373 */
+    
+    --accent-primary: 59 130 246;     /* #3b82f6 */
+    --accent-success: 16 185 129;     /* #10b981 */
+    --accent-warning: 245 158 11;     /* #f59e0b */
+    --accent-error: 239 68 68;        /* #ef4444 */
+    --accent-purple: 139 92 246;      /* #8b5cf6 */
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-text-primary font-sans antialiased;
+    background: rgb(var(--background));
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-lg p-6;
+  }
+  
+  .card-hover {
+    @apply card transition-colors hover:bg-surface-hover;
+  }
+  
+  .text-primary {
+    color: rgb(var(--text-primary));
+  }
+  
+  .text-secondary {
+    color: rgb(var(--text-secondary));
+  }
+  
+  .text-muted {
+    color: rgb(var(--text-muted));
+  }
+  
+  .bg-background {
+    background-color: rgb(var(--background));
+  }
+  
+  .bg-surface {
+    background-color: rgb(var(--surface));
+  }
+  
+  .bg-surface-hover {
+    background-color: rgb(var(--surface-hover));
+  }
+  
+  .border-border {
+    border-color: rgb(var(--border));
+  }
+  
+  .accent-primary {
+    color: rgb(var(--accent-primary));
+  }
+  
+  .bg-accent-primary {
+    background-color: rgb(var(--accent-primary));
+  }
+}

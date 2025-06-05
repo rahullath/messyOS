@@ -1,0 +1,61 @@
+---
+// src/pages/login.astro
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Login - MeshOS">
+  <div class="min-h-screen flex items-center justify-center bg-neo-black">
+    <div class="glass rounded-lg p-8 w-full max-w-md neon-border">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-neon text-neo-cyan mb-2">
+          MeshOS
+        </h1>
+        <p class="text-gray-400">Sign in to your personal OS</p>
+      </div>
+      
+      <div id="auth-container">
+        <div class="space-y-4">
+          <button 
+            id="google-signin" 
+            class="w-full bg-neo-cyan/20 hover:bg-neo-cyan/30 text-neo-cyan border border-neo-cyan/30 rounded-lg py-3 px-4 transition-colors"
+          >
+            Continue with Google
+          </button>
+          
+          <button 
+            id="github-signin" 
+            class="w-full bg-neo-purple/20 hover:bg-neo-purple/30 text-neo-purple border border-neo-purple/30 rounded-lg py-3 px-4 transition-colors"
+          >
+            Continue with GitHub
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { supabase } from '../lib/supabase/client';
+  
+  document.getElementById('google-signin')?.addEventListener('click', async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+    
+    if (error) console.error('Error:', error);
+  });
+  
+  document.getElementById('github-signin')?.addEventListener('click', async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+    
+    if (error) console.error('Error:', error);
+  });
+</script>

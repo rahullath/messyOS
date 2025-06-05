@@ -1,11 +1,210 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// src/pages/index.astro - Replace the existing one
+import DashboardLayout from '../layouts/DashboardLayout.astro';
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<DashboardLayout title="MeshOS - Dashboard">
+  <div class="space-y-8">
+    <!-- Welcome Section -->
+    <div>
+      <h1 class="text-3xl font-semibold text-text-primary mb-2">
+        Good morning, Rahul
+      </h1>
+      <p class="text-text-secondary">
+        Here's what's happening with your life today
+      </p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Habits Completed -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Habits Today</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">7/10</p>
+            <p class="text-sm text-accent-success mt-1">+2 from yesterday</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tasks Completed -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Tasks Done</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">12</p>
+            <p class="text-sm text-text-muted mt-1">3 remaining</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-primary/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Health Score -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Health Score</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">85%</p>
+            <p class="text-sm text-accent-success mt-1">Excellent</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-error/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Spending -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Monthly Spend</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">₹45,230</p>
+            <p class="text-sm text-accent-warning mt-1">15% over budget</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Recent Activity -->
+      <div class="lg:col-span-2">
+        <div class="card">
+          <h2 class="text-xl font-semibold text-text-primary mb-6">Recent Activity</h2>
+          
+          <div class="space-y-4">
+            <div class="flex items-start space-x-4 p-3 rounded-lg bg-surface-hover">
+              <div class="w-10 h-10 bg-accent-success/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-text-primary">Morning Exercise completed</p>
+                <p class="text-xs text-text-muted mt-1">30 minutes of cardio</p>
+              </div>
+              <div class="text-xs text-text-muted flex-shrink-0">2h ago</div>
+            </div>
+
+            <div class="flex items-start space-x-4 p-3 rounded-lg bg-surface-hover">
+              <div class="w-10 h-10 bg-accent-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-text-primary">Task completed: Code review</p>
+                <p class="text-xs text-text-muted mt-1">Reviewed MeshOS authentication flow</p>
+              </div>
+              <div class="text-xs text-text-muted flex-shrink-0">4h ago</div>
+            </div>
+
+            <div class="flex items-start space-x-4 p-3 rounded-lg bg-surface-hover">
+              <div class="w-10 h-10 bg-accent-error/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-text-primary">Sleep logged</p>
+                <p class="text-xs text-text-muted mt-1">7.5 hours of quality sleep</p>
+              </div>
+              <div class="text-xs text-text-muted flex-shrink-0">8h ago</div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-border">
+            <button class="text-sm text-accent-primary hover:text-accent-primary/80 transition-colors">
+              View all activity →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="space-y-6">
+        <div class="card">
+          <h2 class="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2>
+          
+          <div class="space-y-3">
+            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              Add Task
+            </button>
+
+            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-success/10 hover:bg-accent-success/20 border border-accent-success/20 text-accent-success rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Log Habit
+            </button>
+
+            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-error/10 hover:bg-accent-error/20 border border-accent-error/20 text-accent-error rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+              Health Entry
+            </button>
+
+            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+              </svg>
+              Add Transaction
+            </button>
+          </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="card">
+          <h3 class="text-lg font-medium text-text-primary mb-4">System Status</h3>
+          
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
+                <span class="text-sm text-text-secondary">Database</span>
+              </div>
+              <span class="text-sm text-accent-success">Online</span>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
+                <span class="text-sm text-text-secondary">API</span>
+              </div>
+              <span class="text-sm text-accent-success">Healthy</span>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-accent-warning rounded-full"></div>
+                <span class="text-sm text-text-secondary">Sync</span>
+              </div>
+              <span class="text-sm text-accent-warning">Pending</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
