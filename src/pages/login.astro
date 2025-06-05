@@ -44,9 +44,8 @@ import Layout from '../layouts/Layout.astro';
   </div>
 </Layout>
 
-<script type="module">
+<script type="module" is:inline>
   import { supabase } from '../lib/supabase/client';
-  import '../scripts/auth.ts'; // Import the external auth script
 
   // Check for session on page load
   async function checkSessionAndRedirect() {
@@ -57,4 +56,26 @@ import Layout from '../layouts/Layout.astro';
   }
 
   checkSessionAndRedirect();
+
+  document.getElementById('google-signin')?.addEventListener('click', async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+    
+    if (error) console.error('Error:', error);
+  });
+  
+  document.getElementById('github-signin')?.addEventListener('click', async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+    
+    if (error) console.error('Error:', error);
+  });
 </script>

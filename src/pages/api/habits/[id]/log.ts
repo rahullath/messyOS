@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../../lib/supabase/server';
-import type { Database } from '../../../../types/supabase';
+import type { Database } from '../../../../types/supabase.ts'; // Explicit relative path with .ts extension
 import { SupabaseClient } from '@supabase/supabase-js';
 
-export const POST: APIRoute = async ({ request, params }) => {
-  const supabase = createServerClient(request);
+export const POST: APIRoute = async ({ request, params, cookies }) => { // Add cookies to context
+  const supabase = createServerClient(cookies); // Pass cookies to createServerClient
   
   const habitId = params.id as string; // Assert habitId as string
   

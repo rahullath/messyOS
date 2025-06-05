@@ -4,7 +4,7 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerClient } from '../lib/supabase/server';
 import type { Database, Tables } from '../types/supabase';
 
-const supabase = createServerClient(Astro.request);
+const supabase = createServerClient(Astro.cookies); // Pass Astro.cookies
 
 // Get authenticated user
 const { data: { user }, error: authError } = await supabase.auth.getUser();
