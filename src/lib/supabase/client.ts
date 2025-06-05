@@ -4,22 +4,25 @@ import type { Database } from '../../types/supabase.ts'; // Explicit relative pa
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey); // Explicitly type createClient
 
-// Listen for auth changes and log session
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Auth event:', event);
-  console.log('Session:', session);
-
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-    // Optionally redirect to dashboard if not already there
-    if (window.location.pathname === '/login') {
-      window.location.href = '/';
+// Only add auth listener in browser environment
+if (typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log('Auth event:', event);
+    
+    if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (window.location.pathname === '/login') {
+        window.location.href = '/';
+      }
+    } else if (event === 'SIGNED_OUT') {
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
-  } else if (event === 'SIGNED_OUT') {
-    // Optionally redirect to login if signed out
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
-    }
-  }
-});
+  });
+}

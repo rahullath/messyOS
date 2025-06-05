@@ -1,0 +1,9 @@
+{
+  "css.validate": false,
+  "tailwindCSS.includeLanguages": {
+    "astro": "html"
+  },
+  "tailwindCSS.experimental.classRegex": [
+    "class=\"([^\"]*)"
+  ]
+}

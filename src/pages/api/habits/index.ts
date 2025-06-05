@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../lib/supabase/server';
 
-export const GET: APIRoute = async ({ request }) => {
-  const supabase = createServerClient(request);
+export const GET: APIRoute = async ({ request, locals }) => {
+  const supabase = createServerClient(locals);
   
-  // Get user from auth
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !user) {
@@ -14,7 +13,6 @@ export const GET: APIRoute = async ({ request }) => {
     });
   }
   
-  // Fetch user's habits
   const { data: habits, error } = await supabase
     .from('habits')
     .select('*')
@@ -34,10 +32,9 @@ export const GET: APIRoute = async ({ request }) => {
   });
 };
 
-export const POST: APIRoute = async ({ request }) => {
-  const supabase = createServerClient(request);
+export const POST: APIRoute = async ({ request, locals }) => {
+  const supabase = createServerClient(locals);
   
-  // Get user from auth
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !user) {
@@ -49,7 +46,6 @@ export const POST: APIRoute = async ({ request }) => {
   
   const body = await request.json();
   
-  // Create new habit
   const { data: habit, error } = await supabase
     .from('habits')
     .insert([{

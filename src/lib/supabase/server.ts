@@ -1,41 +1,21 @@
-import { createClient, type AuthFlowType } from '@supabase/supabase-js';
-import type { Database } from '../../types/supabase.ts'; // Explicit relative path with .ts extension
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '../../types/supabase';
 
-// This function will be called from Astro pages/endpoints
-// It receives Astro.locals which contains request and cookies
-export function createServerClient(locals: any) { // Use 'any' to simplify typing
+export function createServerClient() {
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
   const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   
-  // Ensure locals.runtime.cookies is available
-  if (!locals.runtime || !locals.runtime.cookies) {
-    console.error('Astro.locals.runtime.cookies is not available!');
-    // Fallback or throw error if cookies are essential
-    // For now, let's return a client that won't work for auth
-    return createClient<Database>(supabaseUrl, supabaseKey);
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables');
   }
 
-  const cookies = locals.runtime.cookies;
-  const request = locals.runtime.request; // Get request from locals
-
-  return createClient<Database>(
-    supabaseUrl,
-    supabaseKey,
-    {
-      auth: {
-        flowType: 'pkce',
-        detectSessionInUrl: true, // Keep this true
-        storage: {
-          getItem: (key) => cookies.get(key)?.value,
-          setItem: (key, value) => cookies.set(key, value, { path: '/' }),
-          removeItem: (key) => cookies.delete(key),
-        },
-      },
-      global: {
-        headers: {
-          'x-supabase-api-key': supabaseKey,
-        },
-      },
+  // Simple server client without auth persistence for now
+  // We'll handle auth through the client-side only
+  return createClient<Database>(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false, // Disable server-side session persistence
+      autoRefreshToken: false, // Disable auto refresh on server
+      detectSessionInUrl: false // Disable URL session detection on server
     }
-  );
+  });
 }
