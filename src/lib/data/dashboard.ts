@@ -1,8 +1,8 @@
 import { createServerClient } from '../supabase/server';
 import type { Database } from '../../types/supabase.ts'; // Explicit relative path with .ts extension
 
-export async function getDashboardData(cookies: any) { // Accept cookies directly
-  const supabase = createServerClient(cookies); // Pass cookies to createServerClient
+export async function getDashboardData(locals: any) { // Accept locals directly
+  const supabase = createServerClient(locals); // Pass locals to createServerClient
   
   // Get authenticated user
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -31,7 +31,7 @@ export async function getDashboardData(cookies: any) { // Accept cookies directl
     supabase
       .from('tasks')
       .select('id, status, priority, created_at')
-      .eq('user.id', user.id), // Corrected to user.id
+      .eq('user_id', user.id), // Corrected to user.id
     
     // Recent metrics
     supabase

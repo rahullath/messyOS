@@ -4,7 +4,7 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { getDashboardData } from '../lib/data/dashboard';
 import { toRelativeTimeString } from '../lib/utils';
 
-const dashboardData = await getDashboardData(Astro.cookies); // Pass Astro.cookies
+const dashboardData = await getDashboardData(Astro.locals); // Pass Astro.locals
 
 if (dashboardData.error) {
   return Astro.redirect('/login');
@@ -110,17 +110,17 @@ const recentActivity = [
           <div>
             <p class="text-sm font-medium text-text-muted">Latest Metric</p>
             {(recentMetrics || []).length > 0 ? (
-              <>
+              <Fragment>
                 <p class="text-2xl font-semibold text-text-primary mt-1">
                   {recentMetrics![0].value}{recentMetrics![0].unit}
                 </p>
                 <p class="text-sm text-text-muted mt-1">{recentMetrics![0].type}</p>
-              </>
+              </Fragment>
             ) : (
-              <>
+              <Fragment>
                 <p class="text-2xl font-semibold text-text-primary mt-1">--</p>
                 <p class="text-sm text-text-muted mt-1">No data yet</p>
-              </>
+              </Fragment>
             )}
           </div>
           <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
@@ -207,31 +207,14 @@ const recentActivity = [
           
           <div class="space-y-3">
             <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">Database</span>
-              </div>
-              <span class="text-sm text-accent-success">Online</span>
+              <div class="w-2 h-2 bg-accent-success rounded-full"></div>
+              <span class="text-sm text-text-secondary">Database</span>
             </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">Authentication</span>
-              </div>
-              <span class="text-sm text-accent-success">Active</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-warning rounded-full"></div>
-                <span class="text-sm text-text-secondary">Data Sync</span>
-              </div>
-              <span class="text-sm text-accent-warning">Pending</span>
-            </div>
+            <span class="text-sm text-accent-success">Online</span>
           </div>
         </div>
       </div>
     </div>
   </div>
 </DashboardLayout>
+

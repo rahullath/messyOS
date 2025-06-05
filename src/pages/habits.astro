@@ -2,9 +2,9 @@
 // src/pages/habits.astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerClient } from '../lib/supabase/server';
-import type { Database, Tables } from '../types/supabase';
+import type { Database, Tables } from '../types/supabase.ts'; // Explicit relative path with .ts extension
 
-const supabase = createServerClient(Astro.cookies); // Pass Astro.cookies
+const supabase = createServerClient(Astro.locals); // Pass Astro.locals
 
 // Get authenticated user
 const { data: { user }, error: authError } = await supabase.auth.getUser();
