@@ -1,6 +1,43 @@
 ---
-// src/pages/index.astro - Replace the existing one
+// src/pages/index.astro (replace existing)
 import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { getDashboardData } from '../lib/data/dashboard';
+import { toRelativeTimeString } from '../lib/utils';
+
+const dashboardData = await getDashboardData(Astro.request);
+
+if (dashboardData.error) {
+  return Astro.redirect('/login');
+}
+
+const { user, habits = [], taskStats = { total: 0, completed: 0, pending: 0 }, recentMetrics = [] } = dashboardData;
+
+// Calculate stats
+const habitsCompleted = habits.filter(h => h.completedToday).length;
+const totalHabits = habits.length;
+const completionRate = totalHabits > 0 ? Math.round((habitsCompleted / totalHabits) * 100) : 0;
+
+// Get recent activity (last 5 items)
+const recentActivity = [
+  ...(habits || [])
+    .filter(h => h.completedToday)
+    .map(h => ({
+      type: 'habit',
+      title: `${h.name} completed`,
+      description: `${h.target_value} ${h.target_unit}`,
+      time: '2h ago', // Placeholder, ideally use actual time diff
+      color: 'accent-success'
+    })),
+  ...(recentMetrics || [])
+    .slice(0, 3)
+    .map(m => ({
+      type: 'metric',
+      title: `${m.type} logged`,
+      description: `${m.value} ${m.unit}`,
+      time: toRelativeTimeString(new Date(m.recorded_at)),
+      color: 'accent-primary'
+    }))
+].slice(0, 5);
 ---
 
 <DashboardLayout title="MeshOS - Dashboard">
@@ -8,7 +45,7 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
     <!-- Welcome Section -->
     <div>
       <h1 class="text-3xl font-semibold text-text-primary mb-2">
-        Good morning, Rahul
+        Good morning, {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'there'}
       </h1>
       <p class="text-text-secondary">
         Here's what's happening with your life today
@@ -17,13 +54,15 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
 
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <!-- Habits Completed -->
+      <!-- Habits Today -->
       <div class="card-hover">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-text-muted">Habits Today</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">7/10</p>
-            <p class="text-sm text-accent-success mt-1">+2 from yesterday</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              {habitsCompleted}/{totalHabits}
+            </p>
+            <p class="text-sm text-accent-success mt-1">{completionRate}% complete</p>
           </div>
           <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -33,13 +72,13 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
         </div>
       </div>
 
-      <!-- Tasks Completed -->
+      <!-- Tasks -->
       <div class="card-hover">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-text-muted">Tasks Done</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">12</p>
-            <p class="text-sm text-text-muted mt-1">3 remaining</p>
+            <p class="text-sm font-medium text-text-muted">Tasks</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">{(taskStats || { completed: 0 }).completed}</p>
+            <p class="text-sm text-text-muted mt-1">{(taskStats || { pending: 0 }).pending} remaining</p>
           </div>
           <div class="w-12 h-12 bg-accent-primary/10 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +88,7 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
         </div>
       </div>
 
-      <!-- Health Score -->
+      <!-- Health Score (placeholder) -->
       <div class="card-hover">
         <div class="flex items-center justify-between">
           <div>
@@ -65,112 +104,100 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
         </div>
       </div>
 
-      <!-- Monthly Spending -->
+      <!-- Recent Metrics -->
       <div class="card-hover">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-text-muted">Monthly Spend</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">₹45,230</p>
-            <p class="text-sm text-accent-warning mt-1">15% over budget</p>
+            <p class="text-sm font-medium text-text-muted">Latest Metric</p>
+            {(recentMetrics || []).length > 0 ? (
+              <>
+                <p class="text-2xl font-semibold text-text-primary mt-1">
+                  {recentMetrics![0].value}{recentMetrics![0].unit}
+                </p>
+                <p class="text-sm text-text-muted mt-1">{recentMetrics![0].type}</p>
+              </>
+            ) : (
+              <>
+                <p class="text-2xl font-semibold text-text-primary mt-1">--</p>
+                <p class="text-sm text-text-muted mt-1">No data yet</p>
+              </>
+            )}
           </div>
           <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-accent-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
             </svg>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Main Content Grid -->
+    <!-- Rest of the dashboard content... -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Recent Activity -->
+      <!-- Recent Activity with real data -->
       <div class="lg:col-span-2">
         <div class="card">
           <h2 class="text-xl font-semibold text-text-primary mb-6">Recent Activity</h2>
           
-          <div class="space-y-4">
-            <div class="flex items-start space-x-4 p-3 rounded-lg bg-surface-hover">
-              <div class="w-10 h-10 bg-accent-success/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-text-primary">Morning Exercise completed</p>
-                <p class="text-xs text-text-muted mt-1">30 minutes of cardio</p>
-              </div>
-              <div class="text-xs text-text-muted flex-shrink-0">2h ago</div>
+          {recentActivity.length > 0 ? (
+            <div class="space-y-4">
+              {recentActivity.map((activity) => (
+                <div class="flex items-start space-x-4 p-3 rounded-lg bg-surface-hover">
+                  <div class={`w-10 h-10 bg-${activity.color}/20 rounded-lg flex items-center justify-center flex-shrink-0`}>
+                    <svg class={`w-5 h-5 text-${activity.color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-text-primary">{activity.title}</p>
+                    <p class="text-xs text-text-muted mt-1">{activity.description}</p>
+                  </div>
+                  <div class="text-xs text-text-muted flex-shrink-0">{activity.time}</div>
+                </div>
+              ))}
             </div>
-
-            <div class="flex items-start space-x-4 p-3 rounded-lg bg-surface-hover">
-              <div class="w-10 h-10 bg-accent-primary/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                </svg>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-text-primary">Task completed: Code review</p>
-                <p class="text-xs text-text-muted mt-1">Reviewed MeshOS authentication flow</p>
-              </div>
-              <div class="text-xs text-text-muted flex-shrink-0">4h ago</div>
+          ) : (
+            <div class="text-center py-8">
+              <p class="text-text-muted">No recent activity yet. Start logging some habits!</p>
             </div>
-
-            <div class="flex items-start space-x-4 p-3 rounded-lg bg-surface-hover">
-              <div class="w-10 h-10 bg-accent-error/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5 text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                </svg>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-text-primary">Sleep logged</p>
-                <p class="text-xs text-text-muted mt-1">7.5 hours of quality sleep</p>
-              </div>
-              <div class="text-xs text-text-muted flex-shrink-0">8h ago</div>
-            </div>
-          </div>
-
-          <div class="mt-6 pt-4 border-t border-border">
-            <button class="text-sm text-accent-primary hover:text-accent-primary/80 transition-colors">
-              View all activity →
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
-      <!-- Quick Actions -->
+      <!-- Quick Actions and System Status remain the same -->
       <div class="space-y-6">
+        <!-- Quick Actions -->
         <div class="card">
           <h2 class="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2>
           
           <div class="space-y-3">
-            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-              </svg>
-              Add Task
-            </button>
-
-            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-success/10 hover:bg-accent-success/20 border border-accent-success/20 text-accent-success rounded-lg transition-colors">
+            <a href="/habits" class="w-full flex items-center justify-start px-4 py-3 bg-accent-success/10 hover:bg-accent-success/20 border border-accent-success/20 text-accent-success rounded-lg transition-colors">
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               Log Habit
-            </button>
+            </a>
 
-            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-error/10 hover:bg-accent-error/20 border border-accent-error/20 text-accent-error rounded-lg transition-colors">
+            <a href="/tasks" class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+              Add Task
+            </a>
+
+            <a href="/health" class="w-full flex items-center justify-start px-4 py-3 bg-accent-error/10 hover:bg-accent-error/20 border border-accent-error/20 text-accent-error rounded-lg transition-colors">
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-              </svg>
+            </svg>
               Health Entry
-            </button>
+            </a>
 
-            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors">
+            <a href="/finance" class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors">
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
               </svg>
               Add Transaction
-            </button>
+            </a>
           </div>
         </div>
 
@@ -190,15 +217,15 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
                 <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">API</span>
+                <span class="text-sm text-text-secondary">Authentication</span>
               </div>
-              <span class="text-sm text-accent-success">Healthy</span>
+              <span class="text-sm text-accent-success">Active</span>
             </div>
 
             <div class="flex items-center justify-between">
               <div class="flex items-center space-x-2">
                 <div class="w-2 h-2 bg-accent-warning rounded-full"></div>
-                <span class="text-sm text-text-secondary">Sync</span>
+                <span class="text-sm text-text-secondary">Data Sync</span>
               </div>
               <span class="text-sm text-accent-warning">Pending</span>
             </div>

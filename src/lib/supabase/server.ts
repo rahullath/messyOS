@@ -1,8 +1,9 @@
 import { createClient, type AuthFlowType } from '@supabase/supabase-js';
+import type { Database } from '../../types/supabase'; // Import Database type
 
 export function createServerClient(request?: Request) {
-  const supabaseUrl = import.meta.env.SUPABASE_URL;
-  const supabaseKey = import.meta.env.SUPABASE_ANON_KEY;
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
   
   const options = request ? {
     auth: {
@@ -10,5 +11,5 @@ export function createServerClient(request?: Request) {
     },
   } : {};
 
-  return createClient(supabaseUrl, supabaseKey, options);
+  return createClient<Database>(supabaseUrl, supabaseKey, options); // Explicitly type createClient
 }
