@@ -5,12 +5,21 @@ export const POST: APIRoute = async ({ request, params }) => {
   const supabase = createServerClient();
   const habitId = params.id as string;
   
-  // For now, use a hardcoded user ID (replace with your actual UUID)
-  const userId = '368deac7-8526-45eb-927a-6a373c95d8c6'; // ✅ Your real UUID
-  
   try {
     const body = await request.json();
     const { value = 1, notes = '' } = body;
+
+    // Get the current authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const userId = user.id;
 
     // Check if already logged today
     const todayIso = new Date().toISOString().split('T')[0];
@@ -52,7 +61,7 @@ export const POST: APIRoute = async ({ request, params }) => {
       .from('habits')
       .update({ 
         streak_count: 1, // We'll make this smarter later
-        total_completions: 'total_completions + 1' as any // Using 'as any' to bypass TS error for now, will use proper increment later
+        total_completions: supabase.raw('total_completions + 1')
       })
       .eq('id', habitId);
 
