@@ -1,0 +1,33 @@
+---
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+---
+
+<DashboardLayout title="Finance - MeshOS">
+  <div class="space-y-8">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-semibold text-text-primary mb-2">Finance</h1>
+        <p class="text-text-secondary">
+          Track expenses, subscriptions, and investments
+        </p>
+      </div>
+      <button class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        Add Transaction
+      </button>
+    </div>
+
+    <!-- Coming Soon -->
+    <div class="card text-center py-12">
+      <div class="w-16 h-16 bg-accent-warning/10 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-accent-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold text-text-primary mb-2">Finance Tracking Coming Soon</h3>
+      <p class="text-text-muted mb-4">Expense tracking, crypto portfolio, and subscription management coming soon</p>
+    </div>
+  </div>
+</DashboardLayout>

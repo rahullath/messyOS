@@ -1,0 +1,2027 @@
+THE PLAN - 
+# MeshOS v3: Complete Action Plan & Next Steps
+
+## 🎯 **PHASE 1: Data Import & Core Habits (Week 1)**
+
+### Step 1.1: Enhanced Database Schema
+```sql
+-- Enhanced habits table
+CREATE TABLE habits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL DEFAULT 'General',
+  type TEXT NOT NULL CHECK (type IN ('build', 'break')), -- build good habits, break bad ones
+  measurement_type TEXT NOT NULL CHECK (measurement_type IN ('boolean', 'count', 'duration', 'rating')),
+  target_value INTEGER DEFAULT 1,
+  target_unit TEXT DEFAULT 'times',
+  color TEXT DEFAULT '#3b82f6',
+  streak_count INTEGER DEFAULT 0,
+  best_streak INTEGER DEFAULT 0,
+  total_completions INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  position INTEGER, -- for ordering
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Habit entries (daily logging)
+CREATE TABLE habit_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  habit_id UUID REFERENCES habits(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  value DECIMAL NOT NULL, -- supports both 0/1 for boolean and counts
+  notes TEXT,
+  logged_at TIMESTAMPTZ DEFAULT NOW(),
+  date DATE GENERATED ALWAYS AS (DATE(logged_at)) STORED, -- for easy date queries
+  UNIQUE(habit_id, date) -- one entry per habit per day
+);
+
+-- Habit scores (calculated values from Loop Habits)
+CREATE TABLE habit_scores (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  habit_id UUID REFERENCES habits(id) ON DELETE CASCADE,
+  score DECIMAL NOT NULL, -- the 0.9876 style scores
+  date DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(habit_id, date)
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_habit_entries_habit_date ON habit_entries(habit_id, date DESC);
+CREATE INDEX idx_habit_scores_habit_date ON habit_scores(habit_id, date DESC);
+CREATE INDEX idx_habits_user_active ON habits(user_id, is_active);
+```
+
+### Step 1.2: Loop Habits Import System
+```typescript
+// src/lib/import/loopHabits.ts
+export interface LoopHabitsData {
+  habits: Array<{
+    position: number;
+    name: string;
+    question: string;
+    description: string;
+    numRepetitions: number;
+    interval: number;
+    color: string;
+  }>;
+  checkmarks: Record<string, Record<string, number>>; // habit_name -> date -> value
+  scores: Record<string, Record<string, number>>; // habit_name -> date -> score
+}
+
+export async function importLoopHabitsData(
+  csvFiles: { habits: string; checkmarks: string; scores: string },
+  userId: string
+): Promise<{ success: boolean; message: string; imported: number }> {
+  
+  // Parse habits CSV
+  const habitsData = parseHabitsCSV(csvFiles.habits);
+  
+  // Parse checkmarks CSV (daily entries)
+  const checkmarksData = parseCheckmarksCSV(csvFiles.checkmarks);
+  
+  // Parse scores CSV (calculated scores)
+  const scoresData = parseScoresCSV(csvFiles.scores);
+  
+  const supabase = createServerClient();
+  
+  try {
+    // 1. Import habits
+    const habitMap = new Map<string, string>(); // name -> id
+    
+    for (const habit of habitsData) {
+      const { data: insertedHabit } = await supabase
+        .from('habits')
+        .insert({
+          user_id: userId,
+          name: habit.name,
+          description: habit.description || habit.question,
+          category: categorizeHabit(habit.name), // Smart categorization
+          type: determineHabitType(habit.name), // build vs break
+          measurement_type: determineMeasurementType(habit),
+          color: habit.color,
+          position: habit.position,
+          target_value: habit.numRepetitions,
+        })
+        .select('id, name')
+        .single();
+      
+      if (insertedHabit) {
+        habitMap.set(habit.name, insertedHabit.id);
+      }
+    }
+    
+    // 2. Import checkmarks (daily entries)
+    const entries = [];
+    for (const [habitName, dateEntries] of Object.entries(checkmarksData)) {
+      const habitId = habitMap.get(habitName);
+      if (!habitId) continue;
+      
+      for (const [dateStr, value] of Object.entries(dateEntries)) {
+        if (value !== null && value !== undefined) {
+          entries.push({
+            habit_id: habitId,
+            user_id: userId,
+            value: value,
+            logged_at: new Date(dateStr).toISOString(),
+          });
+        }
+      }
+    }
+    
+    // Batch insert entries
+    if (entries.length > 0) {
+      await supabase.from('habit_entries').insert(entries);
+    }
+    
+    // 3. Import scores
+    const scores = [];
+    for (const [habitName, dateScores] of Object.entries(scoresData)) {
+      const habitId = habitMap.get(habitName);
+      if (!habitId) continue;
+      
+      for (const [dateStr, score] of Object.entries(dateScores)) {
+        if (score !== null && score !== undefined) {
+          scores.push({
+            habit_id: habitId,
+            score: score,
+            date: dateStr,
+          });
+        }
+      }
+    }
+    
+    // Batch insert scores
+    if (scores.length > 0) {
+      await supabase.from('habit_scores').insert(scores);
+    }
+    
+    // 4. Calculate streaks for each habit
+    await calculateAllStreaks(userId);
+    
+    return {
+      success: true,
+      message: `Successfully imported ${habitsData.length} habits with ${entries.length} entries`,
+      imported: habitsData.length
+    };
+    
+  } catch (error) {
+    console.error('Import error:', error);
+    return {
+      success: false,
+      message: `Import failed: ${error.message}`,
+      imported: 0
+    };
+  }
+}
+
+// Smart categorization based on habit names
+function categorizeHabit(name: string): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('gym') || lower.includes('walk') || lower.includes('exercise')) return 'Fitness';
+  if (lower.includes('vap') || lower.includes('smoke') || lower.includes('drink')) return 'Health';
+  if (lower.includes('code') || lower.includes('build') || lower.includes('university')) return 'Productivity';
+  if (lower.includes('shower') || lower.includes('wake')) return 'Self Care';
+  if (lower.includes('valorant') || lower.includes('game')) return 'Entertainment';
+  return 'General';
+}
+
+function determineHabitType(name: string): 'build' | 'break' {
+  const lower = name.toLowerCase();
+  if (lower.includes('quit') || lower.includes('no ') || lower.includes('stop')) return 'break';
+  return 'build';
+}
+
+function determineMeasurementType(habit: any): 'boolean' | 'count' | 'duration' | 'rating' {
+  if (habit.question?.toLowerCase().includes('did you')) return 'boolean';
+  if (habit.question?.toLowerCase().includes('how many')) return 'count';
+  if (habit.numRepetitions === 1) return 'boolean';
+  return 'count';
+}
+```
+
+### Step 1.3: Import API Endpoint
+```typescript
+// src/pages/api/import/loop-habits.ts
+import type { APIRoute } from 'astro';
+import { importLoopHabitsData } from '../../../lib/import/loopHabits';
+
+export const POST: APIRoute = async ({ request }) => {
+  try {
+    const formData = await request.formData();
+    const userId = formData.get('userId') as string;
+    const habitsFile = formData.get('habits') as File;
+    const checkmarksFile = formData.get('checkmarks') as File;
+    const scoresFile = formData.get('scores') as File;
+    
+    if (!userId || !habitsFile || !checkmarksFile || !scoresFile) {
+      return new Response(JSON.stringify({ 
+        error: 'Missing required files or user ID' 
+      }), { status: 400 });
+    }
+    
+    const csvFiles = {
+      habits: await habitsFile.text(),
+      checkmarks: await checkmarksFile.text(),
+      scores: await scoresFile.text(),
+    };
+    
+    const result = await importLoopHabitsData(csvFiles, userId);
+    
+    return new Response(JSON.stringify(result), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+  } catch (error) {
+    return new Response(JSON.stringify({ 
+      error: 'Import failed', 
+      details: error.message 
+    }), { status: 500 });
+  }
+};
+```
+
+### Step 1.4: Import UI Component
+```tsx
+// src/components/import/LoopHabitsImport.tsx
+import React, { useState } from 'react';
+
+export default function LoopHabitsImport() {
+  const [files, setFiles] = useState<{
+    habits?: File;
+    checkmarks?: File;
+    scores?: File;
+  }>({});
+  const [isImporting, setIsImporting] = useState(false);
+  const [result, setResult] = useState<string>('');
+
+  const handleFileChange = (type: 'habits' | 'checkmarks' | 'scores', file: File) => {
+    setFiles(prev => ({ ...prev, [type]: file }));
+  };
+
+  const handleImport = async () => {
+    if (!files.habits || !files.checkmarks || !files.scores) {
+      alert('Please select all three CSV files');
+      return;
+    }
+
+    setIsImporting(true);
+    setResult('');
+
+    try {
+      const formData = new FormData();
+      formData.append('userId', 'your-user-id'); // We'll get this from auth
+      formData.append('habits', files.habits);
+      formData.append('checkmarks', files.checkmarks);
+      formData.append('scores', files.scores);
+
+      const response = await fetch('/api/import/loop-habits', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setResult(`✅ ${data.message}`);
+        // Refresh the page to show imported habits
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setResult(`❌ ${data.message}`);
+      }
+    } catch (error) {
+      setResult(`❌ Import failed: ${error.message}`);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  return (
+    <div className="card p-6">
+      <h3 className="text-xl font-semibold text-text-primary mb-4">
+        Import Loop Habits Data
+      </h3>
+      
+      <div className="space-y-4">
+        {/* File uploads */}
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            Habits.csv
+          </label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => e.target.files?.[0] && handleFileChange('habits', e.target.files[0])}
+            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            Checkmarks.csv
+          </label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => e.target.files?.[0] && handleFileChange('checkmarks', e.target.files[0])}
+            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-secondary mb-2">
+            Scores.csv
+          </label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => e.target.files?.[0] && handleFileChange('scores', e.target.files[0])}
+            className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-text-primary"
+          />
+        </div>
+
+        {/* Import button */}
+        <button
+          onClick={handleImport}
+          disabled={isImporting || !files.habits || !files.checkmarks || !files.scores}
+          className="w-full px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isImporting ? 'Importing...' : 'Import Habits'}
+        </button>
+
+        {/* Result */}
+        {result && (
+          <div className="p-3 bg-surface border border-border rounded-lg">
+            <p className="text-sm text-text-primary">{result}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+## 🎯 **PHASE 2: Enhanced Habits Page (Week 1-2)**
+
+### Step 2.1: Real Data Habits Page
+```astro
+---
+// src/pages/habits.astro (Enhanced with real data)
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { createServerClient } from '../lib/supabase/server';
+
+const supabase = createServerClient();
+
+// For now, mock data - we'll add real auth in next phase
+const userId = 'mock-user-id';
+
+// Fetch habits with today's entries and recent scores
+const { data: habits } = await supabase
+  .from('habits')
+  .select(`
+    *,
+    habit_entries!inner(
+      value,
+      logged_at,
+      date
+    ),
+    habit_scores(
+      score,
+      date
+    )
+  `)
+  .eq('user_id', userId)
+  .eq('is_active', true)
+  .order('position', { ascending: true });
+
+// Process habits data for display
+const processedHabits = (habits || []).map(habit => {
+  const today = new Date().toISOString().split('T')[0];
+  const todayEntry = habit.habit_entries?.find(entry => entry.date === today);
+  
+  // Get last 30 days for trend
+  const last30Days = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    const entry = habit.habit_entries?.find(e => e.date === dateStr);
+    const score = habit.habit_scores?.find(s => s.date === dateStr);
+    
+    return {
+      date: dateStr,
+      value: entry?.value || 0,
+      score: score?.score || 0,
+      completed: !!entry && entry.value > 0
+    };
+  }).reverse();
+  
+  return {
+    ...habit,
+    completedToday: !!todayEntry && todayEntry.value > 0,
+    todayValue: todayEntry?.value || 0,
+    currentScore: habit.habit_scores?.[0]?.score || 0,
+    trend: last30Days,
+    weekStreak: calculateWeekStreak(last30Days.slice(-7))
+  };
+});
+
+function calculateWeekStreak(weekData) {
+  let streak = 0;
+  for (let i = weekData.length - 1; i >= 0; i--) {
+    if (weekData[i].completed) streak++;
+    else break;
+  }
+  return streak;
+}
+
+const stats = {
+  completedToday: processedHabits.filter(h => h.completedToday).length,
+  totalHabits: processedHabits.length,
+  avgScore: processedHabits.reduce((sum, h) => sum + h.currentScore, 0) / processedHabits.length || 0,
+  longestStreak: Math.max(...processedHabits.map(h => h.streak_count), 0)
+};
+---
+
+<DashboardLayout title="Habits - MeshOS">
+  <div class="space-y-8">
+    <!-- Header with Import -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-semibold text-text-primary mb-2">Habits</h1>
+        <p class="text-text-secondary">
+          Build better routines, one day at a time
+        </p>
+      </div>
+      <div class="flex space-x-3">
+        <button 
+          id="import-btn"
+          class="flex items-center px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+          </svg>
+          Import Data
+        </button>
+        <button 
+          id="add-habit-btn"
+          class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          New Habit
+        </button>
+      </div>
+    </div>
+
+    <!-- Enhanced Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Today's Progress</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              {stats.completedToday}/{stats.totalHabits}
+            </p>
+            <p class="text-sm text-accent-success mt-1">
+              {Math.round((stats.completedToday / stats.totalHabits) * 100) || 0}% complete
+            </p>
+          </div>
+          <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Average Score</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              {stats.avgScore.toFixed(2)}
+            </p>
+            <p class="text-sm text-text-muted mt-1">Loop Habits score</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-primary/10 rounded-lg flex items-center justify-center">
+            <span class="text-2xl">📊</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Longest Streak</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">{stats.longestStreak}</p>
+            <p class="text-sm text-text-muted mt-1">days</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
+            <span class="text-2xl">🔥</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Active Habits</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">{stats.totalHabits}</p>
+            <p class="text-sm text-text-muted mt-1">tracking</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-purple/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Habits Grid with Real Data -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {processedHabits.map((habit) => (
+        <div key={habit.id} class="card hover:bg-surface-hover transition-colors">
+          <!-- Habit Header -->
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex-1">
+              <div class="flex items-center space-x-2 mb-2">
+                <div 
+                  class="w-3 h-3 rounded-full" 
+                  style={`background-color: ${habit.color}`}
+                ></div>
+                <h3 class="font-semibold text-text-primary">{habit.name}</h3>
+              </div>
+              <p class="text-sm text-text-muted">{habit.category}</p>
+              {habit.description && (
+                <p class="text-xs text-text-muted mt-1">{habit.description}</p>
+              )}
+            </div>
+            <div class="flex flex-col items-end space-y-1">
+              <span class={`px-2 py-1 text-xs rounded-full ${
+                habit.type === 'build' 
+                  ? 'bg-accent-success/20 text-accent-success' 
+                  : 'bg-accent-error/20 text-accent-error'
+              }`}>
+                {habit.type}
+              </span>
+              <span class="text-xs text-text-muted">
+                Score: {habit.currentScore.toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <!-- Streak & Stats -->
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-2">
+              <span class="text-xl">🔥</span>
+              <span class="text-lg font-semibold text-text-primary">{habit.streak_count}</span>
+              <span class="text-sm text-text-muted">day streak</span>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-text-muted">This week: {habit.weekStreak}/7</p>
+            </div>
+          </div>
+
+          <!-- 30-Day Trend -->
+          <div class="mb-4">
+            <p class="text-xs text-text-muted mb-2">Last 30 days</p>
+            <div class="flex space-x-1">
+              {habit.trend.slice(-30).map((day, index) => (
+                <div
+                  key={index}
+                  class={`w-2 h-6 rounded-sm ${
+                    day.completed
+                      ? 'bg-accent-success'
+                      : 'bg-surface border border-border'
+                  }`}
+                  style={day.completed ? `opacity: ${Math.max(0.3, day.score)}` : ''}
+                  title={`${day.date}: ${day.completed ? '✓' : '✗'} (${day.score.toFixed(2)})`}
+                ></div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <button
+            class={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+              habit.completedToday
+                ? 'bg-accent-success/20 text-accent-success border border-accent-success/30 cursor-default'
+                : 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30'
+            }`}
+            onclick={habit.completedToday ? undefined : `logHabit('${habit.id}', '${habit.name}', '${habit.measurement_type}')`}
+            disabled={habit.completedToday}
+          >
+            {habit.completedToday ? (
+              <>
+                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Completed Today ({habit.todayValue})
+              </>
+            ) : (
+              <>
+                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                {habit.measurement_type === 'boolean' ? 'Mark Complete' : 'Log Value'}
+              </>
+            )}
+          </button>
+        </div>
+      ))}
+    </div>
+
+    <!-- Import Modal (hidden by default) -->
+    <div id="import-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+      <div class="bg-surface rounded-lg p-6 w-full max-w-md mx-4">
+        <h3 class="text-xl font-semibold text-text-primary mb-4">Import Loop Habits Data</h3>
+        <div id="import-content">
+          <!-- Import component will be loaded here -->
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
+
+<script>
+  // Import modal
+  document.getElementById('import-btn')?.addEventListener('click', () => {
+    document.getElementById('import-modal')?.classList.remove('hidden');
+    document.getElementById('import-modal')?.classList.add('flex');
+  });
+
+  // Close modal on background click
+  document.getElementById('import-modal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('import-modal')?.classList.add('hidden');
+      document.getElementById('import-modal')?.classList.remove('flex');
+    }
+  });
+
+  // Habit logging
+  window.logHabit = async function(habitId: string, habitName: string, measurementType: string) {
+    let value = 1;
+    
+    if (measurementType === 'count') {
+      const input = prompt(`How many times did you ${habitName.toLowerCase()}?`, '1');
+      if (input === null) return; // User cancelled
+      value = parseInt(input) || 1;
+    } else if (measurementType === 'rating') {
+      const input = prompt(`Rate your ${habitName.toLowerCase()} (1-10):`, '5');
+      if (input === null) return;
+      value = Math.max(1, Math.min(10, parseInt(input) || 5));
+    }
+    
+    try {
+      const response = await fetch(`/api/habits/${habitId}/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value, notes: '' })
+      });
+
+      if (response.ok) {
+        alert(`✅ ${habitName} logged with value: ${value}`);
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      alert('Failed to log habit. Please try again.');
+    }
+  };
+</script>
+</DashboardLayout>
+```
+
+## 🎯 **PHASE 3: AI-Powered Insights (Week 2)**
+
+### Step 3.1: Gemini Integration for Life Analysis
+```typescript
+// src/lib/ai/lifeAnalyzer.ts
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export class LifeAnalyzer {
+  private gemini: GoogleGenerativeAI;
+
+  constructor(apiKey: string) {
+    this.gemini = new GoogleGenerativeAI(apiKey);
+  }
+
+  async analyzeHabits(userData: {
+    habits: any[];
+    recentEntries: any[];
+    scores: any[];
+  }) {
+    const model = this.gemini.getGenerativeModel({ model: "gemini-pro" });
+    
+    const prompt = `
+      You are an AI life coach analyzing someone's habit data. Provide actionable insights.
+      
+      HABIT DATA:
+      ${JSON.stringify(userData.habits.map(h => ({
+        name: h.name,
+        type: h.type,
+        category: h.category,
+        streak: h.streak_count,
+        currentScore: h.currentScore
+      })))}
+      
+      RECENT PERFORMANCE (last 7 days):
+      ${JSON.stringify(userData.recentEntries)}
+      
+      ANALYSIS REQUIREMENTS:
+      1. Identify 3 key patterns (positive and concerning)
+      2. Suggest 2 specific optimizations
+      3. Predict which habit needs most attention this week
+      4. Rate overall life balance (1-10) with reasoning
+      
+      Return as JSON:
+      {
+        "patterns": [{"type": "positive|concerning", "description": "...", "habits": ["habit1"]}],
+        "optimizations": [{"action": "...", "reason": "...", "difficulty": "easy|medium|hard"}],
+        "priorityHabit": {"name": "...", "reason": "..."},
+        "lifeBalance": {"score": 8, "reasoning": "..."},
+        "weeklyFocus": "One specific thing to focus on this week"
+      }
+    `;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = result.response.text();
+      return JSON.parse(response);
+    } catch (error) {
+      console.error('AI Analysis failed:', error);
+      return {
+        patterns: [],
+        optimizations: [],
+        priorityHabit: null,
+        lifeBalance: { score: 5, reasoning: "Analysis unavailable" },
+        weeklyFocus: "Focus on consistency"
+      };
+    }
+  }
+
+  async generateDailyPlan(userData: {
+    habits: any[];
+    incompleteTasks: any[];
+    healthMetrics: any[];
+    schedule: any[];
+  }) {
+    const model = this.gemini.getGenerativeModel({ model: "gemini-pro" });
+    
+    const prompt = `
+      Create an optimized daily plan for today based on this data:
+      
+      HABITS TO COMPLETE TODAY:
+      ${JSON.stringify(userData.habits.filter(h => !h.completedToday))}
+      
+      PENDING TASKS:
+      ${JSON.stringify(userData.incompleteTasks)}
+      
+      RECENT HEALTH DATA:
+      ${JSON.stringify(userData.healthMetrics)}
+      
+      Create a realistic daily schedule that:
+      1. Prioritizes health and key habits
+      2. Balances work and personal time
+      3. Considers energy levels and patterns
+      4. Includes specific time blocks
+      
+      Return as JSON:
+      {
+        "morningRoutine": [{"time": "07:00", "activity": "...", "duration": 30}],
+        "workBlocks": [{"time": "09:00", "activity": "...", "priority": "high"}],
+        "habitReminders": [{"habit": "...", "suggestedTime": "...", "reason": "..."}],
+        "eveningWind": [{"time": "20:00", "activity": "..."}],
+        "keyFocus": "One main thing to accomplish today"
+      }
+    `;
+
+    try {
+      const result = await model.generateContent(prompt);
+      return JSON.parse(result.response.text());
+    } catch (error) {
+      return {
+        morningRoutine: [],
+        workBlocks: [],
+        habitReminders: [],
+        eveningWind: [],
+        keyFocus: "Focus on your most important habit today"
+      };
+    }
+  }
+
+  async analyzeHealthTrends(healthData: {
+    sleep: any[];
+    heartRate: any[];
+    stress: any[];
+    weight?: any[];
+  }) {
+    const model = this.gemini.getGenerativeModel({ model: "gemini-pro" });
+    
+    const prompt = `
+      Analyze health trends and provide medical insights:
+      
+      SLEEP DATA (last 30 days):
+      ${JSON.stringify(healthData.sleep)}
+      
+      HEART RATE DATA:
+      ${JSON.stringify(healthData.heartRate)}
+      
+      STRESS LEVELS:
+      ${JSON.stringify(healthData.stress)}
+      
+      Provide:
+      1. Health trend analysis
+      2. Risk factors to watch
+      3. Specific recommendations
+      4. When to consult a doctor
+      
+      Return as JSON with medical disclaimers.
+    `;
+
+    try {
+      const result = await model.generateContent(prompt);
+      return JSON.parse(result.response.text());
+    } catch (error) {
+      return {
+        trends: [],
+        risks: [],
+        recommendations: [],
+        disclaimer: "This is not medical advice. Consult healthcare professionals."
+      };
+    }
+  }
+}
+```
+
+### Step 3.2: AI Dashboard Component
+```tsx
+// src/components/ai/AIInsights.tsx
+import React, { useState, useEffect } from 'react';
+
+interface AIInsightsProps {
+  userId: string;
+}
+
+export default function AIInsights({ userId }: AIInsightsProps) {
+  const [insights, setInsights] = useState<any>(null);
+  const [dailyPlan, setDailyPlan] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAIInsights();
+  }, [userId]);
+
+  const loadAIInsights = async () => {
+    try {
+      const [insightsRes, planRes] = await Promise.all([
+        fetch(`/api/ai/analyze-habits?userId=${userId}`),
+        fetch(`/api/ai/daily-plan?userId=${userId}`)
+      ]);
+
+      const [insightsData, planData] = await Promise.all([
+        insightsRes.json(),
+        planRes.json()
+      ]);
+
+      setInsights(insightsData);
+      setDailyPlan(planData);
+    } catch (error) {
+      console.error('Failed to load AI insights:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="card p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-surface-hover rounded mb-4"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-surface-hover rounded"></div>
+            <div className="h-4 bg-surface-hover rounded w-3/4"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Life Balance Score */}
+      {insights?.lifeBalance && (
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-text-primary">Life Balance Score</h3>
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl font-bold text-accent-primary">
+                {insights.lifeBalance.score}/10
+              </span>
+              <div className={`w-3 h-3 rounded-full ${
+                insights.lifeBalance.score >= 7 ? 'bg-accent-success' :
+                insights.lifeBalance.score >= 5 ? 'bg-accent-warning' : 'bg-accent-error'
+              }`}></div>
+            </div>
+          </div>
+          <p className="text-text-secondary text-sm">{insights.lifeBalance.reasoning}</p>
+        </div>
+      )}
+
+      {/* Weekly Focus */}
+      {insights?.weeklyFocus && (
+        <div className="card p-6 bg-gradient-to-r from-accent-primary/10 to-accent-purple/10 border border-accent-primary/20">
+          <h3 className="text-lg font-semibold text-text-primary mb-2">This Week's Focus</h3>
+          <p className="text-accent-primary font-medium">{insights.weeklyFocus}</p>
+        </div>
+      )}
+
+      {/* Daily Plan */}
+      {dailyPlan && (
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Today's AI-Generated Plan</h3>
+          
+          {dailyPlan.keyFocus && (
+            <div className="mb-4 p-3 bg-accent-success/10 border border-accent-success/20 rounded-lg">
+              <p className="text-accent-success font-medium">🎯 {dailyPlan.keyFocus}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Morning Routine */}
+            {dailyPlan.morningRoutine?.length > 0 && (
+              <div>
+                <h4 className="font-medium text-text-primary mb-2">🌅 Morning</h4>
+                <div className="space-y-2">
+                  {dailyPlan.morningRoutine.map((item: any, index: number) => (
+                    <div key={index} className="flex items-center space-x-2 text-sm">
+                      <span className="text-text-muted">{item.time}</span>
+                      <span className="text-text-secondary">{item.activity}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Habit Reminders */}
+            {dailyPlan.habitReminders?.length > 0 && (
+              <div>
+                <h4 className="font-medium text-text-primary mb-2">⚡ Habit Reminders</h4>
+                <div className="space-y-2">
+                  {dailyPlan.habitReminders.map((reminder: any, index: number) => (
+                    <div key={index} className="text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-text-primary">{reminder.habit}</span>
+                        <span className="text-text-muted">{reminder.suggestedTime}</span>
+                      </div>
+                      <p className="text-xs text-text-muted">{reminder.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Patterns & Insights */}
+      {insights?.patterns?.length > 0 && (
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Pattern Analysis</h3>
+          <div className="space-y-4">
+            {insights.patterns.map((pattern: any, index: number) => (
+              <div key={index} className={`p-3 rounded-lg border ${
+                pattern.type === 'positive' 
+                  ? 'bg-accent-success/10 border-accent-success/20' 
+                  : 'bg-accent-warning/10 border-accent-warning/20'
+              }`}>
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="text-lg">
+                    {pattern.type === 'positive' ? '✅' : '⚠️'}
+                  </span>
+                  <span className={`font-medium ${
+                    pattern.type === 'positive' ? 'text-accent-success' : 'text-accent-warning'
+                  }`}>
+                    {pattern.type === 'positive' ? 'Positive Pattern' : 'Needs Attention'}
+                  </span>
+                </div>
+                <p className="text-text-secondary text-sm">{pattern.description}</p>
+                {pattern.habits?.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {pattern.habits.map((habit: string, i: number) => (
+                      <span key={i} className="px-2 py-1 bg-surface text-xs rounded">
+                        {habit}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Optimizations */}
+      {insights?.optimizations?.length > 0 && (
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Recommended Optimizations</h3>
+          <div className="space-y-3">
+            {insights.optimizations.map((opt: any, index: number) => (
+              <div key={index} className="p-3 bg-surface-hover rounded-lg">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium text-text-primary">{opt.action}</span>
+                  <span className={`px-2 py-1 text-xs rounded ${
+                    opt.difficulty === 'easy' ? 'bg-accent-success/20 text-accent-success' :
+                    opt.difficulty === 'medium' ? 'bg-accent-warning/20 text-accent-warning' :
+                    'bg-accent-error/20 text-accent-error'
+                  }`}>
+                    {opt.difficulty}
+                  </span>
+                </div>
+                <p className="text-text-secondary text-sm">{opt.reason}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Priority Habit */}
+      {insights?.priorityHabit && (
+        <div className="card p-6 bg-gradient-to-r from-accent-error/10 to-accent-warning/10 border border-accent-error/20">
+          <h3 className="text-lg font-semibold text-text-primary mb-2">Priority Alert</h3>
+          <div className="flex items-center space-x-2 mb-2">
+            <span className="text-xl">🚨</span>
+            <span className="font-medium text-accent-error">{insights.priorityHabit.name}</span>
+          </div>
+          <p className="text-text-secondary text-sm">{insights.priorityHabit.reason}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## 🎯 **PHASE 4: Multi-Domain Tracking (Week 3)**
+
+### Step 4.1: Health Data Integration
+```typescript
+// src/lib/health/healthImporter.ts
+export async function importHuaweiHealthData(files: {
+  sleep: string;
+  heartRate: string;
+  stress: string;
+}, userId: string) {
+  const supabase = createServerClient();
+  
+  // Parse sleep data
+  const sleepEntries = parseSleepData(files.sleep).map(entry => ({
+    user_id: userId,
+    type: 'sleep_duration',
+    value: entry.duration, // in minutes
+    unit: 'minutes',
+    metadata: { quality: entry.quality },
+    recorded_at: entry.date
+  }));
+  
+  // Parse heart rate data
+  const heartRateEntries = parseHeartRateData(files.heartRate).map(entry => ({
+    user_id: userId,
+    type: 'heart_rate_avg',
+    value: entry.avgRate,
+    unit: 'bpm',
+    metadata: { min: entry.minRate, max: entry.maxRate },
+    recorded_at: entry.date
+  }));
+  
+  // Parse stress data
+  const stressEntries = parseStressData(files.stress).map(entry => ({
+    user_id: userId,
+    type: 'stress_level',
+    value: entry.avgStress,
+    unit: 'points',
+    metadata: { status: entry.status },
+    recorded_at: entry.date
+  }));
+  
+  // Batch insert all health metrics
+  const allMetrics = [...sleepEntries, ...heartRateEntries, ...stressEntries];
+  
+  const { data, error } = await supabase
+    .from('metrics')
+    .insert(allMetrics);
+    
+  if (error) throw error;
+  
+  return {
+    imported: allMetrics.length,
+    breakdown: {
+      sleep: sleepEntries.length,
+      heartRate: heartRateEntries.length,
+      stress: stressEntries.length
+    }
+  };
+}
+
+function parseSleepData(csvContent: string) {
+  const lines = csvContent.split('\n').slice(1); // Skip header
+  return lines.map(line => {
+    const [date, duration] = line.split('\t');
+    const [hours, minutes] = duration.split(' h ');
+    const totalMinutes = parseInt(hours) * 60 + parseInt(minutes.replace(' min', ''));
+    
+    return {
+      date: new Date(date.split('/').reverse().join('-')).toISOString(),
+      duration: totalMinutes,
+      quality: totalMinutes > 420 ? 'good' : totalMinutes > 300 ? 'fair' : 'poor'
+    };
+  });
+}
+
+function parseHeartRateData(csvContent: string) {
+  const lines = csvContent.split('\n').slice(1);
+  return lines.map(line => {
+    const [date, range] = line.split('\t');
+    const [min, max] = range.replace(' bpm', '').split(' - ').map(Number);
+    
+    return {
+      date: new Date(date.split('/').reverse().join('-')).toISOString(),
+      minRate: min,
+      maxRate: max,
+      avgRate: Math.round((min + max) / 2)
+    };
+  });
+}
+
+function parseStressData(csvContent: string) {
+  const lines = csvContent.split('\n').slice(1);
+  return lines.map(line => {
+    const [date, avgStress, status] = line.split('\t');
+    
+    return {
+      date: new Date(date.split('/').reverse().join('-')).toISOString(),
+      avgStress: parseInt(avgStress),
+      status: status.toLowerCase()
+    };
+  });
+}
+```
+
+### Step 4.2: Finance Tracking
+```typescript
+// src/lib/finance/financeImporter.ts
+export async function importBankStatement(csvContent: string, userId: string) {
+  const supabase = createServerClient();
+  
+  // Parse Jupiter bank statement (adjust based on your bank's format)
+  const transactions = parseBankCSV(csvContent);
+  
+  const financeEntries = transactions.map(transaction => ({
+    user_id: userId,
+    type: 'expense',
+    value: Math.abs(transaction.amount),
+    unit: 'INR',
+    metadata: {
+      description: transaction.description,
+      category: categorizeTransaction(transaction.description),
+      originalAmount: transaction.amount,
+      transactionType: transaction.amount > 0 ? 'credit' : 'debit'
+    },
+    recorded_at: transaction.date
+  }));
+  
+  const { data, error } = await supabase
+    .from('metrics')
+    .insert(financeEntries);
+    
+  if (error) throw error;
+  
+  return { imported: financeEntries.length };
+}
+
+function categorizeTransaction(description: string): string {
+  const desc = description.toLowerCase();
+  
+  if (desc.includes('grocery') || desc.includes('food') || desc.includes('restaurant')) return 'Food';
+  if (desc.includes('uber') || desc.includes('transport') || desc.includes('fuel')) return 'Transportation';
+  if (desc.includes('netflix') || desc.includes('spotify') || desc.includes('subscription')) return 'Subscriptions';
+  if (desc.includes('amazon') || desc.includes('shopping')) return 'Shopping';
+  if (desc.includes('medicine') || desc.includes('hospital') || desc.includes('doctor')) return 'Healthcare';
+  if (desc.includes('salary') || desc.includes('freelance')) return 'Income';
+  
+  return 'Other';
+}
+
+// Crypto portfolio tracking
+export async function updateCryptoPortfolio(holdings: any[], userId: string) {
+  const supabase = createServerClient();
+  
+  const cryptoEntries = holdings.map(holding => ({
+    user_id: userId,
+    type: 'crypto_value',
+    value: holding.value,
+    unit: 'USD',
+    metadata: {
+      symbol: holding.symbol,
+      quantity: holding.quantity,
+      price: holding.price,
+      change: holding.change
+    },
+    recorded_at: new Date().toISOString()
+  }));
+  
+  const { data, error } = await supabase
+    .from('metrics')
+    .insert(cryptoEntries);
+    
+  return { success: !error, count: cryptoEntries.length };
+}
+```
+
+### Step 4.3: Enhanced Dashboard with All Data
+```astro
+---
+// src/pages/index.astro (Enhanced with real data)
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { createServerClient } from '../lib/supabase/server';
+
+const supabase = createServerClient();
+const userId = 'mock-user-id'; // We'll fix auth later
+
+// Fetch all dashboard data
+const [
+  { data: habits },
+  { data: recentMetrics },
+  { data: todayEntries }
+] = await Promise.all([
+  supabase.from('habits').select('*').eq('user_id', userId).eq('is_active', true),
+  supabase.from('metrics').select('*').eq('user_id', userId).gte('recorded_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()).order('recorded_at', { ascending: false }),
+  supabase.from('habit_entries').select('*').eq('user_id', userId).eq('date', new Date().toISOString().split('T')[0])
+]);
+
+// Calculate dashboard stats
+const dashboardStats = {
+  habitsToday: habits?.length || 0,
+  habitsCompleted: todayEntries?.length || 0,
+  completionRate: habits?.length ? Math.round((todayEntries?.length || 0) / habits.length * 100) : 0,
+  
+  // Health metrics
+  avgSleep: calculateAverage(recentMetrics?.filter(m => m.type === 'sleep_duration'), 'value') / 60, // hours
+  avgStress: calculateAverage(recentMetrics?.filter(m => m.type === 'stress_level'), 'value'),
+  avgHeartRate: calculateAverage(recentMetrics?.filter(m => m.type === 'heart_rate_avg'), 'value'),
+  
+  // Finance
+  weeklySpending: recentMetrics?.filter(m => m.type === 'expense').reduce((sum, m) => sum + m.value, 0) || 0,
+  cryptoValue: recentMetrics?.filter(m => m.type === 'crypto_value').reduce((sum, m) => sum + m.value, 0) || 0
+};
+
+function calculateAverage(metrics: any[], field: string): number {
+  if (!metrics || metrics.length === 0) return 0;
+  return metrics.reduce((sum, m) => sum + (m[field] || 0), 0) / metrics.length;
+}
+
+// Recent activity feed
+const recentActivity = [
+  ...todayEntries?.map(entry => ({
+    type: 'habit',
+    message: `Completed habit: ${habits?.find(h => h.id === entry.habit_id)?.name}`,
+    time: entry.logged_at,
+    icon: '✅'
+  })) || [],
+  ...recentMetrics?.slice(0, 5).map(metric => ({
+    type: 'metric',
+    message: `Logged ${metric.type.replace('_', ' ')}: ${metric.value} ${metric.unit}`,
+    time: metric.recorded_at,
+    icon: getMetricIcon(metric.type)
+  })) || []
+].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, 8);
+
+function getMetricIcon(type: string): string {
+  switch (type) {
+    case 'sleep_duration': return '😴';
+    case 'heart_rate_avg': return '❤️';
+    case 'stress_level': return '😰';
+    case 'expense': return '💰';
+    case 'crypto_value': return '₿';
+    default: return '📊';
+  }
+}
+---
+
+<DashboardLayout title="MeshOS - Dashboard">
+  <div class="space-y-8">
+    <!-- Welcome with AI insights button -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-semibold text-text-primary mb-2">
+          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, Rahul
+        </h1>
+        <p class="text-text-secondary">
+          Here's your life overview for {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </p>
+      </div>
+      <button 
+        id="ai-insights-btn"
+        class="flex items-center px-4 py-2 bg-gradient-to-r from-accent-primary to-accent-purple text-white rounded-lg hover:opacity-90 transition-opacity"
+      >
+        <span class="text-lg mr-2">🤖</span>
+        AI Insights
+      </button>
+    </div>
+
+    <!-- Enhanced Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Habits Progress -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Habits Today</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              {dashboardStats.habitsCompleted}/{dashboardStats.habitsToday}
+            </p>
+            <p class="text-sm text-accent-success mt-1">{dashboardStats.completionRate}% complete</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sleep Health -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Avg Sleep</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              {dashboardStats.avgSleep > 0 ? dashboardStats.avgSleep.toFixed(1) + 'h' : '--'}
+            </p>
+            <p class={`text-sm mt-1 ${
+              dashboardStats.avgSleep >= 7 ? 'text-accent-success' : 
+              dashboardStats.avgSleep >= 6 ? 'text-accent-warning' : 'text-accent-error'
+            }`}>
+              {dashboardStats.avgSleep >= 7 ? 'Excellent' : dashboardStats.avgSleep >= 6 ? 'Fair' : dashboardStats.avgSleep > 0 ? 'Poor' : 'No data'}
+            </p>
+          </div>
+          <div class="w-12 h-12 bg-accent-primary/10 rounded-lg flex items-center justify-center">
+            <span class="text-2xl">😴</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stress Level -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Avg Stress</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              {dashboardStats.avgStress > 0 ? Math.round(dashboardStats.avgStress) : '--'}
+            </p>
+            <p class={`text-sm mt-1 ${
+              dashboardStats.avgStress <= 30 ? 'text-accent-success' : 
+              dashboardStats.avgStress <= 50 ? 'text-accent-warning' : 'text-accent-error'
+            }`}>
+              {dashboardStats.avgStress <= 30 ? 'Low' : dashboardStats.avgStress <= 50 ? 'Normal' : dashboardStats.avgStress > 0 ? 'High' : 'No data'}
+            </p>
+          </div>
+          <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
+            <span class="text-2xl">😰</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Spending -->
+      <div class="card-hover">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Weekly Spending</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              ₹{dashboardStats.weeklySpending.toLocaleString()}
+            </p>
+            <p class="text-sm text-text-muted mt-1">Last 7 days</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-error/10 rounded-lg flex items-center justify-center">
+            <span class="text-2xl">💰</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Recent Activity -->
+      <div class="lg:col-span-2">
+        <div class="card">
+          <h2 class="text-xl font-semibold text-text-primary mb-6">Recent Activity</h2>
+          
+          {recentActivity.length > 0 ? (
+            <div class="space-y-3">
+              {recentActivity.map((activity, index) => (
+                <div key={index} class="flex items-center space-x-3 p-3 bg-surface-hover rounded-lg">
+                  <span class="text-lg">{activity.icon}</span>
+                  <div class="flex-1">
+                    <p class="text-sm text-text-primary">{activity.message}</p>
+                    <p class="text-xs text-text-muted">
+                      {new Date(activity.time).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div class="text-center py-8">
+              <p class="text-text-muted">No recent activity. Start logging some habits!</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <!-- Quick Actions & AI Insights -->
+      <div class="space-y-6">
+        <!-- Quick Actions -->
+        <div class="card">
+          <h2 class="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2>
+          
+          <div class="space-y-3">
+            <a href="/habits" class="w-full flex items-center justify-start px-4 py-3 bg-accent-success/10 hover:bg-accent-success/20 border border-accent-success/20 text-accent-success rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Log Habit
+            </a>
+
+            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              Add Health Metric
+            </button>
+
+            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors">
+              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+              </svg>
+              Log Expense
+            </button>
+          </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="card">
+          <h3 class="text-lg font-medium text-text-primary mb-4">System Status</h3>
+          
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
+                <span class="text-sm text-text-secondary">Database</span>
+              </div>
+              <span class="text-sm text-accent-success">Online</span>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
+                <span class="text-sm text-text-secondary">AI Analysis</span>
+              </div>
+              <span class="text-sm text-accent-success">Active</span>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
+                <span class="text-sm text-text-secondary">Data Sync</span>
+              </div>
+              <span class="text-sm text-accent-success">Updated</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mini Health Summary -->
+        {dashboardStats.avgSleep > 0 && (
+          <div class="card">
+            <h3 class="text-lg font-medium text-text-primary mb-4">Health Summary</h3>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-secondary">Sleep Quality</span>
+                <div class="flex items-center space-x-2">
+                  <div class={`w-2 h-2 rounded-full ${
+                    dashboardStats.avgSleep >= 7 ? 'bg-accent-success' : 
+                    dashboardStats.avgSleep >= 6 ? 'bg-accent-warning' : 'bg-accent-error'
+                  }`}></div>
+                  <span class="text-sm text-text-primary">{dashboardStats.avgSleep.toFixed(1)}h avg</span>
+                </div>
+              </div>
+              
+              {dashboardStats.avgHeartRate > 0 && (
+                <div class="flex items-center justify-between">
+                  <span class="text-sm text-text-secondary">Heart Rate</span>
+                  <span class="text-sm text-text-primary">{Math.round(dashboardStats.avgHeartRate)} bpm avg</span>
+                </div>
+              )}
+              
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-text-secondary">Stress Level</span>
+                <div class="flex items-center space-x-2">
+                  <div class={`w-2 h-2 rounded-full ${
+                    dashboardStats.avgStress <= 30 ? 'bg-accent-success' : 
+                    dashboardStats.avgStress <= 50 ? 'bg-accent-warning' : 'bg-accent-error'
+                  }`}></div>
+                  <span class="text-sm text-text-primary">{Math.round(dashboardStats.avgStress)} avg</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+
+    <!-- AI Insights Modal -->
+    <div id="ai-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+      <div class="bg-surface rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-semibold text-text-primary">🤖 AI Life Analysis</h3>
+            <button id="close-ai-modal" class="text-text-muted hover:text-text-primary">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <div id="ai-insights-content">
+            <div class="animate-pulse space-y-4">
+              <div class="h-6 bg-surface-hover rounded"></div>
+              <div class="h-4 bg-surface-hover rounded w-3/4"></div>
+              <div class="h-4 bg-surface-hover rounded w-1/2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
+
+<script>
+  // AI Insights Modal
+  document.getElementById('ai-insights-btn')?.addEventListener('click', async () => {
+    const modal = document.getElementById('ai-modal');
+    const content = document.getElementById('ai-insights-content');
+    
+    modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
+    
+    try {
+      // Load AI insights
+      const response = await fetch('/api/ai/dashboard-insights');
+      const insights = await response.json();
+      
+      // Render insights (you'll build this component)
+      content.innerHTML = renderAIInsights(insights);
+    } catch (error) {
+      content.innerHTML = '<p class="text-accent-error">Failed to load AI insights. Please try again.</p>';
+    }
+  });
+
+  document.getElementById('close-ai-modal')?.addEventListener('click', () => {
+    const modal = document.getElementById('ai-modal');
+    modal?.classList.add('hidden');
+    modal?.classList.remove('flex');
+  });
+
+  function renderAIInsights(insights: any): string {
+    // This would render your AI insights component
+    return `
+      <div class="space-y-6">
+        <div class="card p-4">
+          <h4 class="font-semibold text-text-primary mb-2">Life Balance Score</h4>
+          <div class="text-2xl font-bold text-accent-primary">${insights.lifeBalance?.score || 'N/A'}/10</div>
+          <p class="text-text-secondary text-sm">${insights.lifeBalance?.reasoning || 'Analysis in progress...'}</p>
+        </div>
+        <!-- More insights rendering here -->
+      </div>
+    `;
+  }
+</script>
+---
+
+## 🎯 **PHASE 5: Automation & Smart Features (Week 4)**
+
+### Step 5.1: Automated Data Collection
+```typescript
+// src/lib/automation/dataCollector.ts
+export class AutomatedDataCollector {
+  
+  // Crypto portfolio auto-update (runs every hour)
+  async updateCryptoPortfolio(userId: string) {
+    const holdings = await this.parseCryptoHoldings(); // From your cryptoholdings.txt
+    
+    // Fetch current prices from CoinGecko
+    const symbols = holdings.map(h => h.symbol.toLowerCase()).join(',');
+    const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbols}&vs_currencies=usd&include_24hr_change=true`);
+    const prices = await response.json();
+    
+    // Update portfolio values
+    const updatedHoldings = holdings.map(holding => ({
+      ...holding,
+      currentPrice: prices[holding.symbol.toLowerCase()]?.usd || 0,
+      change24h: prices[holding.symbol.toLowerCase()]?.usd_24h_change || 0,
+      currentValue: holding.quantity * (prices[holding.symbol.toLowerCase()]?.usd || 0)
+    }));
+    
+    // Store in database
+    await this.updateCryptoMetrics(updatedHoldings, userId);
+    
+    return updatedHoldings;
+  }
+  
+  // Daily habit streak calculation
+  async updateHabitStreaks(userId: string) {
+    const supabase = createServerClient();
+    
+    const { data: habits } = await supabase
+      .from('habits')
+      .select('id, streak_count')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+    
+    for (const habit of habits || []) {
+      const streak = await this.calculateCurrentStreak(habit.id);
+      
+      if (streak !== habit.streak_count) {
+        await supabase
+          .from('habits')
+          .update({ 
+            streak_count: streak,
+            best_streak: Math.max(streak, habit.best_streak || 0)
+          })
+          .eq('id', habit.id);
+      }
+    }
+  }
+  
+  // Smart notifications based on patterns
+  async generateSmartNotifications(userId: string) {
+    const userData = await this.getUserData(userId);
+    const patterns = await this.analyzePatterns(userData);
+    
+    const notifications = [];
+    
+    // Habit reminder based on time patterns
+    for (const habit of userData.habits) {
+      const usualTime = this.findUsualCompletionTime(habit.entries);
+      const currentTime = new Date().getHours();
+      
+      if (Math.abs(currentTime - usualTime) <= 1 && !habit.completedToday) {
+        notifications.push({
+          type: 'habit_reminder',
+          message: `Time for ${habit.name}! You usually do this around ${usualTime}:00`,
+          priority: 'medium',
+          action: { type: 'log_habit', habitId: habit.id }
+        });
+      }
+    }
+    
+    // Health anomaly detection
+    if (userData.healthMetrics.sleep.latest < userData.healthMetrics.sleep.average - 2) {
+      notifications.push({
+        type: 'health_alert',
+        message: 'Your sleep is significantly below average. Consider adjusting your schedule.',
+        priority: 'high'
+      });
+    }
+    
+    // Finance alerts
+    const weeklySpending = this.calculateWeeklySpending(userData.expenses);
+    const avgWeeklySpending = this.calculateAverageWeeklySpending(userData.expenses);
+    
+    if (weeklySpending > avgWeeklySpending * 1.5) {
+      notifications.push({
+        type: 'finance_alert',
+        message: `Your spending this week (₹${weeklySpending}) is 50% above average. Review your expenses.`,
+        priority: 'medium'
+      });
+    }
+    
+    return notifications;
+  }
+}
+```
+
+### Step 5.2: Smart Scheduling System
+```typescript
+// src/lib/ai/smartScheduler.ts
+export class SmartScheduler {
+  
+  async generateOptimalSchedule(userData: {
+    habits: any[];
+    tasks: any[];
+    healthPatterns: any;
+    preferences: any;
+  }) {
+    
+    const energyPeaks = this.analyzeEnergyPatterns(userData.healthPatterns);
+    const habitOptimalTimes = this.analyzeHabitTiming(userData.habits);
+    
+    const schedule = {
+      morning: [],
+      afternoon: [],
+      evening: []
+    };
+    
+    // Schedule high-energy habits during energy peaks
+    const highEnergyHabits = userData.habits.filter(h => 
+      ['gym', 'coding', 'university'].some(keyword => 
+        h.name.toLowerCase().includes(keyword)
+      )
+    );
+    
+    const lowEnergyHabits = userData.habits.filter(h =>
+      ['shower', 'walk'].some(keyword => 
+        h.name.toLowerCase().includes(keyword)
+      )
+    );
+    
+    // Morning (high energy period)
+    if (energyPeaks.morning > 0.7) {
+      schedule.morning.push(...highEnergyHabits.slice(0, 2));
+      schedule.morning.push(...userData.tasks.filter(t => t.priority === 'high').slice(0, 2));
+    }
+    
+    // Afternoon (moderate energy)
+    schedule.afternoon.push(...userData.tasks.filter(t => t.priority === 'medium'));
+    schedule.afternoon.push(...lowEnergyHabits);
+    
+    // Evening (wind down)
+    schedule.evening.push(...userData.habits.filter(h => 
+      h.name.toLowerCase().includes('no ') // "no pot", "no energy drink"
+    ));
+    
+    return this.optimizeSchedule(schedule, userData.preferences);
+  }
+  
+  private analyzeEnergyPatterns(healthData: any) {
+    // Analyze sleep, heart rate, stress to determine energy patterns
+    const morningEnergy = this.calculateEnergyScore(healthData, 'morning');
+    const afternoonEnergy = this.calculateEnergyScore(healthData, 'afternoon');
+    const eveningEnergy = this.calculateEnergyScore(healthData, 'evening');
+    
+    return { morning: morningEnergy, afternoon: afternoonEnergy, evening: eveningEnergy };
+  }
+}
+```
+
+### Step 5.3: Advanced Analytics Dashboard
+```tsx
+// src/components/analytics/LifeAnalytics.tsx
+import React, { useState, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+
+export default function LifeAnalytics() {
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [timeRange, setTimeRange] = useState('30d');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [timeRange]);
+
+  const loadAnalytics = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/analytics/life-overview?range=${timeRange}`);
+      const data = await response.json();
+      setAnalyticsData(data);
+    } catch (error) {
+      console.error('Failed to load analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) return <div className="card p-6">Loading analytics...</div>;
+  if (!analyticsData) return <div className="card p-6">No data available</div>;
+
+  return (
+    <div className="space-y-8">
+      {/* Time Range Selector */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-text-primary">Life Analytics</h2>
+        <div className="flex space-x-2">
+          {['7d', '30d', '90d', '1y'].map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeRange(range)}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                timeRange === range
+                  ? 'bg-accent-primary text-white'
+                  : 'bg-surface text-text-secondary hover:bg-surface-hover'
+              }`}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-text-muted text-sm">Habit Consistency</p>
+              <p className="text-2xl font-bold text-text-primary">{analyticsData.habitConsistency}%</p>
+            </div>
+            <div className={`w-3 h-3 rounded-full ${
+              analyticsData.habitConsistency >= 80 ? 'bg-accent-success' :
+              analyticsData.habitConsistency >= 60 ? 'bg-accent-warning' : 'bg-accent-error'
+            }`}></div>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-text-muted text-sm">Health Score</p>
+              <p className="text-2xl font-bold text-text-primary">{analyticsData.healthScore}/10</p>
+            </div>
+            <span className="text-2xl">❤️</span>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-text-muted text-sm">Productivity</p>
+              <p className="text-2xl font-bold text-text-primary">{analyticsData.productivityScore}/10</p>
+            </div>
+            <span className="text-2xl">⚡</span>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-text-muted text-sm">Life Balance</p>
+              <p className="text-2xl font-bold text-text-primary">{analyticsData.lifeBalance}/10</p>
+            </div>
+            <span className="text-2xl">⚖️</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Habit Trends */}
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Habit Completion Trends</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={analyticsData.habitTrends}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+              <XAxis dataKey="date" stroke="#737373" />
+              <YAxis stroke="#737373" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#111111', 
+                  border: '1px solid #262626',
+                  borderRadius: '8px'
+                }}
+              />
+              <Line type="monotone" dataKey="completion" stroke="#3b82f6" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Health Metrics */}
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Health Metrics</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={analyticsData.healthTrends}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+              <XAxis dataKey="date" stroke="#737373" />
+              <YAxis stroke="#737373" />
+              <Tooltip contentStyle={{ backgroundColor: '#111111', border: '1px solid #262626' }} />
+              <Line type="monotone" dataKey="sleep" stroke="#10b981" strokeWidth={2} name="Sleep (hrs)" />
+              <Line type="monotone" dataKey="stress" stroke="#f59e0b" strokeWidth={2} name="Stress" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Expense Breakdown */}
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Spending by Category</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={analyticsData.expenseBreakdown}
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              >
+                {analyticsData.expenseBreakdown.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Weekly Pattern Analysis */}
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">Weekly Patterns</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={analyticsData.weeklyPatterns}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
+              <XAxis dataKey="day" stroke="#737373" />
+              <YAxis stroke="#737373" />
+              <Tooltip contentStyle={{ backgroundColor: '#111111', border: '1px solid #262626' }} />
+              <Bar dataKey="habits" fill="#3b82f6" name="Habits Completed" />
+              <Bar dataKey="productivity" fill="#10b981" name="Productivity Score" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Insights & Recommendations */}
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold text-text-primary mb-4">AI Insights & Recommendations</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-medium text-text-primary mb-3">Key Insights</h4>
+            <ul className="space-y-2">
+              {analyticsData.insights.map((insight: string, index: number) => (
+                <li key={index} className="flex items-start space-x-2">
+                  <span className="text-accent-primary mt-1">•</span>
+                  <span className="text-text-secondary text-sm">{insight}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-medium text-text-primary mb-3">Recommended Actions</h4>
+            <ul className="space-y-2">
+              {analyticsData.recommendations.map((rec: string, index: number) => (
+                <li key={index} className="flex items-start space-x-2">
+                  <span className="text-accent-success mt-1">✓</span>
+                  <span className="text-text-secondary text-sm">{rec}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+## 🚀 **IMMEDIATE NEXT STEPS (This Week)**
+
+### Priority 1: Database Setup & Import (Days 1-2)
+1. **Create the enhanced database schema** (copy the SQL from Step 1.1)
+2. **Build the Loop Habits import system** (Step 1.2-1.4)
+3. **Import your actual habit data** to see real progress
+
+### Priority 2: Real Data Integration (Days 3-4)
+1. **Update habits page** with real data from database
+2. **Fix authentication** to work with your actual user ID
+3. **Test habit logging** functionality
+
+### Priority 3: Health Data Import (Days 5-7)
+1. **Import your Huawei Health data** (sleep, heart rate, stress)
+2. **Add health metrics dashboard**
+3. **Build finance import** for Jupiter bank statements
+
+### Code Changes You Need Right Now:
+
+```bash
+# 1. Update your Supabase database with the new schema
+# 2. Replace src/pages/habits.astro with the enhanced version from Step 2.1
+# 3. Add the import components from Step 1.3-1.4
+# 4. Update your dashboard with real data from the enhanced index.astro
+```
+
+## 🎯 **Week-by-Week Outcome Goals**
+
+**Week 1**: Working habit tracking with real Loop Habits data imported
+**Week 2**: AI insights analyzing your actual patterns + health data integration  
+**Week 3**: Complete life tracking (finance, content, health) with smart notifications
+**Week 4**: Advanced analytics + automation + production deployment
+
+This plan transforms MeshOS from a basic habit tracker into a **comprehensive life operating system** that actually makes intelligent decisions for you based on your real data patterns. 
+
+Want to start with the database schema and import system? That's the foundation that makes everything else possible!
+
+
+
+

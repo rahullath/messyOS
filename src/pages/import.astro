@@ -1,0 +1,15 @@
+---
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import LoopHabitsImport from '../components/import/LoopHabitsImport.tsx';
+---
+
+<DashboardLayout title="Import Data - MeshOS">
+  <div class="space-y-8">
+    <h1 class="text-3xl font-semibold text-text-primary mb-4">Import Data</h1>
+    <p class="text-text-secondary mb-8">
+      Use this page to import your historical data from other apps.
+    </p>
+
+    <LoopHabitsImport client:load />
+  </div>
+</DashboardLayout>
