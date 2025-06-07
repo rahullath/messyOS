@@ -11,36 +11,67 @@ export function createServerClient(cookies: AstroCookies) {
       cookies: {
         get(name: string) {
           const cookie = cookies.get(name);
+          
+          // Attempt to find cookie with variations
+          const cookieVariations = [
+            name,
+            `${name}.0`,
+            `${name}.1`,
+            `${name}.2`,
+            `${name}.3`,
+            `${name}.4`
+          ];
+
+          for (const variant of cookieVariations) {
+            const variantCookie = cookies.get(variant);
+            if (variantCookie?.value) {
+              console.log(`Found cookie variant: ${variant}`);
+              return variantCookie.value;
+            }
+          }
+
           console.log(`Getting cookie ${name}:`, cookie?.value ? 'exists' : 'not found');
           return cookie?.value;
         },
         set(name: string, value: string, options: any) {
-          console.log(`Setting cookie ${name} with options:`, options);
-          
-          // Determine if we're in development
-          const isDevelopment = import.meta.env.DEV || 
-                               (typeof window !== 'undefined' && window.location.hostname === 'localhost');
+          const isDevelopment = import.meta.env.DEV;
           
           const cookieOptions = {
             ...options,
             sameSite: 'lax' as const,
             httpOnly: false,
-            secure: !isDevelopment, // Only secure in production
-            domain: isDevelopment ? 'localhost' : undefined, // Explicit domain for dev
+            secure: !isDevelopment,
+            domain: isDevelopment ? 'localhost' : undefined,
             path: '/'
           };
           
-          console.log(`Final cookie options for ${name}:`, cookieOptions);
-          cookies.set(name, value, cookieOptions);
+          // Set multiple cookie variants to ensure persistence
+          const variants = [name, `${name}.0`, `${name}.1`];
+          variants.forEach(variant => {
+            console.log(`Setting cookie ${variant}`);
+            cookies.set(variant, value, cookieOptions);
+          });
         },
         remove(name: string, options: any) {
-          console.log(`Removing cookie ${name}`);
           const isDevelopment = import.meta.env.DEV;
           
-          cookies.delete(name, {
-            ...options,
-            domain: isDevelopment ? 'localhost' : undefined,
-            path: '/'
+          // Remove multiple cookie variants
+          const variants = [
+            name, 
+            `${name}.0`, 
+            `${name}.1`, 
+            `${name}.2`, 
+            `${name}.3`, 
+            `${name}.4`
+          ];
+
+          variants.forEach(variant => {
+            console.log(`Removing cookie ${variant}`);
+            cookies.delete(variant, {
+              ...options,
+              domain: isDevelopment ? 'localhost' : undefined,
+              path: '/'
+            });
           });
         },
       },

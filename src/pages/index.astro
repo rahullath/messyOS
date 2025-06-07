@@ -1,285 +1,48 @@
 ---
-// src/pages/index.astro - CLIENT-SIDE AUTH VERSION
+// src/pages/index.astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { getDashboardData } from '../lib/data/dashboard';
+
+const session = Astro.locals.session;
+const dashboardData = await getDashboardData(Astro.cookies, session);
 ---
 
 <DashboardLayout title="MeshOS - Dashboard">
-  <div id="auth-check" class="min-h-screen flex items-center justify-center">
-    <div class="text-center">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary mx-auto mb-4"></div>
-      <p class="text-text-muted">Loading your dashboard...</p>
-    </div>
-  </div>
-
-  <div id="dashboard-content" class="space-y-8" style="display: none;">
-    <!-- Welcome Section -->
-    <div>
-      <h1 id="welcome-text" class="text-3xl font-semibold text-text-primary mb-2">
-        Good morning, Friend
-      </h1>
-      <p class="text-text-secondary">
-        Here's what's happening with your life today
-      </p>
-    </div>
-
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <!-- Habits Today -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Habits Today</p>
-            <p id="habits-count" class="text-2xl font-semibold text-text-primary mt-1">0/0</p>
-            <p id="habits-status" class="text-sm text-accent-success mt-1">Loading...</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-        </div>
+  <div class="dashboard-content">
+    {dashboardData.error ? (
+      <div class="error-container">
+        <h2 class="text-2xl text-accent-error">Dashboard Loading Error</h2>
+        <p class="text-text-muted">{dashboardData.error}</p>
+        <a href="/login" class="btn btn-primary mt-4">Return to Login</a>
       </div>
+    ) : (
+      <div>
+        <h1 class="text-3xl font-semibold mb-4">
+          Welcome, {dashboardData.user?.email?.split('@')[0] || 'User'}
+        </h1>
 
-      <!-- Tasks -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Tasks</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">0</p>
-            <p class="text-sm text-text-muted mt-1">Coming soon</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-primary/10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- Health Score -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Health Score</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">--</p>
-            <p class="text-sm text-accent-success mt-1">Coming soon</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-error/10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- Finance -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Net Worth</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">--</p>
-            <p class="text-sm text-text-muted mt-1">Coming soon</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-accent-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Actions -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div class="lg:col-span-2">
-        <div class="card">
-          <h2 class="text-xl font-semibold text-text-primary mb-6">Recent Activity</h2>
-          <div id="recent-activity">
-            <div class="text-center py-8">
-              <p class="text-text-muted">Loading recent activity...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="space-y-6">
-        <div class="card">
-          <h2 class="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2>
-          
-          <div class="space-y-3">
-            <a href="/habits" class="w-full flex items-center justify-start px-4 py-3 bg-accent-success/10 hover:bg-accent-success/20 border border-accent-success/20 text-accent-success rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Log Habit
-            </a>
-
-            <button id="add-habit-btn" class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-              </svg>
-              Add Habit
-            </button>
-
-            <a href="/import" class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-              </svg>
-              Import Data
-            </button>
-          </div>
-        </div>
-
-        <!-- User Profile -->
-        <div class="card">
-          <h3 class="text-lg font-medium text-text-primary mb-4">Profile</h3>
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 bg-gradient-to-r from-accent-primary to-accent-purple rounded-full flex items-center justify-center">
-              <span id="user-initial" class="text-sm font-medium text-white">F</span>
-            </div>
-            <div>
-              <p id="user-name" class="text-sm font-medium text-text-primary">Friend</p>
-              <p id="user-email" class="text-xs text-text-muted">Loading...</p>
-            </div>
+        <div class="stats-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="card">
+            <h3>Habits</h3>
+            <p>{dashboardData.habits?.length || 0} Active Habits</p>
           </div>
           
-          <button 
-            id="logout-btn"
-            class="w-full mt-4 px-3 py-2 text-xs bg-surface-hover hover:bg-border text-text-secondary hover:text-text-primary rounded-lg transition-colors"
-          >
-            Sign Out
-          </button>
+          <div class="card">
+            <h3>Tasks</h3>
+            <p>
+              {dashboardData.taskStats.total} Total 
+              ({dashboardData.taskStats.completed} Completed)
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    )}
   </div>
+
+  <script>
+    // Client-side enhancement script
+    document.addEventListener('DOMContentLoaded', () => {
+      // Add any client-side interactivity here
+    });
+  </script>
 </DashboardLayout>
-
-<script>
-  import { SimpleAuth } from '../lib/auth/simple.ts';
-  import { supabase } from '../lib/supabase/client.ts';
-
-  async function loadDashboard() {
-    try {
-      // Wait for auth to initialize
-      const user = await SimpleAuth.initialize();
-      
-      if (!user) {
-        window.location.href = '/login';
-        return;
-      }
-
-      // Update UI with user info
-      updateUserInfo(user);
-
-      // Load habits data
-      await loadHabitsData(user.id);
-
-      // Show dashboard
-      document.getElementById('auth-check')!.style.display = 'none';
-      document.getElementById('dashboard-content')!.style.display = 'block';
-
-    } catch (error) {
-      console.error('Dashboard load error:', error);
-      window.location.href = '/login';
-    }
-  }
-
-  function updateUserInfo(user: any) {
-    const firstName = user.user_metadata?.full_name?.split(' ')[0] || 
-                     user.user_metadata?.name?.split(' ')[0] || 
-                     user.email?.split('@')[0] || 
-                     'Friend';
-
-    document.getElementById('welcome-text')!.textContent = `Good morning, ${firstName}`;
-    document.getElementById('user-name')!.textContent = firstName;
-    document.getElementById('user-email')!.textContent = user.email;
-    document.getElementById('user-initial')!.textContent = firstName.charAt(0).toUpperCase();
-  }
-
-  async function loadHabitsData(userId: string) {
-    try {
-      const { data: habits, error } = await supabase
-        .from('habits')
-        .select('*, habit_entries(*)')
-        .eq('user_id', userId)
-        .eq('is_active', true);
-
-      if (error) throw error;
-
-      const today = new Date().toDateString();
-      const habitsWithToday = habits?.map(habit => {
-        const todayEntry = habit.habit_entries?.some((entry: any) => 
-          new Date(entry.logged_at).toDateString() === today
-        );
-        return { ...habit, completedToday: todayEntry };
-      }) || [];
-
-      const totalHabits = habitsWithToday.length;
-      const completedToday = habitsWithToday.filter(h => h.completedToday).length;
-      const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
-
-      document.getElementById('habits-count')!.textContent = `${completedToday}/${totalHabits}`;
-      document.getElementById('habits-status')!.textContent = 
-        totalHabits === 0 ? 'Add your first habit!' : `${completionRate}% complete`;
-
-      // Load recent activity
-      await loadRecentActivity(userId);
-
-    } catch (error) {
-      console.error('Habits load error:', error);
-      document.getElementById('habits-status')!.textContent = 'Error loading habits';
-    }
-  }
-
-  async function loadRecentActivity(userId: string) {
-    try {
-      const { data: entries, error } = await supabase
-        .from('habit_entries')
-        .select('*, habits(name, type)')
-        .eq('user_id', userId)
-        .order('logged_at', { ascending: false })
-        .limit(5);
-
-      if (error) throw error;
-
-      const activityDiv = document.getElementById('recent-activity');
-      if (!activityDiv) return;
-
-      if (entries && entries.length > 0) {
-        activityDiv.innerHTML = entries.map((entry: any) => `
-          <div class="flex items-center space-x-3 p-3 bg-surface-hover rounded-lg mb-3">
-            <div class="w-3 h-3 rounded-full ${entry.habits.type === 'build' ? 'bg-accent-success' : 'bg-accent-error'}"></div>
-            <div class="flex-1">
-              <p class="text-sm font-medium text-text-primary">
-                ${entry.habits.type === 'build' ? 'Completed' : 'Avoided'}: ${entry.habits.name}
-              </p>
-              <p class="text-xs text-text-muted">
-                ${new Date(entry.logged_at).toLocaleDateString()}
-              </p>
-            </div>
-            <div class="text-xl">
-              ${entry.habits.type === 'build' ? '✅' : '🚫'}
-            </div>
-          </div>
-        `).join('');
-      } else {
-        activityDiv.innerHTML = '<div class="text-center py-8"><p class="text-text-muted">No recent activity. Start logging some habits!</p></div>';
-      }
-    } catch (error) {
-      console.error('Activity load error:', error);
-    }
-  }
-
-  // Event listeners
-  document.getElementById('logout-btn')?.addEventListener('click', () => {
-    SimpleAuth.signOut();
-  });
-
-  document.getElementById('add-habit-btn')?.addEventListener('click', () => {
-    alert('🚀 Add habit feature coming next! For now, visit /habits to see your current habits, or /import to import your Loop Habits data.');
-  });
-
-  // Initialize dashboard
-  loadDashboard();
-</script>
