@@ -1,0 +1,51 @@
+I want to create an application, dashboard , website anything - but extremely comprehensive. 
+There will only be 1 user - me.
+
+It will organize and fix my life.
+
+Tracking all my habits that I have recently picked up -
+I will add a csv from loop-habits app initially- then manual entry on this platform that we are making
+quitting - smoking, weed, energy drinks, 
+going for walks, gym
+simple things like - waking up early , showering
+
+track the total amount of shows I have watched using serializd.com data
+create a lifelong detailed recommendation plan for content based on that
+including movies to watch from every genre, language
+suggest me books and more
+
+track all my tasks -
+work related - building front end , backend, posting twitter threads, uiux designing, partnerships etc - in detail yet again day to day - hour to hour kinda thing
+including - applying for a new job - tracking my applications etc
+
+tracking my progress with my postgraduate applications to UK universities - I have an excel sheet maintained with all the colleges applied to, the costs associated, stuff paid for stuff pending. visa related tasks , my cat's visa related tasks - microchipping, rabies titer, health certificate, carrier blah blah
+
+tracking my food-
+what groceries I have in my house right now - what am I eating everyday - what I should be buying now - planning my daily meal intake
+exporting my huawei band 9 data from the health app or cloud? I don't know
+tracking my gym workouts - using my cult.fit app data 
+tracking my weight 
+
+do I have my cat's food stocked up? litter time? did I drink water today
+am I taking my anti-depressants on time - bupropion (morning +afternoon), am I taking my melatonin on time - temporary to fix circadian rhythm
+
+tracking my screentime of different apps using my digital wellbeing app's data,
+how often I am jerking off
+laundry 
+
+my subscriptions - apple tv+, hbo max, googlecloud, spotify
+Free trials - blackbox pro ai agent, gemini api $300 credits 
+
+my crypto portfolio
+
+my progress in coding and building apps - 
+I am trying to make a decentralized streaming platform - but I end up stopping everytime (its been 16 months and I have worked on it for 2 weeks  - then given up and then again 2 weeks after like 5-6 months and repeat - need to track the issues I am facing, why I am stoppign the process, the tech stack I keep pivoting towards etc)
+a crypto trading bot - I know too much about crypto to not become rich with it - I need to start buying stuff investing in it, but selling it requires automation - finding coins - etc, I am too scared because of how much I know to put money in, especially because I am broke 
+
+So tracking my finances as well with my bank statements. expense breakdown
+
+I mean you get it at this point -- there must be more stuff honestly - I am trying to put my life into an application - whichever form it is in.
+
+I want to do this fast. I do not want to waste a month building an app that is supposed to optimize how my time is spent and  fuel the progress I am making in health, career, finance, passion and more. 
+
+Is this a feasible thing to do, I want to use this forever. Like keep iterating as my tasks change or goals or whatever - but I want this to be THE app.

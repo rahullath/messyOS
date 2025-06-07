@@ -1,85 +1,81 @@
 ---
 // src/pages/habits.astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-// import { createServerClient } from '../lib/supabase/server'; // Remove this import
+import { createServerClient } from '../lib/supabase/server';
 
-// Use locals populated by middleware
-const { locals } = Astro;
-const { session, supabase } = locals;
-const user = session?.user; // Get user from session
-console.log('User object on Habits page:', user);
+// In development, server auth doesn't work, so we'll use client-side
+const isDev = import.meta.env.DEV;
 
-// If no user, redirect to login (should be handled by middleware, but as a fallback)
-if (!user) {
-  return Astro.redirect('/login');
-}
+let habitsWithStatus = [];
+let completedToday = 0;
+let totalHabits = 0;
+let completionRate = 0;
+let longestStreak = 0;
 
-// Fetch user's habits with today's entries
-const { data: habits, error } = await supabase
-  .from('habits')
-  .select(`
-    *,
-    habit_entries(
-      id,
-      value,
-      logged_at,
-      notes
-    )
-  `)
-  .eq('user_id', user.id)
-  .eq('is_active', true)
-  .order('created_at', { ascending: false });
+if (!isDev) {
+  // Production: use server-side data
+  const supabase = createServerClient(Astro.cookies);
+  const { data: { user } } = await supabase.auth.getUser();
 
-if (error) {
-  console.error('Error fetching habits:', error);
-}
+  if (user) {
+    // Fetch user's habits with today's entries
+    const { data: habits, error } = await supabase
+      .from('habits')
+      .select(`
+        *,
+        habit_entries(
+          id,
+          value,
+          logged_at,
+          notes
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
 
-// Process habits to show today's status
-import type { Database } from 'types/supabase';
+    if (!error && habits) {
+      // Process habits to show today's status
+      const today = new Date().toDateString();
+      habitsWithStatus = habits.map((habit) => {
+        const todayEntry = habit.habit_entries?.find((entry) => 
+          new Date(entry.logged_at!).toDateString() === today
+        );
+        
+        // Get last 7 days for weekly view
+        const last7Days = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date();
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toDateString();
+          
+          const dayEntry = habit.habit_entries?.find((entry) =>
+            new Date(entry.logged_at!).toDateString() === dateStr
+          );
+          
+          last7Days.push({
+            date: dateStr,
+            completed: !!dayEntry,
+            value: dayEntry?.value || 0
+          });
+        }
+        
+        return {
+          ...habit,
+          completedToday: !!todayEntry,
+          todayEntry,
+          last7Days
+        };
+      });
 
-type HabitWithStatus = Database['public']['Tables']['habits']['Row'] & { 
-  habit_entries: Database['public']['Tables']['habit_entries']['Row'][] | null;
-  completedToday: boolean;
-  todayEntry: Database['public']['Tables']['habit_entries']['Row'] | undefined;
-  last7Days: { date: string; completed: boolean; value: number }[];
-};
-
-const today = new Date().toDateString();
-const habitsWithStatus: HabitWithStatus[] = (habits || []).map((habit: Database['public']['Tables']['habits']['Row'] & { habit_entries: Database['public']['Tables']['habit_entries']['Row'][] | null }) => {
-  const todayEntry = habit.habit_entries?.find((entry: Database['public']['Tables']['habit_entries']['Row']) => 
-    new Date(entry.logged_at!).toDateString() === today
-  );
-  
-  // Get last 7 days for weekly view
-  const last7Days = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toDateString();
-    
-    const dayEntry = habit.habit_entries?.find((entry: Database['public']['Tables']['habit_entries']['Row']) =>
-      new Date(entry.logged_at!).toDateString() === dateStr
-    );
-    
-    last7Days.push({
-      date: dateStr,
-      completed: !!dayEntry,
-      value: dayEntry?.value || 0
-    });
+      completedToday = habitsWithStatus.filter(h => h.completedToday).length;
+      totalHabits = habitsWithStatus.length;
+      completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+      longestStreak = Math.max(...habitsWithStatus.map(h => h.streak_count || 0), 0);
+    }
   }
-  
-  return {
-    ...habit,
-    completedToday: !!todayEntry,
-    todayEntry,
-    last7Days
-  };
-});
-
-const completedToday = habitsWithStatus.filter(h => h.completedToday).length;
-const totalHabits = habitsWithStatus.length;
-const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
-const longestStreak = Math.max(...habitsWithStatus.map((h: HabitWithStatus) => h.streak_count || 0), 0);
+}
+---
 ---
 
 <DashboardLayout title="Habits - MeshOS">
@@ -151,8 +147,8 @@ const longestStreak = Math.max(...habitsWithStatus.map((h: HabitWithStatus) => h
 
     <!-- Habits Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {habitsWithStatus.map((habit: HabitWithStatus) => (
-        <div class="card hover:bg-surface-hover transition-colors">
+      {habitsWithStatus.map((habit) => (
+        <div key={habit.id} class="card hover:bg-surface-hover transition-colors">
           <!-- Habit Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
@@ -184,8 +180,9 @@ const longestStreak = Math.max(...habitsWithStatus.map((h: HabitWithStatus) => h
           <div class="mb-4">
             <p class="text-xs text-text-muted mb-2">Last 7 days</p>
             <div class="flex space-x-1">
-              {habit.last7Days.map((day: { date: string; completed: boolean; value: number }, index: number) => (
+              {habit.last7Days.map((day, index) => (
                 <div
+                  key={index}
                   class={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
                     day.completed
                       ? 'bg-accent-success text-white'
@@ -250,8 +247,6 @@ const longestStreak = Math.max(...habitsWithStatus.map((h: HabitWithStatus) => h
 </DashboardLayout>
 
 <script>
-  import { supabase } from '../lib/supabase/client.ts';
-
   // Log habit completion
   window.logHabit = async function(habitId: string, habitName: string) {
     try {
