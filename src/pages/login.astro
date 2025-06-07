@@ -69,16 +69,23 @@ import Layout from '../layouts/Layout.astro';
     try {
       console.log('🔄 Starting Google OAuth...');
       
+      // Clear any existing session first
+      await supabase.auth.signOut();
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
       
       if (error) {
         console.error('Google sign-in error:', error);
-        alert('Authentication error. Please try again.');
+        alert(`Authentication error: ${error.message}`);
       } else {
         console.log('✅ OAuth initiated successfully');
       }
@@ -92,6 +99,9 @@ import Layout from '../layouts/Layout.astro';
     try {
       console.log('🔄 Starting GitHub OAuth...');
       
+      // Clear any existing session first
+      await supabase.auth.signOut();
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
@@ -101,7 +111,7 @@ import Layout from '../layouts/Layout.astro';
       
       if (error) {
         console.error('GitHub sign-in error:', error);
-        alert('Authentication error. Please try again.');
+        alert(`Authentication error: ${error.message}`);
       } else {
         console.log('✅ OAuth initiated successfully');
       }
