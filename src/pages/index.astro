@@ -1,83 +1,21 @@
 ---
-// src/pages/index.astro
+// src/pages/index.astro - CLIENT-SIDE AUTH VERSION
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { createServerClient } from '../lib/supabase/server';
-
-const supabase = createServerClient(Astro.cookies);
-
-// Get user session (handle null case for dev mode)
-const { data: { user } } = await supabase.auth.getUser();
-
-// For dev mode when user is null, use a valid UUID format
-const userId = user?.id || '00000000-0000-0000-0000-000000000000';
-
-// Fetch user's habits for today's stats (with error handling)
-let habits = null;
-let recentEntries = null;
-
-try {
-  const { data: habitsData, error: habitsError } = await supabase
-    .from('habits')
-    .select(`
-      *,
-      habit_entries!inner(logged_at)
-    `)
-    .eq('user_id', userId)
-    .eq('is_active', true);
-  
-  if (!habitsError) {
-    habits = habitsData;
-  } else {
-    console.log('Habits table not found or error:', habitsError.message);
-  }
-} catch (error) {
-  console.log('Database error (habits):', error);
-}
-
-try {
-  const { data: entriesData, error: entriesError } = await supabase
-    .from('habit_entries')
-    .select(`
-      *,
-      habits(name, type)
-    `)
-    .eq('habits.user_id', userId)
-    .order('logged_at', { ascending: false })
-    .limit(5);
-  
-  if (!entriesError) {
-    recentEntries = entriesData;
-  } else {
-    console.log('Habit entries table not found or error:', entriesError.message);
-  }
-} catch (error) {
-  console.log('Database error (entries):', error);
-}
-
-// Calculate today's completion
-const today = new Date().toDateString();
-const habitsWithToday = habits?.map((habit: any) => {
-  const todayEntry = habit.habit_entries?.some((entry: any) => 
-    new Date(entry.logged_at).toDateString() === today
-  );
-  return { ...habit, completedToday: todayEntry };
-}) || [];
-
-const totalHabits = habitsWithToday.length;
-const completedToday = habitsWithToday.filter(h => h.completedToday).length;
-
-const userName = user?.user_metadata?.full_name?.split(' ')[0] || 
-                 user?.user_metadata?.name?.split(' ')[0] || 
-                 user?.email?.split('@')[0] || 
-                 'Friend';
 ---
 
 <DashboardLayout title="MeshOS - Dashboard">
-  <div class="space-y-8">
+  <div id="auth-check" class="min-h-screen flex items-center justify-center">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary mx-auto mb-4"></div>
+      <p class="text-text-muted">Loading your dashboard...</p>
+    </div>
+  </div>
+
+  <div id="dashboard-content" class="space-y-8" style="display: none;">
     <!-- Welcome Section -->
     <div>
-      <h1 class="text-3xl font-semibold text-text-primary mb-2">
-        Good morning, {userName}
+      <h1 id="welcome-text" class="text-3xl font-semibold text-text-primary mb-2">
+        Good morning, Friend
       </h1>
       <p class="text-text-secondary">
         Here's what's happening with your life today
@@ -91,10 +29,8 @@ const userName = user?.user_metadata?.full_name?.split(' ')[0] ||
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-text-muted">Habits Today</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">{completedToday}/{totalHabits}</p>
-            <p class="text-sm text-accent-success mt-1">
-              {totalHabits === 0 ? 'Ready to start!' : `${Math.round((completedToday / totalHabits) * 100)}% complete`}
-            </p>
+            <p id="habits-count" class="text-2xl font-semibold text-text-primary mt-1">0/0</p>
+            <p id="habits-status" class="text-sm text-accent-success mt-1">Loading...</p>
           </div>
           <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,43 +89,19 @@ const userName = user?.user_metadata?.full_name?.split(' ')[0] ||
       </div>
     </div>
 
-    <!-- Main Content Grid -->
+    <!-- Quick Actions -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Recent Activity -->
       <div class="lg:col-span-2">
         <div class="card">
           <h2 class="text-xl font-semibold text-text-primary mb-6">Recent Activity</h2>
-          
-          {recentEntries && recentEntries.length > 0 ? (
-            <div class="space-y-4">
-              {recentEntries.map((entry: any) => (
-                <div class="flex items-center space-x-3 p-3 bg-surface-hover rounded-lg">
-                  <div class={`w-3 h-3 rounded-full ${
-                    entry.habits.type === 'build' ? 'bg-accent-success' : 'bg-accent-error'
-                  }`}></div>
-                  <div class="flex-1">
-                    <p class="text-sm font-medium text-text-primary">
-                      {entry.habits.type === 'build' ? 'Completed' : 'Avoided'}: {entry.habits.name}
-                    </p>
-                    <p class="text-xs text-text-muted">
-                      {new Date(entry.logged_at).toLocaleDateString()} at {new Date(entry.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <div class="text-2xl">
-                    {entry.habits.type === 'build' ? '✅' : '🚫'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
+          <div id="recent-activity">
             <div class="text-center py-8">
-              <p class="text-text-muted">No recent activity yet. Start logging some habits!</p>
+              <p class="text-text-muted">Loading recent activity...</p>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
-      <!-- Quick Actions -->
       <div class="space-y-6">
         <div class="card">
           <h2 class="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2>
@@ -202,63 +114,32 @@ const userName = user?.user_metadata?.full_name?.split(' ')[0] ||
               Log Habit
             </a>
 
-            <a href="/tasks" class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
+            <button id="add-habit-btn" class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
               </svg>
-              Add Task
-            </a>
+              Add Habit
+            </button>
 
-            <a href="/health" class="w-full flex items-center justify-start px-4 py-3 bg-accent-error/10 hover:bg-accent-error/20 border border-accent-error/20 text-accent-error rounded-lg transition-colors">
+            <a href="/import" class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors">
               <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
               </svg>
-              Health Metrics
-            </a>
+              Import Data
+            </button>
           </div>
         </div>
 
-        <!-- System Status -->
-        <div class="card">
-          <h3 class="text-lg font-medium text-text-primary mb-4">System Status</h3>
-          
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">Database</span>
-              </div>
-              <span class="text-sm text-accent-success">Connected</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">Authentication</span>
-              </div>
-              <span class="text-sm text-accent-success">Active</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-primary rounded-full"></div>
-                <span class="text-sm text-text-secondary">Data Sync</span>
-              </div>
-              <span class="text-sm text-accent-primary">Ready</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- User Info -->
+        <!-- User Profile -->
         <div class="card">
           <h3 class="text-lg font-medium text-text-primary mb-4">Profile</h3>
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 bg-gradient-to-r from-accent-primary to-accent-purple rounded-full flex items-center justify-center">
-              <span class="text-sm font-medium text-white">{userName.charAt(0).toUpperCase()}</span>
+              <span id="user-initial" class="text-sm font-medium text-white">F</span>
             </div>
             <div>
-              <p class="text-sm font-medium text-text-primary">{userName}</p>
-              <p class="text-xs text-text-muted">{user?.email}</p>
+              <p id="user-name" class="text-sm font-medium text-text-primary">Friend</p>
+              <p id="user-email" class="text-xs text-text-muted">Loading...</p>
             </div>
           </div>
           
@@ -275,12 +156,130 @@ const userName = user?.user_metadata?.full_name?.split(' ')[0] ||
 </DashboardLayout>
 
 <script>
+  import { SimpleAuth } from '../lib/auth/simple.ts';
   import { supabase } from '../lib/supabase/client.ts';
 
-  document.getElementById('logout-btn')?.addEventListener('click', async () => {
-    const { error } = await supabase.auth.signOut();
-    if (!error) {
+  async function loadDashboard() {
+    try {
+      // Wait for auth to initialize
+      const user = await SimpleAuth.initialize();
+      
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+
+      // Update UI with user info
+      updateUserInfo(user);
+
+      // Load habits data
+      await loadHabitsData(user.id);
+
+      // Show dashboard
+      document.getElementById('auth-check')!.style.display = 'none';
+      document.getElementById('dashboard-content')!.style.display = 'block';
+
+    } catch (error) {
+      console.error('Dashboard load error:', error);
       window.location.href = '/login';
     }
+  }
+
+  function updateUserInfo(user: any) {
+    const firstName = user.user_metadata?.full_name?.split(' ')[0] || 
+                     user.user_metadata?.name?.split(' ')[0] || 
+                     user.email?.split('@')[0] || 
+                     'Friend';
+
+    document.getElementById('welcome-text')!.textContent = `Good morning, ${firstName}`;
+    document.getElementById('user-name')!.textContent = firstName;
+    document.getElementById('user-email')!.textContent = user.email;
+    document.getElementById('user-initial')!.textContent = firstName.charAt(0).toUpperCase();
+  }
+
+  async function loadHabitsData(userId: string) {
+    try {
+      const { data: habits, error } = await supabase
+        .from('habits')
+        .select('*, habit_entries(*)')
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      const today = new Date().toDateString();
+      const habitsWithToday = habits?.map(habit => {
+        const todayEntry = habit.habit_entries?.some((entry: any) => 
+          new Date(entry.logged_at).toDateString() === today
+        );
+        return { ...habit, completedToday: todayEntry };
+      }) || [];
+
+      const totalHabits = habitsWithToday.length;
+      const completedToday = habitsWithToday.filter(h => h.completedToday).length;
+      const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+
+      document.getElementById('habits-count')!.textContent = `${completedToday}/${totalHabits}`;
+      document.getElementById('habits-status')!.textContent = 
+        totalHabits === 0 ? 'Add your first habit!' : `${completionRate}% complete`;
+
+      // Load recent activity
+      await loadRecentActivity(userId);
+
+    } catch (error) {
+      console.error('Habits load error:', error);
+      document.getElementById('habits-status')!.textContent = 'Error loading habits';
+    }
+  }
+
+  async function loadRecentActivity(userId: string) {
+    try {
+      const { data: entries, error } = await supabase
+        .from('habit_entries')
+        .select('*, habits(name, type)')
+        .eq('user_id', userId)
+        .order('logged_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+
+      const activityDiv = document.getElementById('recent-activity');
+      if (!activityDiv) return;
+
+      if (entries && entries.length > 0) {
+        activityDiv.innerHTML = entries.map((entry: any) => `
+          <div class="flex items-center space-x-3 p-3 bg-surface-hover rounded-lg mb-3">
+            <div class="w-3 h-3 rounded-full ${entry.habits.type === 'build' ? 'bg-accent-success' : 'bg-accent-error'}"></div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-text-primary">
+                ${entry.habits.type === 'build' ? 'Completed' : 'Avoided'}: ${entry.habits.name}
+              </p>
+              <p class="text-xs text-text-muted">
+                ${new Date(entry.logged_at).toLocaleDateString()}
+              </p>
+            </div>
+            <div class="text-xl">
+              ${entry.habits.type === 'build' ? '✅' : '🚫'}
+            </div>
+          </div>
+        `).join('');
+      } else {
+        activityDiv.innerHTML = '<div class="text-center py-8"><p class="text-text-muted">No recent activity. Start logging some habits!</p></div>';
+      }
+    } catch (error) {
+      console.error('Activity load error:', error);
+    }
+  }
+
+  // Event listeners
+  document.getElementById('logout-btn')?.addEventListener('click', () => {
+    SimpleAuth.signOut();
   });
+
+  document.getElementById('add-habit-btn')?.addEventListener('click', () => {
+    alert('🚀 Add habit feature coming next! For now, visit /habits to see your current habits, or /import to import your Loop Habits data.');
+  });
+
+  // Initialize dashboard
+  loadDashboard();
 </script>

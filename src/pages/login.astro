@@ -1,4 +1,5 @@
 ---
+// src/pages/login.astro - WORKING VERSION
 import Layout from '../layouts/Layout.astro';
 ---
 
@@ -12,7 +13,7 @@ import Layout from '../layouts/Layout.astro';
         <h1 class="text-3xl font-semibold text-text-primary mb-2">
           Welcome to MeshOS
         </h1>
-        <p class="text-text-secondary">Sign in to your personal operating system</p>
+        <p class="text-text-secondary">Your personal life operating system</p>
       </div>
       
       <div class="space-y-4">
@@ -28,107 +29,65 @@ import Layout from '../layouts/Layout.astro';
           </svg>
           Continue with Google
         </button>
-        
-        <button 
-          id="github-signin" 
-          class="w-full flex items-center justify-center px-4 py-3 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-lg transition-colors"
-        >
-          <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-          </svg>
-          Continue with GitHub
-        </button>
-      </div>
 
-      <!-- For now, add a skip button -->
-      <div class="mt-6 pt-6 border-t border-border">
-        <a 
-          href="/" 
-          class="w-full flex items-center justify-center px-4 py-2 text-text-muted hover:text-text-primary transition-colors"
-        >
-          Skip for now →
-        </a>
+        <div id="status" class="text-center text-sm text-text-muted"></div>
       </div>
     </div>
   </div>
 </Layout>
 
 <script>
-  import { supabase } from '../lib/supabase/client.ts';
+  import { SimpleAuth } from '../lib/auth/simple.ts';
 
-  // Debug current cookies
-  console.log('🍪 Current cookies:', document.cookie);
-  
-  // Check if we already have a session
-  supabase.auth.getSession().then(({ data: { session }, error }) => {
-    console.log('🔐 Existing session check:', session ? 'found' : 'not found');
-    if (error) console.error('Session check error:', error);
+  let isProcessing = false;
+
+  async function updateStatus(message: string, isError = false) {
+    const status = document.getElementById('status');
+    if (status) {
+      status.textContent = message;
+      status.className = `text-center text-sm ${isError ? 'text-accent-error' : 'text-text-muted'}`;
+    }
+  }
+
+  // Initialize auth
+  SimpleAuth.initialize().then(user => {
+    if (user) {
+      updateStatus('Already signed in, redirecting...');
+      setTimeout(() => window.location.href = '/', 1000);
+    }
   });
+
+  // Handle URL params for auth success
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('auth') === 'success') {
+    updateStatus('Authentication successful, loading...');
+    setTimeout(() => window.location.href = '/', 2000);
+  }
 
   document.getElementById('google-signin')?.addEventListener('click', async () => {
+    if (isProcessing) return;
+    isProcessing = true;
+
     try {
-      console.log('🔄 Starting Google OAuth...');
+      updateStatus('Starting authentication...');
+      const result = await SimpleAuth.signInWithGoogle();
       
-      // Clear any existing session first
-      await supabase.auth.signOut();
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
-      
-      if (error) {
-        console.error('Google sign-in error:', error);
-        alert(`Authentication error: ${error.message}`);
-      } else {
-        console.log('✅ OAuth initiated successfully');
+      if (!result.success) {
+        updateStatus(`Error: ${result.error}`, true);
+        isProcessing = false;
       }
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Something went wrong. Please try again.');
+      // If successful, the auth state change will handle redirect
+    } catch (error: any) {
+      updateStatus(`Error: ${error.message}`, true);
+      isProcessing = false;
     }
   });
-  
-  document.getElementById('github-signin')?.addEventListener('click', async () => {
-    try {
-      console.log('🔄 Starting GitHub OAuth...');
-      
-      // Clear any existing session first
-      await supabase.auth.signOut();
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        console.error('GitHub sign-in error:', error);
-        alert(`Authentication error: ${error.message}`);
-      } else {
-        console.log('✅ OAuth initiated successfully');
-      }
-    } catch (err) {
-      console.error('Error:', err);
-      alert('Something went wrong. Please try again.');
-    }
-  });
-  
-  // Listen for auth state changes
-  supabase.auth.onAuthStateChange((event, session) => {
-    console.log('🔄 Auth state changed:', event);
-    console.log('📊 New session:', session ? 'exists' : 'null');
-    
-    if (event === 'SIGNED_IN' && session) {
-      console.log('✅ User signed in, redirecting...');
-      window.location.href = '/';
+
+  // Listen for auth changes
+  SimpleAuth.onAuthChange((user) => {
+    if (user) {
+      updateStatus(`Welcome ${user.email}! Redirecting...`);
+      setTimeout(() => window.location.href = '/', 1000);
     }
   });
 </script>
