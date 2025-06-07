@@ -1,25 +1,24 @@
+// src/pages/api/habits/[id]/log.ts
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../../lib/supabase/server';
 
-export const POST: APIRoute = async ({ request, params }) => {
-  const supabase = createServerClient();
+export const POST: APIRoute = async ({ request, params, cookies }) => {
+  const supabase = createServerClient(cookies);
+  
   const habitId = params.id as string;
   
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError || !user) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
     const body = await request.json();
-    const { value = 1, notes = '' } = body;
-
-    // Get the current authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const userId = user.id;
+    const { value = 1, notes } = body;
 
     // Check if already logged today
     const todayIso = new Date().toISOString().split('T')[0];
@@ -27,8 +26,9 @@ export const POST: APIRoute = async ({ request, params }) => {
       .from('habit_entries')
       .select('id')
       .eq('habit_id', habitId)
-      .eq('user_id', userId)
-      .eq('date', todayIso)
+      .eq('user_id', user.id)
+      .gte('logged_at', `${todayIso}T00:00:00.000Z`)
+      .lt('logged_at', `${todayIso}T23:59:59.999Z`)
       .single();
 
     if (existingEntry) {
@@ -43,7 +43,7 @@ export const POST: APIRoute = async ({ request, params }) => {
       .from('habit_entries')
       .insert([{
         habit_id: habitId,
-        user_id: userId,
+        user_id: user.id,
         value,
         notes,
         logged_at: new Date().toISOString()
@@ -51,40 +51,59 @@ export const POST: APIRoute = async ({ request, params }) => {
       .select()
       .single();
 
-    if (error) {
-      console.error('Database error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
-    // Update streak count (simplified for now)
-    const { error: updateError } = await supabase
-      .from('habits')
-      .update({ 
-        streak_count: 1, // We'll make this smarter later
-        total_completions: supabase.raw('total_completions + 1')
-      })
-      .eq('id', habitId);
+    // Update streak count
+    await updateHabitStreak(supabase, habitId, user.id);
 
-    if (updateError) {
-      console.error('Streak update error:', updateError);
-    }
-
-    return new Response(JSON.stringify({ 
-      success: true, 
-      entry,
-      message: 'Habit logged successfully!' 
-    }), {
+    return new Response(JSON.stringify(entry), {
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error: any) {
-    console.error('API Error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to log habit',
-      details: error
-    }), {
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 };
+
+async function updateHabitStreak(supabase: any, habitId: string, userId: string) {
+  // Get last 30 days of entries
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: entries } = await supabase
+    .from('habit_entries')
+    .select('logged_at')
+    .eq('habit_id', habitId)
+    .eq('user_id', userId)
+    .gte('logged_at', thirtyDaysAgo.toISOString())
+    .order('logged_at', { ascending: false });
+
+  // Calculate current streak
+  let streak = 0;
+  const today = new Date();
+  
+  for (let i = 0; i < 30; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(today.getDate() - i);
+    const checkDateStr = checkDate.toISOString().split('T')[0];
+    
+    const hasEntry = entries?.some((entry: { logged_at: string | null }) => 
+      entry.logged_at?.split('T')[0] === checkDateStr
+    );
+    
+    if (hasEntry) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  // Update streak count
+  await supabase
+    .from('habits')
+    .update({ streak_count: streak })
+    .eq('id', habitId);
+}

@@ -1,0 +1,37 @@
+---
+import { createServerClient } from '../../lib/supabase/server';
+import type { AstroCookies } from 'astro';
+
+const supabase = createServerClient(Astro.cookies as AstroCookies);
+
+// Exchange the code for a session
+const { data, error } = await supabase.auth.exchangeCodeForSession(
+  Astro.url.searchParams.get('code') ?? ''
+);
+
+if (error) {
+  console.error('Auth callback error:', error);
+  return Astro.redirect('/login?error=auth_failed');
+}
+
+// Create user profile if it doesn't exist
+if (data.user) {
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({
+      id: data.user.id,
+      username: data.user.user_metadata?.user_name || data.user.email?.split('@')[0],
+      full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name,
+      avatar_url: data.user.user_metadata?.avatar_url,
+      updated_at: new Date().toISOString()
+    });
+  
+  if (profileError) {
+    console.error('Profile creation error:', profileError);
+    // Continue anyway - profile creation isn't critical
+  }
+}
+
+// Redirect to dashboard
+return Astro.redirect('/');
+---

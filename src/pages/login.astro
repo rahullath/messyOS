@@ -56,11 +56,69 @@ import Layout from '../layouts/Layout.astro';
 <script>
   import { supabase } from '../lib/supabase/client.ts';
 
+  // Debug current cookies
+  console.log('🍪 Current cookies:', document.cookie);
+  
+  // Check if we already have a session
+  supabase.auth.getSession().then(({ data: { session }, error }) => {
+    console.log('🔐 Existing session check:', session ? 'found' : 'not found');
+    if (error) console.error('Session check error:', error);
+  });
+
   document.getElementById('google-signin')?.addEventListener('click', async () => {
-    alert('🔧 Authentication is being set up! For now, you can skip and use the dashboard.');
+    try {
+      console.log('🔄 Starting Google OAuth...');
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) {
+        console.error('Google sign-in error:', error);
+        alert('Authentication error. Please try again.');
+      } else {
+        console.log('✅ OAuth initiated successfully');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Something went wrong. Please try again.');
+    }
   });
   
   document.getElementById('github-signin')?.addEventListener('click', async () => {
-    alert('🔧 Authentication is being set up! For now, you can skip and use the dashboard.');
+    try {
+      console.log('🔄 Starting GitHub OAuth...');
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) {
+        console.error('GitHub sign-in error:', error);
+        alert('Authentication error. Please try again.');
+      } else {
+        console.log('✅ OAuth initiated successfully');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Something went wrong. Please try again.');
+    }
+  });
+  
+  // Listen for auth state changes
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log('🔄 Auth state changed:', event);
+    console.log('📊 New session:', session ? 'exists' : 'null');
+    
+    if (event === 'SIGNED_IN' && session) {
+      console.log('✅ User signed in, redirecting...');
+      window.location.href = '/';
+    }
   });
 </script>

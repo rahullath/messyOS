@@ -2,7 +2,7 @@
 import type { APIRoute } from 'astro';
 import { importLoopHabitsData } from '../../../lib/import/loopHabits';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const formData = await request.formData();
     const userId = formData.get('userId') as string;
@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request }) => {
       scores: await scoresFile.text(),
     };
     
-    const result = await importLoopHabitsData(csvFiles, userId);
+    const result = await importLoopHabitsData(csvFiles, userId, cookies);
     
     return new Response(JSON.stringify(result), {
       headers: { 'Content-Type': 'application/json' }

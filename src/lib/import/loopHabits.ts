@@ -1,5 +1,6 @@
 // src/lib/import/loopHabits.ts
 import { createServerClient } from '../supabase/server';
+import type { AstroCookies } from 'astro';
 
 export interface LoopHabitsData {
   habits: Array<{
@@ -17,7 +18,8 @@ export interface LoopHabitsData {
 
 export async function importLoopHabitsData(
   csvFiles: { habits: string; checkmarks: string; scores: string },
-  userId: string
+  userId: string,
+  cookies: AstroCookies
 ): Promise<{ success: boolean; message: string; imported: number }> {
   
   // Parse habits CSV
@@ -29,7 +31,7 @@ export async function importLoopHabitsData(
   // Parse scores CSV (calculated scores)
   const scoresData = parseScoresCSV(csvFiles.scores);
   
-  const supabase = createServerClient();
+  const supabase = createServerClient(cookies);
   
   try {
     // 1. Import habits

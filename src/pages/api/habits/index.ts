@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../lib/supabase/server';
 
-export const GET: APIRoute = async ({ request, locals }) => {
-  const supabase = createServerClient(locals);
+export const GET: APIRoute = async ({ request, cookies }) => {
+  const supabase = createServerClient(cookies);
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
@@ -32,8 +32,8 @@ export const GET: APIRoute = async ({ request, locals }) => {
   });
 };
 
-export const POST: APIRoute = async ({ request, locals }) => {
-  const supabase = createServerClient(locals);
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const supabase = createServerClient(cookies);
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   

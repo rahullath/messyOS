@@ -1,6 +1,85 @@
 ---
-// src/pages/habits.astro (Production version)
+// src/pages/habits.astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
+// import { createServerClient } from '../lib/supabase/server'; // Remove this import
+
+// Use locals populated by middleware
+const { locals } = Astro;
+const { session, supabase } = locals;
+const user = session?.user; // Get user from session
+console.log('User object on Habits page:', user);
+
+// If no user, redirect to login (should be handled by middleware, but as a fallback)
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// Fetch user's habits with today's entries
+const { data: habits, error } = await supabase
+  .from('habits')
+  .select(`
+    *,
+    habit_entries(
+      id,
+      value,
+      logged_at,
+      notes
+    )
+  `)
+  .eq('user_id', user.id)
+  .eq('is_active', true)
+  .order('created_at', { ascending: false });
+
+if (error) {
+  console.error('Error fetching habits:', error);
+}
+
+// Process habits to show today's status
+import type { Database } from 'types/supabase';
+
+type HabitWithStatus = Database['public']['Tables']['habits']['Row'] & { 
+  habit_entries: Database['public']['Tables']['habit_entries']['Row'][] | null;
+  completedToday: boolean;
+  todayEntry: Database['public']['Tables']['habit_entries']['Row'] | undefined;
+  last7Days: { date: string; completed: boolean; value: number }[];
+};
+
+const today = new Date().toDateString();
+const habitsWithStatus: HabitWithStatus[] = (habits || []).map((habit: Database['public']['Tables']['habits']['Row'] & { habit_entries: Database['public']['Tables']['habit_entries']['Row'][] | null }) => {
+  const todayEntry = habit.habit_entries?.find((entry: Database['public']['Tables']['habit_entries']['Row']) => 
+    new Date(entry.logged_at!).toDateString() === today
+  );
+  
+  // Get last 7 days for weekly view
+  const last7Days = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toDateString();
+    
+    const dayEntry = habit.habit_entries?.find((entry: Database['public']['Tables']['habit_entries']['Row']) =>
+      new Date(entry.logged_at!).toDateString() === dateStr
+    );
+    
+    last7Days.push({
+      date: dateStr,
+      completed: !!dayEntry,
+      value: dayEntry?.value || 0
+    });
+  }
+  
+  return {
+    ...habit,
+    completedToday: !!todayEntry,
+    todayEntry,
+    last7Days
+  };
+});
+
+const completedToday = habitsWithStatus.filter(h => h.completedToday).length;
+const totalHabits = habitsWithStatus.length;
+const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+const longestStreak = Math.max(...habitsWithStatus.map((h: HabitWithStatus) => h.streak_count || 0), 0);
 ---
 
 <DashboardLayout title="Habits - MeshOS">
@@ -8,41 +87,30 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-semibold text-text-primary mb-2">Your Habit Tracker</h1>
-        <p class="text-text-secondary" id="status-text">
-          Loading your habits...
+        <h1 class="text-3xl font-semibold text-text-primary mb-2">Habits</h1>
+        <p class="text-text-secondary">
+          Build better routines, one day at a time
         </p>
       </div>
-      <div class="flex space-x-3">
-        <a 
-          href="/import"
-          class="flex items-center px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
-        >
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-          </svg>
-          Import Historical Data
-        </a>
-        <button 
-          id="add-habit-btn"
-          class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-        >
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-          New Habit
-        </button>
-      </div>
+      <button 
+        id="add-habit-btn"
+        class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+      >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+        </svg>
+        New Habit
+      </button>
     </div>
 
     <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6" id="stats-grid">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="card">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-text-muted">Today's Progress</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1" id="today-progress">0/0</p>
-            <p class="text-sm text-accent-success mt-1" id="completion-rate">0% complete</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">{completedToday}/{totalHabits}</p>
+            <p class="text-sm text-accent-success mt-1">{completionRate}% complete</p>
           </div>
           <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
             <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,34 +123,8 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
       <div class="card">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-text-muted">Building Habits</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1" id="build-habits">0</p>
-            <p class="text-sm text-accent-success mt-1">positive routines</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
-            <span class="text-2xl">🏗️</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Breaking Habits</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1" id="break-habits">0</p>
-            <p class="text-sm text-accent-error mt-1">avoiding negatives</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-error/10 rounded-lg flex items-center justify-center">
-            <span class="text-2xl">🚫</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="flex items-center justify-between">
-          <div>
             <p class="text-sm font-medium text-text-muted">Longest Streak</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1" id="longest-streak">0</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">{longestStreak}</p>
             <p class="text-sm text-text-muted mt-1">days</p>
           </div>
           <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
@@ -90,56 +132,119 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Total Habits</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">{totalHabits}</p>
+            <p class="text-sm text-text-muted mt-1">active</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-primary/10 rounded-lg flex items-center justify-center">
+            <svg class="w-6 h-6 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Habits Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="habits-grid">
-      <!-- Loading state -->
-      <div class="col-span-full card text-center py-12">
-        <div class="w-16 h-16 bg-accent-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
-        </div>
-        <h3 class="text-lg font-semibold text-text-primary mb-2">Loading your habits...</h3>
-        <p class="text-text-muted">Connecting to your database</p>
-      </div>
-    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {habitsWithStatus.map((habit: HabitWithStatus) => (
+        <div class="card hover:bg-surface-hover transition-colors">
+          <!-- Habit Header -->
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex-1">
+              <h3 class="font-semibold text-text-primary mb-1">{habit.name}</h3>
+              <p class="text-sm text-text-muted">{habit.category}</p>
+              {habit.description && (
+                <p class="text-xs text-text-muted mt-1">{habit.description}</p>
+              )}
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class={`px-2 py-1 text-xs rounded-full ${
+                habit.type === 'build' 
+                  ? 'bg-accent-success/20 text-accent-success' 
+                  : 'bg-accent-error/20 text-accent-error'
+              }`}>
+                {habit.type}
+              </span>
+            </div>
+          </div>
 
-    <!-- Success Actions -->
-    <div class="card p-6 bg-accent-success/10 border border-accent-success/20" id="success-panel" style="display: none;">
-      <h3 class="text-lg font-semibold text-accent-success mb-4">🎉 MeshOS v3 is Ready!</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <div>
-          <p class="font-medium text-text-primary">✅ Database Connected</p>
-          <p class="font-medium text-text-primary">✅ Habits Loaded</p>
-          <p class="font-medium text-text-primary">✅ Categories Working</p>
-          <p class="font-medium text-text-primary">✅ Logging Ready</p>
+          <!-- Streak Info -->
+          <div class="flex items-center space-x-2 mb-4">
+            <span class="text-2xl">🔥</span>
+            <span class="text-lg font-semibold text-text-primary">{habit.streak_count}</span>
+            <span class="text-sm text-text-muted">day streak</span>
+          </div>
+
+          <!-- Weekly Progress -->
+          <div class="mb-4">
+            <p class="text-xs text-text-muted mb-2">Last 7 days</p>
+            <div class="flex space-x-1">
+              {habit.last7Days.map((day: { date: string; completed: boolean; value: number }, index: number) => (
+                <div
+                  class={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                    day.completed
+                      ? 'bg-accent-success text-white'
+                      : 'bg-surface border border-border text-text-muted'
+                  }`}
+                  title={day.date}
+                >
+                  {day.completed ? '✓' : '·'}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <button
+            class={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+              habit.completedToday
+                ? 'bg-accent-success/20 text-accent-success border border-accent-success/30 cursor-default'
+                : 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30'
+            }`}
+            onclick={habit.completedToday ? undefined : `logHabit('${habit.id}', '${habit.name}')`}
+            disabled={habit.completedToday}
+          >
+            {habit.completedToday ? (
+              <>
+                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                Completed Today
+              </>
+            ) : (
+              <>
+                <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Mark Complete
+              </>
+            )}
+          </button>
         </div>
-        <div>
-          <p class="font-medium text-text-primary">✅ Real Data from Loop Habits</p>
-          <p class="font-medium text-text-primary">✅ Build/Break Types</p>
-          <p class="font-medium text-text-primary">✅ Original Colors Preserved</p>
-          <p class="font-medium text-text-primary">✅ Ready for Historical Import</p>
+      ))}
+
+      {habitsWithStatus.length === 0 && (
+        <div class="col-span-full card text-center py-12">
+          <div class="w-16 h-16 bg-accent-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-text-primary mb-2">No habits yet</h3>
+          <p class="text-text-muted mb-4">Start building better routines by creating your first habit</p>
+          <button 
+            onclick="document.getElementById('add-habit-btn').click()"
+            class="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+          >
+            Create Your First Habit
+          </button>
         </div>
-      </div>
-      
-      <div class="mt-4 p-4 bg-accent-primary/10 border border-accent-primary/20 rounded-lg">
-        <h4 class="font-medium text-accent-primary mb-2">🚀 Next Phase: Historical Data Import</h4>
-        <p class="text-text-secondary text-sm mb-3">
-          Import your Loop Habits CSV files to see:
-        </p>
-        <ul class="text-text-secondary text-sm space-y-1 ml-4">
-          <li>• Historical progress trends and patterns</li>
-          <li>• Actual streak calculations from your data</li>
-          <li>• Progress visualization over months</li>
-          <li>• AI analysis of your habit patterns</li>
-        </ul>
-        <a 
-          href="/import"
-          class="inline-flex items-center mt-3 px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-        >
-          📁 Import Your Historical Data →
-        </a>
-      </div>
+      )}
     </div>
   </div>
 </DashboardLayout>
@@ -147,174 +252,50 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
 <script>
   import { supabase } from '../lib/supabase/client.ts';
 
-  let habits = [];
-  let todayEntries = [];
-
-  // Load habits and today's entries
-  async function loadHabitsAndEntries() {
-    try {
-      // Load habits
-      const { data: habitsData, error: habitsError } = await supabase
-        .from('habits')
-        .select('*')
-        .eq('user_id', '368deac7-8526-45eb-927a-6a373c95d8c6')
-        .eq('is_active', true)
-        .order('position', { ascending: true });
-
-      if (habitsError) throw habitsError;
-      habits = habitsData || [];
-
-      // Load today's entries
-      const today = new Date().toISOString().split('T')[0];
-      const { data: entriesData, error: entriesError } = await supabase
-        .from('habit_entries')
-        .select('*')
-        .eq('user_id', '368deac7-8526-45eb-927a-6a373c95d8c6')
-        .eq('date', today);
-
-      if (entriesError) throw entriesError;
-      todayEntries = entriesData || [];
-
-      renderHabitsAndStats();
-      
-    } catch (error) {
-      console.error('Error loading data:', error);
-      document.getElementById('habits-grid').innerHTML = `
-        <div class="col-span-full card text-center py-12">
-          <div class="w-16 h-16 bg-accent-error/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span class="text-2xl">❌</span>
-          </div>
-          <h3 class="text-lg font-semibold text-text-primary mb-2">Failed to load habits</h3>
-          <p class="text-text-muted">${error.message}</p>
-        </div>
-      `;
-    }
-  }
-
-  function renderHabitsAndStats() {
-    if (habits.length === 0) return;
-
-    // Calculate stats
-    const completedToday = todayEntries.length;
-    const totalHabits = habits.length;
-    const buildHabits = habits.filter(h => h.type === 'build').length;
-    const breakHabits = habits.filter(h => h.type === 'break').length;
-    const longestStreak = Math.max(...habits.map(h => h.streak_count || 0), 0);
-    const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
-
-    // Update stats
-    document.getElementById('status-text').textContent = `${totalHabits} habits tracked • ${buildHabits} building • ${breakHabits} breaking`;
-    document.getElementById('today-progress').textContent = `${completedToday}/${totalHabits}`;
-    document.getElementById('completion-rate').textContent = `${completionRate}% complete`;
-    document.getElementById('build-habits').textContent = buildHabits;
-    document.getElementById('break-habits').textContent = breakHabits;
-    document.getElementById('longest-streak').textContent = longestStreak;
-
-    // Render habits
-    const grid = document.getElementById('habits-grid');
-    grid.innerHTML = habits.map(habit => {
-      const isCompleted = todayEntries.some(entry => entry.habit_id === habit.id);
-      
-      return `
-        <div class="card hover:bg-surface-hover transition-colors">
-          <div class="flex items-start justify-between mb-4">
-            <div class="flex-1">
-              <div class="flex items-center space-x-2 mb-2">
-                <div class="w-3 h-3 rounded-full" style="background-color: ${habit.color}"></div>
-                <h3 class="font-semibold text-text-primary">${habit.name}</h3>
-              </div>
-              <p class="text-sm text-text-muted">${habit.category}</p>
-              <p class="text-xs text-text-muted mt-1">${habit.description}</p>
-            </div>
-            <div class="flex flex-col items-end space-y-1">
-              <span class="px-2 py-1 text-xs rounded-full ${
-                habit.type === 'build' 
-                  ? 'bg-accent-success/20 text-accent-success' 
-                  : 'bg-accent-error/20 text-accent-error'
-              }">
-                ${habit.type}
-              </span>
-            </div>
-          </div>
-          
-          <div class="flex items-center space-x-2 mb-4">
-            <span class="text-2xl">🔥</span>
-            <span class="text-lg font-semibold text-text-primary">${habit.streak_count || 0}</span>
-            <span class="text-sm text-text-muted">day streak</span>
-          </div>
-          
-          <div class="mb-4">
-            <p class="text-xs text-text-muted mb-2">Progress tracking</p>
-            <div class="flex space-x-1">
-              ${[...Array(7)].map((_, i) => `
-                <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs ${
-                  i === 6 && isCompleted 
-                    ? 'bg-accent-success text-white' 
-                    : 'bg-surface border border-border text-text-muted'
-                }">
-                  ${i === 6 && isCompleted ? '✓' : '·'}
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          
-          <button
-            class="w-full py-3 px-4 rounded-lg font-medium transition-colors ${
-              isCompleted
-                ? 'bg-accent-success/20 text-accent-success border border-accent-success/30 cursor-default'
-                : 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30'
-            }"
-            onclick="${isCompleted ? '' : `logHabit('${habit.id}', '${habit.name}')`}"
-            ${isCompleted ? 'disabled' : ''}
-          >
-            ${isCompleted ? `
-              <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-              Completed Today ✅
-            ` : `
-              <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-              </svg>
-              ${habit.type === 'build' ? 'Mark Complete' : 'Mark Avoided'}
-            `}
-          </button>
-        </div>
-      `;
-    }).join('');
-
-    // Show success panel
-    document.getElementById('success-panel').style.display = 'block';
-  }
-
-  // Global function for habit logging
-  window.logHabit = async function(habitId, habitName) {
+  // Log habit completion
+  window.logHabit = async function(habitId: string, habitName: string) {
     try {
       const response = await fetch(`/api/habits/${habitId}/log`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: 1, notes: '' })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ value: 1 })
       });
 
-      const result = await response.json();
-      
       if (response.ok) {
-        // Success! Reload to show updated state
+        // Show success message
+        const successToast = document.createElement('div');
+        successToast.className = 'fixed top-4 right-4 bg-accent-success text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        successToast.textContent = `✅ ${habitName} completed!`;
+        document.body.appendChild(successToast);
+        
+        setTimeout(() => {
+          successToast.remove();
+        }, 3000);
+        
+        // Reload page to show updated state
         window.location.reload();
       } else {
-        alert(`❌ Error: ${result.error || 'Failed to log habit'}`);
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to log habit');
       }
-    } catch (error) {
-      alert('❌ Failed to log habit. Please try again.');
-      console.error('Network error:', error);
+    } catch (error: any) {
+      const errorToast = document.createElement('div');
+      errorToast.className = 'fixed top-4 right-4 bg-accent-error text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      errorToast.textContent = `❌ ${error.message}`;
+      document.body.appendChild(errorToast);
+      
+      setTimeout(() => {
+        errorToast.remove();
+      }, 3000);
+      
+      console.error('Error logging habit:', error);
     }
   };
 
-  // Event listeners
+  // Add habit modal (placeholder for now)
   document.getElementById('add-habit-btn')?.addEventListener('click', () => {
-    alert('✨ Habit creation feature coming in Phase 3! For now, your Loop Habits are ready to track.');
+    alert('✨ Add habit modal coming in next phase! For now, add habits directly in your Supabase database.');
   });
-
-  // Start loading
-  document.addEventListener('DOMContentLoaded', loadHabitsAndEntries);
 </script>
