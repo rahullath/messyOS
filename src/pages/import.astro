@@ -1,15 +1,200 @@
 ---
+// src/pages/import.astro - UPDATED WITH HEALTH IMPORT
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import LoopHabitsImport from '../components/import/LoopHabitsImport.tsx';
+import HealthDataImport from '../components/import/HealthDataImport.tsx';
 ---
 
 <DashboardLayout title="Import Data - MeshOS">
   <div class="space-y-8">
-    <h1 class="text-3xl font-semibold text-text-primary mb-4">Import Data</h1>
-    <p class="text-text-secondary mb-8">
-      Use this page to import your historical data from other apps.
-    </p>
+    <!-- Header -->
+    <div>
+      <h1 class="text-3xl font-semibold text-text-primary mb-4">Import Data</h1>
+      <p class="text-text-secondary mb-8">
+        Import your historical data from various apps and devices to get started with MeshOS.
+      </p>
+    </div>
 
-    <LoopHabitsImport client:load />
+    <!-- Import Options Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Loop Habits Import -->
+      <div>
+        <LoopHabitsImport client:load />
+      </div>
+
+      <!-- Health Data Import -->
+      <div>
+        <HealthDataImport client:load />
+      </div>
+    </div>
+
+    <!-- Coming Soon Imports -->
+    <div>
+      <h2 class="text-xl font-semibold text-text-primary mb-6">Coming Soon</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Finance Import -->
+        <div class="card p-6 opacity-75">
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
+              <span class="text-2xl">💰</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-text-primary">Finance Data</h3>
+              <p class="text-sm text-text-muted">Bank statements & crypto</p>
+            </div>
+          </div>
+          <div class="space-y-2 text-sm text-text-secondary">
+            <p>• Jupiter Bank CSV statements</p>
+            <p>• Crypto portfolio tracking</p>
+            <p>• Subscription management</p>
+            <p>• Expense categorization</p>
+          </div>
+          <div class="mt-4 px-3 py-2 bg-accent-warning/10 border border-accent-warning/20 rounded text-center">
+            <span class="text-sm font-medium text-accent-warning">Coming in Finance Module</span>
+          </div>
+        </div>
+
+        <!-- Content Import -->
+        <div class="card p-6 opacity-75">
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-12 h-12 bg-accent-purple/10 rounded-lg flex items-center justify-center">
+              <span class="text-2xl">🎬</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-text-primary">Content Data</h3>
+              <p class="text-sm text-text-muted">Movies, books, media</p>
+            </div>
+          </div>
+          <div class="space-y-2 text-sm text-text-secondary">
+            <p>• Serializd.com exports</p>
+            <p>• Reading lists & book tracking</p>
+            <p>• Screen time analysis</p>
+            <p>• Content recommendations</p>
+          </div>
+          <div class="mt-4 px-3 py-2 bg-accent-purple/10 border border-accent-purple/20 rounded text-center">
+            <span class="text-sm font-medium text-accent-purple">Coming in Content Module</span>
+          </div>
+        </div>
+
+        <!-- Tasks & Projects -->
+        <div class="card p-6 opacity-75">
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
+              <span class="text-2xl">📋</span>
+            </div>
+            <div>
+              <h3 class="font-semibold text-text-primary">Tasks & Projects</h3>
+              <p class="text-sm text-text-muted">Productivity tracking</p>
+            </div>
+          </div>
+          <div class="space-y-2 text-sm text-text-secondary">
+            <p>• University applications</p>
+            <p>• Work project tracking</p>
+            <p>• Pet care schedules</p>
+            <p>• Code progress logs</p>
+          </div>
+          <div class="mt-4 px-3 py-2 bg-accent-success/10 border border-accent-success/20 rounded text-center">
+            <span class="text-sm font-medium text-accent-success">Coming in Tasks Module</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Sources Guide -->
+    <div class="card p-6">
+      <h3 class="text-lg font-semibold text-text-primary mb-4">📋 Data Export Guide</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h4 className="font-medium text-text-primary mb-3">✅ Currently Supported</h4>
+          <div className="space-y-3">
+            <div className="p-3 bg-accent-success/10 border border-accent-success/20 rounded-lg">
+              <div className="font-medium text-accent-success">Loop Habits</div>
+              <div className="text-sm text-text-secondary mt-1">
+                Export → CSV Files → Select all three files (Habits, Checkmarks, Scores)
+              </div>
+            </div>
+            <div className="p-3 bg-accent-primary/10 border border-accent-primary/20 rounded-lg">
+              <div className="font-medium text-accent-primary">Huawei Health</div>
+              <div className="text-sm text-text-secondary mt-1">
+                Export sleep, heart rate, and stress data as tab-separated text files
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h4 className="font-medium text-text-primary mb-3">🔄 Coming Soon</h4>
+          <div className="space-y-2 text-sm text-text-secondary">
+            <div>• <strong>Jupiter Bank:</strong> Statement CSV exports</div>
+            <div>• <strong>Serializd:</strong> Watched list exports</div>
+            <div>• <strong>Google Sheets:</strong> University applications</div>
+            <div>• <strong>Digital Wellbeing:</strong> Screen time data</div>
+            <div>• <strong>Cult.fit:</strong> Workout history</div>
+            <div>• <strong>Manual Entry:</strong> Pet care, groceries, projects</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import History -->
+    <div class="card p-6">
+      <h3 class="text-lg font-semibold text-text-primary mb-4">Import History</h3>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between p-3 bg-accent-success/10 border border-accent-success/20 rounded-lg">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-accent-success rounded-full flex items-center justify-center">
+              <span class="text-white text-sm">✓</span>
+            </div>
+            <div>
+              <div class="font-medium text-text-primary">Loop Habits Data</div>
+              <div class="text-sm text-text-muted">896 entries, 1,190 scores imported</div>
+            </div>
+          </div>
+          <div class="text-sm text-text-muted">
+            Previously imported
+          </div>
+        </div>
+        
+        <div class="flex items-center justify-between p-3 bg-surface-hover border border-border rounded-lg">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-text-muted rounded-full flex items-center justify-center">
+              <span class="text-background text-sm">⏳</span>
+            </div>
+            <div>
+              <div class="font-medium text-text-primary">Health Data</div>
+              <div class="text-sm text-text-muted">Ready to import from Huawei Band</div>
+            </div>
+          </div>
+          <div class="text-sm text-text-muted">
+            Pending import
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tips for Better Imports -->
+    <div class="bg-accent-primary/10 border border-accent-primary/20 rounded-lg p-6">
+      <h4 class="font-medium text-accent-primary mb-3">💡 Tips for Successful Imports</h4>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-text-secondary">
+        <div>
+          <div class="font-medium text-text-primary mb-2">File Preparation:</div>
+          <ul class="space-y-1">
+            <li>• Ensure files are in the correct format (CSV/TXT)</li>
+            <li>• Check date formats match expected patterns</li>
+            <li>• Remove empty rows or corrupted data</li>
+            <li>• Use UTF-8 encoding for international characters</li>
+          </ul>
+        </div>
+        <div>
+          <div class="font-medium text-text-primary mb-2">Best Practices:</div>
+          <ul class="space-y-1">
+            <li>• Back up original data files</li>
+            <li>• Import during low-usage hours</li>
+            <li>• Verify data after import completion</li>
+            <li>• Report any issues for quick resolution</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
 </DashboardLayout>
