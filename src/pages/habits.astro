@@ -35,37 +35,34 @@ if (error) {
 
 // Process habits to show today's status and fix streak calculation
 const today = new Date().toISOString().split('T')[0];
+
+const isHabitSuccess = (value: number, habitName: string, habitType: string): boolean => {
+  // SIMPLIFIED: All habits now use database value 1 = success, 0 = failure
+  // The import logic handles the CSV conversion correctly
+  return value === 1;
+};
+
+
 const habitsWithStatus = (habits || []).map((habit) => {
-  const todayEntry = habit.habit_entries?.find((entry) => 
+  const todayEntry = habit.habit_entries?.find((entry: any) => 
     entry.date === today
   );
   
-  // Get last 90 days for weekly view (more accurate streaks)
+  // Get last 90 days for accurate streaks
   const last90Days = [];
   for (let i = 89; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
     
-    const dayEntry = habit.habit_entries?.find((entry) =>
+    const dayEntry = habit.habit_entries?.find((entry: any) =>
       entry.date === dateStr
     );
     
-    // For count-based habits like Vaping, check if value is the "good" direction
+    // FIXED: Use proper success logic
     let completed = false;
     if (dayEntry) {
-      if (habit.type === 'break') {
-        // For "break" habits like "No Pot", "Quit Valorant" - 0 is good, >0 is bad
-        // But for "Vaping" (counting puffs), any entry means logged, streak based on low values
-        if (habit.name.toLowerCase().includes('vap')) {
-          completed = dayEntry.value === 0; // 0 puffs = success
-        } else {
-          completed = dayEntry.value > 0; // Did avoid the bad habit
-        }
-      } else {
-        // For "build" habits - any positive value is good
-        completed = dayEntry.value > 0;
-      }
+      completed = isHabitSuccess(dayEntry.value, habit.name, habit.type);
     }
     
     last90Days.push({
@@ -81,20 +78,21 @@ const habitsWithStatus = (habits || []).map((habit) => {
   for (let i = last90Days.length - 1; i >= 0; i--) {
     if (last90Days[i].completed) {
       currentStreak++;
+    } else if (last90Days[i].hasEntry) {
+      // Has entry but not successful - streak broken
+      break;
     } else {
-      break; // Streak broken
+      // No entry - streak broken (unless we're just starting)
+      if (currentStreak > 0) break;
     }
   }
   
   // Get last 7 days for display
   const last7Days = last90Days.slice(-7);
   
-  // Check if completed today
-  const completedToday = todayEntry ? (
-    habit.type === 'break' ? 
-      (habit.name.toLowerCase().includes('vap') ? todayEntry.value === 0 : todayEntry.value > 0) :
-      todayEntry.value > 0
-  ) : false;
+  // Check if completed today - FIXED for vaping
+  const completedToday = todayEntry ? 
+    isHabitSuccess(todayEntry.value, habit.name, habit.type) : false;
   
   return {
     ...habit,
@@ -102,10 +100,11 @@ const habitsWithStatus = (habits || []).map((habit) => {
     todayEntry,
     todayValue: todayEntry?.value || 0,
     last7Days,
-    realCurrentStreak: currentStreak, // Use calculated streak instead of database
+    realCurrentStreak: currentStreak,
     weekStreak: last7Days.filter(d => d.completed).length
   };
 });
+
 
 const completedToday = habitsWithStatus.filter(h => h.completedToday).length;
 const totalHabits = habitsWithStatus.length;
@@ -124,6 +123,15 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
         </p>
       </div>
       <div class="flex space-x-3">
+        <button 
+          id="recalc-streaks-btn"
+          class="flex items-center px-4 py-2 bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Fix Streaks
+        </button>
         <button 
           id="import-btn"
           class="flex items-center px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
@@ -208,8 +216,8 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
 
     <!-- Habits Grid with Beautiful UI -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {habitsWithStatus.map((habit) => (
-        <div key={habit.id} class="card hover:bg-surface-hover transition-colors">
+      {habitsWithStatus.map((habit: any) => (
+        <div class="card hover:bg-surface-hover transition-colors">
           <!-- Habit Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
@@ -241,6 +249,20 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
             </div>
           </div>
 
+          <!-- Skip Policy -->
+          <div class="flex items-center justify-between mb-2">
+            <span class={`text-xs px-2 py-1 rounded-full ${
+              habit.allows_skips
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'bg-red-500/20 text-red-400'
+            }`}>
+              {habit.allows_skips ? '⏭️ Flexible' : '🚫 Strict'}
+            </span>
+            {habit.total_skips > 0 ? (
+              <span class="text-xs text-gray-400">{habit.total_skips} skips</span>
+            ) : ''}
+          </div>
+
           <!-- Streak & Stats -->
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center space-x-2">
@@ -258,9 +280,8 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
           <div class="mb-4">
             <p class="text-xs text-text-muted mb-2">Last 7 days</p>
             <div class="flex space-x-1">
-              {habit.last7Days.map((day, index) => (
+              {habit.last7Days.map((day: any, index: number) => (
                 <div
-                  key={index}
                   class={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
                     day.completed
                       ? 'bg-accent-success text-white'
@@ -283,7 +304,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
                 ? 'bg-accent-success/20 text-accent-success border border-accent-success/30 cursor-default'
                 : 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30'
             }`}
-            onclick={habit.completedToday ? undefined : `logHabit('${habit.id}', '${habit.name}', '${habit.measurement_type}')`}
+            onclick={habit.completedToday ? undefined : `logHabit('${habit.id}', '${habit.name}')`}
             disabled={habit.completedToday}
           >
             {habit.completedToday ? (
@@ -349,59 +370,292 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
     }
   });
 
-  // Habit logging with count support
-  window.logHabit = async function(habitId: string, habitName: string, measurementType: string) {
-    let value = 1;
-    
-    if (measurementType === 'count') {
-      if (habitName.toLowerCase().includes('vap')) {
-        const input = prompt(`How many puffs did you take today? (Enter 0 if none):`, '0');
-        if (input === null) return; // User cancelled
-        value = parseInt(input) || 0;
-      } else {
-        const input = prompt(`How many times did you ${habitName.toLowerCase()}?`, '1');
-        if (input === null) return;
-        value = parseInt(input) || 1;
-      }
-    }
-    
-    try {
-      const response = await fetch(`/api/habits/${habitId}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value, notes: '' })
-      });
 
-      if (response.ok) {
-        const successToast = document.createElement('div');
-        successToast.className = 'fixed top-4 right-4 bg-accent-success text-white px-4 py-2 rounded-lg shadow-lg z-50';
-        successToast.textContent = `✅ ${habitName} logged: ${value}`;
-        document.body.appendChild(successToast);
-        
-        setTimeout(() => {
-          successToast.remove();
-        }, 3000);
-        
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to log habit');
-      }
-    } catch (error: any) {
-      const errorToast = document.createElement('div');
-      errorToast.className = 'fixed top-4 right-4 bg-accent-error text-white px-4 py-2 rounded-lg shadow-lg z-50';
-      errorToast.textContent = `❌ ${error.message}`;
-      document.body.appendChild(errorToast);
-      
-      setTimeout(() => {
-        errorToast.remove();
-      }, 3000);
+// Update the logHabit function in habits.astro to support skip days:
+
+// Add this to src/pages/habits.astro <script> section
+// Replace the existing logHabit function
+
+window.logHabit = async function(habitId: string, habitName: string) {
+  // Show enhanced logging modal
+  showEnhancedLoggingModal(habitId, habitName, false);
+};
+
+function showEnhancedLoggingModal(habitId: string, habitName: string, allowsSkips: boolean) {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+  modal.id = 'enhanced-logging-modal';
+  
+  const currentTime = new Date().toTimeString().slice(0, 5);
+  
+  modal.innerHTML = `
+    <div class="bg-gray-900 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="p-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-2xl font-bold text-white">Log ${habitName}</h2>
+            <p class="text-gray-400 text-sm">Enhanced logging with context</p>
+          </div>
+          <button onclick="closeEnhancedModal()" class="text-gray-400 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <form id="enhanced-logging-form" class="space-y-6">
+          <!-- Status -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-3">How did it go?</label>
+            <div class="space-y-2">
+              <button type="button" onclick="setStatus(1)" class="status-btn w-full p-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-left text-green-400">
+                ✅ Completed Successfully
+              </button>
+              ${allowsSkips ? `
+              <button type="button" onclick="setStatus(3)" class="status-btn w-full p-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-left text-blue-400">
+                ⏭️ Skipped (Rest Day)
+              </button>
+              ` : ''}
+              <button type="button" onclick="setStatus(0)" class="status-btn w-full p-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-left text-red-400">
+                ❌ Failed
+              </button>
+            </div>
+          </div>
+
+          <!-- Timing -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Completion Time</label>
+              <input type="time" id="completion-time" value="${currentTime}" 
+                     class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Duration (minutes)</label>
+              <input type="number" id="duration" placeholder="30" min="0" max="480"
+                     class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+            </div>
+          </div>
+
+          <!-- Effort & Energy -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">
+                Effort Level: <span id="effort-value">3</span>/5
+              </label>
+              <input type="range" id="effort" min="1" max="5" value="3" 
+                     class="w-full accent-blue-500" 
+                     oninput="document.getElementById('effort-value').textContent = this.value">
+              <div class="flex justify-between text-xs text-gray-400 mt-1">
+                <span>Easy</span><span>Hard</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">
+                Energy Level: <span id="energy-value">3</span>/5
+              </label>
+              <input type="range" id="energy" min="1" max="5" value="3" 
+                     class="w-full accent-green-500"
+                     oninput="document.getElementById('energy-value').textContent = this.value">
+              <div class="flex justify-between text-xs text-gray-400 mt-1">
+                <span>Low</span><span>High</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mood -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">
+              Mood: <span id="mood-value">3</span>/5
+            </label>
+            <input type="range" id="mood" min="1" max="5" value="3" 
+                   class="w-full accent-purple-500"
+                   oninput="document.getElementById('mood-value').textContent = this.value">
+            <div class="flex justify-between text-xs text-gray-400 mt-1">
+              <span>😔 Low</span><span>😊 Great</span>
+            </div>
+          </div>
+
+          <!-- Location & Weather -->
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Location</label>
+              <select id="location" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+                <option value="">Select location</option>
+                <option value="Home">Home</option>
+                <option value="Gym">Gym</option>
+                <option value="Office">Office</option>
+                <option value="University">University</option>
+                <option value="Outdoors">Outdoors</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-2">Weather</label>
+              <select id="weather" class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+                <option value="">Select weather</option>
+                <option value="Sunny">Sunny</option>
+                <option value="Rainy">Rainy</option>
+                <option value="Cloudy">Cloudy</option>
+                <option value="Hot">Hot</option>
+                <option value="Cold">Cold</option>
+                <option value="Humid">Humid</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Context Tags -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Context (select all that apply)</label>
+            <div class="grid grid-cols-3 gap-2" id="context-tags">
+              ${['High Energy', 'Low Energy', 'Stressed', 'Relaxed', 'Motivated', 'Tired', 'Social', 'Alone', 'Weekend', 'Workday', 'Morning', 'Evening'].map(tag => `
+                <button type="button" onclick="toggleContext('${tag}')" 
+                        class="context-tag px-3 py-2 text-sm rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-gray-300"
+                        data-tag="${tag}">
+                  ${tag}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Notes (optional)</label>
+            <textarea id="notes" rows="3" placeholder="How did it feel? Any insights?" 
+                      class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white resize-none"></textarea>
+          </div>
+
+          <!-- Submit -->
+          <div class="flex space-x-3">
+            <button type="button" onclick="closeEnhancedModal()" 
+                    class="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500">
+              Cancel
+            </button>
+            <button type="submit" 
+                    class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500">
+              Log ${habitName}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Form submission
+  const form = document.getElementById('enhanced-logging-form');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await submitEnhancedLog(habitId, habitName);
+    });
+  }
+  
+  // Initialize with success status
+  setStatus(1);
+}
+
+let selectedStatus = 1;
+let selectedContext: string[] = [];
+
+function setStatus(status: number) {
+  selectedStatus = status;
+  // Update button styles
+  document.querySelectorAll('.status-btn').forEach(btn => {
+    btn.classList.remove('border-blue-500', 'bg-blue-500/20');
+    btn.classList.add('border-gray-600', 'bg-gray-800');
+  });
+  const target = (event as any)?.target as HTMLElement;
+  if (target) {
+    target.classList.remove('border-gray-600', 'bg-gray-800');
+    target.classList.add('border-blue-500', 'bg-blue-500/20');
+  }
+}
+
+function toggleContext(tag: string) {
+  const button = document.querySelector(`[data-tag="${tag}"]`) as HTMLElement;
+  if (button) {
+    if (selectedContext.includes(tag)) {
+      selectedContext = selectedContext.filter(t => t !== tag);
+      button.classList.remove('border-blue-500', 'bg-blue-500/20', 'text-blue-400');
+      button.classList.add('border-gray-600', 'bg-gray-800', 'text-gray-300');
+    } else {
+      selectedContext.push(tag);
+      button.classList.remove('border-gray-600', 'bg-gray-800', 'text-gray-300');
+      button.classList.add('border-blue-500', 'bg-blue-500/20', 'text-blue-400');
     }
+  }
+}
+
+async function submitEnhancedLog(habitId: string, habitName: string) {
+  const effortEl = document.getElementById('effort') as HTMLInputElement;
+  const durationEl = document.getElementById('duration') as HTMLInputElement;
+  const completionTimeEl = document.getElementById('completion-time') as HTMLInputElement;
+  const energyEl = document.getElementById('energy') as HTMLInputElement;
+  const moodEl = document.getElementById('mood') as HTMLInputElement;
+  const locationEl = document.getElementById('location') as HTMLSelectElement;
+  const weatherEl = document.getElementById('weather') as HTMLSelectElement;
+  const notesEl = document.getElementById('notes') as HTMLTextAreaElement;
+
+  const formData = {
+    value: selectedStatus,
+    effort: effortEl ? parseInt(effortEl.value) : 3,
+    duration: durationEl?.value ? parseInt(durationEl.value) : null,
+    completion_time: completionTimeEl?.value || '',
+    energy_level: energyEl ? parseInt(energyEl.value) : 3,
+    mood: moodEl ? parseInt(moodEl.value) : 3,
+    location: locationEl?.value || '',
+    weather: weatherEl?.value || '',
+    context: selectedContext,
+    notes: notesEl?.value || ''
   };
 
-  // Add habit button
-  document.getElementById('add-habit-btn')?.addEventListener('click', () => {
-    alert('✨ Add habit modal coming in next phase! Your imported habits are working perfectly.');
-  });
-</script>
-</DashboardLayout>
+  try {
+    const response = await fetch(`/api/habits/${habitId}/log-enhanced`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      
+      // Show success message
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      toast.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span>✅ ${habitName} logged with context!</span>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+        window.location.reload();
+      }, 2000);
+      
+      closeEnhancedModal();
+    } else {
+      const error = await response.json();
+      const errorMessage = error instanceof Error ? error.message : (error.error || 'Failed to log habit');
+      throw new Error(errorMessage);
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    alert(`Error: ${errorMessage}`);
+  }
+}
+
+function closeEnhancedModal() {
+  const modal = document.getElementById('enhanced-logging-modal');
+  if (modal) {
+    modal.remove();
+  }
+  selectedContext = [];
+  selectedStatus = 1;
+}

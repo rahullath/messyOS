@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 
 export const GET: APIRoute = async ({ cookies }) => {
-  const allCookies = {};
+  const allCookies: Record<string, string> = {};
   
   // Check all cookie names that might exist
   const possibleNames = [

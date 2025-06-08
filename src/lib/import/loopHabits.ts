@@ -185,6 +185,9 @@ function parseHabitsCSV(csv: string) {
   return habits;
 }
 
+// src/lib/import/loopHabits.ts - UPDATED BOOLEAN LOGIC
+// Replace the parseCheckmarksCSV function with this fixed version:
+
 function parseCheckmarksCSV(csv: string) {
   const lines = csv.split('\n');
   const header = lines[0].split(',').map(s => s.trim());
@@ -206,21 +209,47 @@ function parseCheckmarksCSV(csv: string) {
       
       if (!data[habitName]) data[habitName] = {};
       
-      // FIXED: Convert any non-zero value to 1, handle Loop Habits values (0,2,3)
       const rawValue = parseInt(values[j]) || 0;
-      data[habitName][dateStr] = rawValue > 0 ? 1 : 0;
+      
+      // UPDATED: Handle Loop Habits values correctly
+      if (habitName.toLowerCase().includes('vap') || 
+          habitName.toLowerCase().includes('no ') ||
+          habitName.toLowerCase().includes('quit')) {
+        // For "break" habits: 
+        // CSV 0 = failure, CSV 2 = success, CSV 3 = skip
+        if (rawValue === 0) {
+          data[habitName][dateStr] = 0; // Failure
+        } else if (rawValue === 2) {
+          data[habitName][dateStr] = 1; // Success  
+        } else if (rawValue === 3) {
+          data[habitName][dateStr] = 3; // Skip
+        } else {
+          data[habitName][dateStr] = 0; // Default to failure
+        }
+      } else {
+        // For "build" habits:
+        // CSV 0 = failure, CSV 2 = success, CSV 3 = skip
+        if (rawValue === 0) {
+          data[habitName][dateStr] = 0; // Failure
+        } else if (rawValue === 2) {
+          data[habitName][dateStr] = 1; // Success
+        } else if (rawValue === 3) {
+          data[habitName][dateStr] = 3; // Skip
+        } else {
+          data[habitName][dateStr] = 0; // Default to failure
+        }
+      }
     }
   }
   
-  // Log sample data
-  Object.keys(data).slice(0, 3).forEach(habit => {
-    const entries = Object.keys(data[habit]).length;
-    console.log(`📅 ${habit}: ${entries} entries`);
-  });
-  
   return data;
 }
-
+// Also update the success logic in calculateAllStreaks:
+const isSuccess = (value: number, habitName: string, habitType: string): boolean => {
+  // For ALL habits now: database value 1 = success, 0 = failure
+  // The CSV parsing handles the conversion correctly
+  return value === 1;
+};
 function parseScoresCSV(csv: string) {
   const lines = csv.split('\n');
   const header = lines[0].split(',').map(s => s.trim());
@@ -278,6 +307,9 @@ function determineMeasurementType(habit: any): 'boolean' | 'count' | 'duration' 
 
 // Placeholder for streak calculation
 // Replace the placeholder function with this real implementation
+// src/lib/import/loopHabits.ts - VAPING STREAK FIX
+// Add this function to replace the existing calculateAllStreaks function
+
 async function calculateAllStreaks(userId: string, cookies: AstroCookies) {
   console.log('🔥 Calculating streaks for user:', userId);
   
@@ -286,13 +318,13 @@ async function calculateAllStreaks(userId: string, cookies: AstroCookies) {
   // Get all habits for this user
   const { data: habits } = await supabase
     .from('habits')
-    .select('id, name')
+    .select('id, name, type')
     .eq('user_id', userId);
   
   if (!habits) return;
   
   for (const habit of habits) {
-    // Get all entries for this habit, ordered by date
+    // Get all entries for this habit, ordered by date descending
     const { data: entries } = await supabase
       .from('habit_entries')
       .select('date, value')
@@ -301,34 +333,56 @@ async function calculateAllStreaks(userId: string, cookies: AstroCookies) {
     
     if (!entries || entries.length === 0) continue;
     
+    // FIXED: Define success based on habit type and name
+    const isSuccess = (value: number, habitName: string, habitType: string): boolean => {
+      const lower = habitName.toLowerCase();
+      
+      if (lower.includes('vap')) {
+        // For vaping: 0 puffs = success, any puffs = failure
+        return value === 0;
+      } else if (habitType === 'break') {
+        // For other "break" habits like "No Pot": any entry > 0 = success
+        return value > 0;
+      } else {
+        // For "build" habits: any entry > 0 = success
+        return value > 0;
+      }
+    };
+    
     // Calculate current streak from today backwards
     let currentStreak = 0;
     let bestStreak = 0;
     let tempStreak = 0;
     
     const today = new Date();
-    const dates = entries.map(e => e.date);
+    const entryMap = new Map(entries.map(e => [e.date, e.value]));
     
     // Calculate current streak (from today backwards)
-    for (let i = 0; i < 30; i++) { // Check last 30 days
+    for (let i = 0; i < 90; i++) { // Check last 90 days
       const checkDate = new Date(today);
       checkDate.setDate(today.getDate() - i);
       const dateStr = checkDate.toISOString().split('T')[0];
       
-      const hasEntry = dates.includes(dateStr);
+      const value = entryMap.get(dateStr);
+      const hasEntry = value !== undefined;
+      const success = hasEntry ? isSuccess(value, habit.name, habit.type) : false;
       
-      if (hasEntry) {
-        if (i === 0 || currentStreak > 0) { // Must be consecutive from today
-          currentStreak++;
-        }
+      if (success) {
+        currentStreak++;
+      } else if (hasEntry) {
+        // Entry exists but not successful - streak broken
+        break;
       } else {
-        break; // Streak broken
+        // No entry - for current streak calculation, this breaks it
+        // But only if we're not at the very beginning
+        if (currentStreak > 0) break;
       }
     }
     
-    // Calculate best streak
-    for (const entry of entries) {
-      if (entry.value > 0) {
+    // Calculate best streak (all time)
+    const allEntries = entries.reverse(); // Oldest first for best streak calc
+    for (const entry of allEntries) {
+      if (isSuccess(entry.value, habit.name, habit.type)) {
         tempStreak++;
         bestStreak = Math.max(bestStreak, tempStreak);
       } else {
@@ -342,10 +396,12 @@ async function calculateAllStreaks(userId: string, cookies: AstroCookies) {
       .update({ 
         streak_count: currentStreak,
         best_streak: Math.max(bestStreak, currentStreak),
-        total_completions: entries.length
+        total_completions: entries.filter(e => 
+          isSuccess(e.value, habit.name, habit.type)
+        ).length
       })
       .eq('id', habit.id);
     
-    console.log(`🔥 ${habit.name}: current=${currentStreak}, best=${bestStreak}`);
+    console.log(`🔥 ${habit.name}: current=${currentStreak}, best=${bestStreak}, type=${habit.type}`);
   }
 }

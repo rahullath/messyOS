@@ -15,8 +15,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   
   try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        const session = user ? { user } : null; // Simple session object    
+    const { data: { session }, error } = await supabase.auth.getSession();
     console.log('🔍 Auth Check:', {
       path: context.url.pathname,
       hasSession: !!session,
