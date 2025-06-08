@@ -1,4 +1,3 @@
-// src/components/finance/UnifiedFinanceDashboard.tsx
 import React, { useState, useEffect } from 'react';
 
 interface Transaction {
@@ -8,25 +7,30 @@ interface Transaction {
   amount: number;
   category: string;
   subcategory?: string;
-  source: 'bank' | 'manual' | 'crypto';
-  metadata?: any;
+  source: string;
+  vendor: string;
+}
+
+interface CryptoHolding {
+  symbol: string;
+  quantity: number;
+  price: number;
+  currentValue: number;
+  change: number;
+  network: string;
 }
 
 interface CategoryBreakdown {
   category: string;
   total: number;
   percentage: number;
-  transactions: Transaction[];
   subcategories?: { [key: string]: number };
 }
 
-export default function UnifiedFinanceDashboard() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<CategoryBreakdown[]>([]);
-  const [cryptoPortfolio, setCryptoPortfolio] = useState<any[]>([]);
-  const [totalExpenses, setTotalExpenses] = useState(0);
-  const [cryptoValue, setCryptoValue] = useState(0);
+export default function EnhancedFinanceDashboard() {
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     loadFinanceData();
@@ -35,382 +39,362 @@ export default function UnifiedFinanceDashboard() {
   const loadFinanceData = async () => {
     try {
       const response = await fetch('/api/finance/unified-data');
-      const data = await response.json();
+      const result = await response.json();
       
-      if (data.success) {
-        const unifiedTransactions = processTransactions(data.transactions);
-        setTransactions(unifiedTransactions);
-        
-        const categoryData = calculateCategories(unifiedTransactions);
-        setCategories(categoryData);
-        
-        setCryptoPortfolio(data.crypto);
-        setTotalExpenses(unifiedTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0));
-        setCryptoValue(data.crypto.reduce((sum: number, c: any) => sum + c.currentValue, 0));
+      if (result.success) {
+        setData(result);
+        console.log('✅ Finance data loaded:', result.summary);
+      } else {
+        console.error('Failed to load finance data:', result.error);
       }
     } catch (error) {
-      console.error('Failed to load finance data:', error);
+      console.error('Error loading finance data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const processTransactions = (rawTransactions: any[]): Transaction[] => {
-    // Deduplicate and categorize transactions
-    const processed: Transaction[] = [];
-    const seen = new Set<string>();
-
-    for (const tx of rawTransactions) {
-      // Create unique key to avoid duplicates
-      const key = `${tx.date}-${tx.description.substring(0, 20)}-${Math.abs(tx.amount)}`;
+  const calculateCategoryBreakdown = (): CategoryBreakdown[] => {
+    if (!data?.transactions) return [];
+    
+    const categoryMap = new Map<string, { total: number; subcategories: Map<string, number> }>();
+    const expenses = data.transactions.filter((t: Transaction) => t.amount < 0);
+    
+    for (const transaction of expenses) {
+      const category = transaction.category;
+      const subcategory = transaction.subcategory || 'General';
+      const amount = Math.abs(transaction.amount);
       
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      // Enhanced categorization
-      const category = enhancedCategorization(tx.description, tx.amount, tx.metadata);
-      
-      processed.push({
-        id: tx.id || `tx-${processed.length}`,
-        date: tx.date,
-        description: tx.description,
-        amount: tx.amount,
-        category: category.main,
-        subcategory: category.sub,
-        source: tx.source || 'bank',
-        metadata: tx.metadata
-      });
-    }
-
-    return processed.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
-
-  const enhancedCategorization = (description: string, amount: number, metadata: any) => {
-    const desc = description.toLowerCase();
-    
-    // Priority categorization with subcategories
-    if (desc.includes('spotify') || desc.includes('netflix') || desc.includes('apple') || desc.includes('jio')) {
-      return { main: 'Subscriptions', sub: getSubscriptionType(desc) };
-    }
-    
-    if (desc.includes('transfer to pot') || desc.includes('ifn/neo')) {
-      return { main: 'Savings/Investment', sub: 'Jupiter Pots' };
-    }
-    
-    if (desc.includes('pet') || desc.includes('carniwel') || desc.includes('royal canin') || desc.includes('litter')) {
-      return { main: 'Pet Care', sub: getPetCareType(desc) };
-    }
-    
-    if (desc.includes('zepto') || desc.includes('blinkit') || desc.includes('instamart') || desc.includes('grocery')) {
-      return { main: 'Groceries', sub: getGroceryType(desc) };
-    }
-    
-    if (desc.includes('swiggy') || desc.includes('zomato') || desc.includes('dominos') || desc.includes('pizza')) {
-      return { main: 'Food Delivery', sub: 'Restaurant' };
-    }
-    
-    if (desc.includes('gym') || desc.includes('fitness') || desc.includes('protein')) {
-      return { main: 'Health & Fitness', sub: 'Gym/Supplements' };
-    }
-    
-    if (desc.includes('yulu') || desc.includes('uber') || desc.includes('ola')) {
-      return { main: 'Transportation', sub: getTransportType(desc) };
-    }
-    
-    if (desc.includes('rent') || desc.includes('shettyarjun')) {
-      return { main: 'Housing', sub: 'Rent' };
-    }
-    
-    if (desc.includes('cook') || desc.includes('maid') || desc.includes('domestic')) {
-      return { main: 'Domestic Help', sub: 'Cook/Maid' };
-    }
-    
-    if (desc.includes('medicine') || desc.includes('apollo') || desc.includes('pharmacy')) {
-      return { main: 'Healthcare', sub: 'Medicine' };
-    }
-    
-    if (desc.includes('atm') || desc.includes('withdrawal')) {
-      return { main: 'Cash Withdrawal', sub: 'ATM' };
-    }
-    
-    if (amount > 0) {
-      return { main: 'Income', sub: 'Credit' };
-    }
-    
-    return { main: 'Other', sub: 'Miscellaneous' };
-  };
-
-  const getSubscriptionType = (desc: string) => {
-    if (desc.includes('spotify')) return 'Music';
-    if (desc.includes('netflix') || desc.includes('apple')) return 'Entertainment';
-    if (desc.includes('jio')) return 'Telecom';
-    return 'Other';
-  };
-
-  const getPetCareType = (desc: string) => {
-    if (desc.includes('food') || desc.includes('carniwel') || desc.includes('royal canin')) return 'Food';
-    if (desc.includes('litter')) return 'Litter';
-    if (desc.includes('treats')) return 'Treats';
-    return 'Other';
-  };
-
-  const getGroceryType = (desc: string) => {
-    if (desc.includes('zepto')) return 'Zepto';
-    if (desc.includes('blinkit')) return 'Blinkit';
-    if (desc.includes('instamart')) return 'Instamart';
-    return 'Other';
-  };
-
-  const getTransportType = (desc: string) => {
-    if (desc.includes('yulu')) return 'Bike';
-    if (desc.includes('uber') || desc.includes('ola')) return 'Cab';
-    return 'Other';
-  };
-
-  const calculateCategories = (transactions: Transaction[]): CategoryBreakdown[] => {
-    const categoryMap = new Map<string, CategoryBreakdown>();
-
-    transactions.forEach(tx => {
-      if (tx.amount >= 0) return; // Skip income
-
-      const amount = Math.abs(tx.amount);
-      const category = tx.category;
-
       if (!categoryMap.has(category)) {
-        categoryMap.set(category, {
-          category,
-          total: 0,
-          percentage: 0,
-          transactions: [],
-          subcategories: {}
-        });
+        categoryMap.set(category, { total: 0, subcategories: new Map() });
       }
-
-      const cat = categoryMap.get(category)!;
-      cat.total += amount;
-      cat.transactions.push(tx);
       
-      if (tx.subcategory) {
-        cat.subcategories = cat.subcategories || {};
-        cat.subcategories[tx.subcategory] = (cat.subcategories[tx.subcategory] || 0) + amount;
-      }
-    });
-
-    const totalExpenses = Array.from(categoryMap.values()).reduce((sum, cat) => sum + cat.total, 0);
+      const categoryData = categoryMap.get(category)!;
+      categoryData.total += amount;
+      categoryData.subcategories.set(subcategory, (categoryData.subcategories.get(subcategory) || 0) + amount);
+    }
     
-    return Array.from(categoryMap.values())
-      .map(cat => ({
-        ...cat,
-        percentage: (cat.total / totalExpenses) * 100
+    const totalExpenses = data.summary?.totalExpenses || 1;
+    
+    return Array.from(categoryMap.entries())
+      .map(([category, data]) => ({
+        category,
+        total: data.total,
+        percentage: (data.total / totalExpenses) * 100,
+        subcategories: Object.fromEntries(data.subcategories)
       }))
       .sort((a, b) => b.total - a.total);
   };
 
-  const financialRunway = totalExpenses > 0 ? (94300 / totalExpenses) * 12 : 0; // months
+  const formatCurrency = (amount: number, currency = '₹') => {
+    return `${currency}${amount.toLocaleString('en-IN')}`;
+  };
+
+  const formatUSD = (amount: number) => {
+    return `${amount.toFixed(2)}`;
+  };
+
+  const calculateRunway = () => {
+    const currentBalance = 94300; // From your financial analysis
+    const monthlyExpenses = data?.summary?.monthlyExpenses || 40546;
+    return (currentBalance / monthlyExpenses).toFixed(1);
+  };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-surface-hover rounded mb-4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-24 bg-surface-hover rounded"></div>
-            ))}
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <span className="ml-3 text-gray-600">Loading finance data...</span>
       </div>
     );
   }
 
+  if (!data) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">No finance data available. Please import your data first.</p>
+      </div>
+    );
+  }
+
+  const categories = calculateCategoryBreakdown();
+  const runway = calculateRunway();
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-semibold text-text-primary mb-2">Finance Dashboard</h1>
-        <p className="text-text-secondary">
-          Track expenses, manage crypto portfolio, and optimize your financial runway
-        </p>
-      </div>
-
-      {/* Key Metrics */}
+    <div className="space-y-6">
+      {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text-muted">Monthly Expenses</p>
-              <p className="text-2xl font-bold text-text-primary">₹{totalExpenses.toLocaleString()}</p>
-              <p className="text-sm text-accent-error">High</p>
+              <p className="text-sm font-medium text-gray-600">Monthly Expenses</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatCurrency(data.summary?.monthlyExpenses || 0)}
+              </p>
             </div>
-            <span className="text-2xl">💸</span>
+            <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-red-600">💸</span>
+            </div>
           </div>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text-muted">Crypto Portfolio</p>
-              <p className="text-2xl font-bold text-text-primary">${cryptoValue.toFixed(2)}</p>
-              <p className="text-sm text-text-muted">₹{(cryptoValue * 83).toLocaleString()}</p>
+              <p className="text-sm font-medium text-gray-600">Crypto Portfolio</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {formatUSD(data.summary?.cryptoValue || 0)}
+              </p>
+              <p className="text-xs text-gray-500">{formatCurrency(data.summary?.cryptoValue * 83 || 0)}</p>
             </div>
-            <span className="text-2xl">₿</span>
+            <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
+              <span className="text-orange-600">₿</span>
+            </div>
           </div>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text-muted">Financial Runway</p>
-              <p className="text-2xl font-bold text-text-primary">{financialRunway.toFixed(1)}</p>
-              <p className="text-sm text-text-muted">months left</p>
+              <p className="text-sm font-medium text-gray-600">Financial Runway</p>
+              <p className="text-2xl font-bold text-gray-900">{runway}</p>
+              <p className="text-xs text-gray-500">months left</p>
             </div>
-            <span className="text-2xl">⏱️</span>
+            <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+              <span className="text-yellow-600">⏱️</span>
+            </div>
           </div>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-text-muted">Budget Health</p>
-              <p className="text-2xl font-bold text-accent-warning">50/100</p>
-              <p className="text-sm text-accent-warning">warning</p>
+              <p className="text-sm font-medium text-gray-600">Total Transactions</p>
+              <p className="text-2xl font-bold text-gray-900">{data.summary?.totalTransactions || 0}</p>
             </div>
-            <span className="text-2xl">📊</span>
+            <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-blue-600">📊</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Job Search Strategy */}
-      <div className="card p-6 bg-gradient-to-r from-accent-primary/10 to-accent-purple/10 border border-accent-primary/20">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">🎯 Job Search Financial Strategy</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-accent-error">{financialRunway.toFixed(1)}</div>
-            <div className="text-sm text-text-muted">Months Remaining</div>
-            <div className="text-xs text-text-muted">At current spending</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-accent-warning">Jul 31</div>
-            <div className="text-sm text-text-muted">Target Job Date</div>
-            <div className="text-xs text-text-muted">For September comfort</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-accent-primary">₹{(totalExpenses * 0.8).toLocaleString()}</div>
-            <div className="text-sm text-text-muted">Optimized Budget</div>
-            <div className="text-xs text-text-muted">20% reduction target</div>
-          </div>
-        </div>
-        <p className="text-sm text-text-secondary mt-4">
-          <strong>Strategy:</strong> Your Y Combinator background + Web3 expertise positions you well. 
-          Reduce MK Retail spending (₹3,053→₹1,500) and convenience purchases to extend runway to {(financialRunway * 1.2).toFixed(1)} months.
-        </p>
+      {/* Navigation Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          {['overview', 'categories', 'crypto', 'transactions'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm capitalize ${
+                activeTab === tab
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
       </div>
 
-      {/* Expense Categories */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Top Expense Categories</h3>
-          <div className="space-y-4">
-            {categories.slice(0, 6).map((category, index) => (
-              <div key={category.category} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-text-primary">{category.category}</span>
-                  <span className="text-text-primary">₹{category.total.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="flex-1 bg-surface-hover rounded-full h-2">
-                    <div 
-                      className="bg-accent-primary rounded-full h-2 transition-all"
-                      style={{ width: `${category.percentage}%` }}
-                    ></div>
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top Categories */}
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Expense Categories</h3>
+            <div className="space-y-4">
+              {categories.slice(0, 6).map((category) => (
+                <div key={category.category} className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-900">{category.category}</span>
+                      <span className="text-sm text-gray-500">{category.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${Math.min(category.percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>{formatCurrency(category.total)}</span>
+                      <span>{formatCurrency(category.total / 30)}/day avg</span>
+                    </div>
                   </div>
-                  <span className="text-sm text-text-muted">{category.percentage.toFixed(1)}%</span>
                 </div>
-                <div className="text-xs text-text-muted">
-                  {category.percentage.toFixed(1)}% of total • ₹{Math.round(category.total / 30)}/day avg
-                </div>
-                
-                {/* Subcategory breakdown */}
-                {category.subcategories && Object.keys(category.subcategories).length > 1 && (
-                  <div className="ml-4 space-y-1">
-                    {Object.entries(category.subcategories)
-                      .sort(([,a], [,b]) => b - a)
-                      .slice(0, 3)
-                      .map(([sub, amount]) => (
-                        <div key={sub} className="flex justify-between text-xs">
-                          <span className="text-text-muted">• {sub}</span>
-                          <span className="text-text-muted">₹{amount.toLocaleString()}</span>
-                        </div>
-                      ))}
-                  </div>
-                )}
+              ))}
+            </div>
+          </div>
+
+          {/* Financial Health */}
+          <div className="bg-white rounded-lg p-6 shadow-sm border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">💡 AI Budget Recommendations</h3>
+            <div className="space-y-3">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">
+                  <strong>Critical:</strong> Less than 3 months runway. Find job immediately or reduce expenses by 30%
+                </p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">Recent Transactions</h3>
-          <div className="space-y-3">
-            {transactions.slice(0, 10).map((tx, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-surface-hover rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <span className="text-lg">{getCategoryIcon(tx.category)}</span>
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">
-                      {tx.description.length > 30 ? tx.description.substring(0, 30) + '...' : tx.description}
-                    </p>
-                    <p className="text-xs text-text-muted">
-                      {tx.subcategory} • {new Date(tx.date).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <span className={`font-medium ${tx.amount < 0 ? 'text-accent-error' : 'text-accent-success'}`}>
-                  {tx.amount < 0 ? '-' : '+'}₹{Math.abs(tx.amount).toLocaleString()}
-                </span>
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>MK Retail Optimization:</strong> Reduce from ₹3,053 to ₹1,500/month saves ₹1,553
+                </p>
               </div>
-            ))}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Convenience Cuts:</strong> Reduce snacks/beverages by 50% saves ₹500/month
+                </p>
+              </div>
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  <strong>Positive:</strong> Crypto diversified across {data.summary?.cryptoCount || 0} holdings
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* AI Recommendations */}
-      <div className="card p-6">
-        <h3 className="text-lg font-semibold text-text-primary mb-4">💡 AI Budget Recommendations</h3>
-        <div className="space-y-3">
-          {[
-            `Reduce monthly expenses from ₹${totalExpenses.toLocaleString()} to ₹35,000 target`,
-            `Critical: Less than ${financialRunway.toFixed(1)} months runway. Find job immediately or reduce expenses by 50%`,
-            `Consider diversifying crypto portfolio beyond current ${cryptoPortfolio.length} holdings`,
-            'Target MK Retail reduction: from ₹3,053 to ₹1,500/month saves ₹1,553',
-            'Cut convenience purchases (energy drinks, candy) by 50% saves ₹500/month'
-          ].map((rec, index) => (
-            <div key={index} className="flex items-start space-x-3 p-3 bg-accent-primary/5 rounded-lg">
-              <span className="text-accent-primary font-bold text-sm">{index + 1}</span>
-              <span className="text-sm text-text-secondary">{rec}</span>
+      {activeTab === 'categories' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {categories.map((category) => (
+            <div key={category.category} className="bg-white rounded-lg p-6 shadow-sm border">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">{category.category}</h3>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(category.total)}</p>
+                  <p className="text-sm text-gray-500">{category.percentage.toFixed(1)}% of total</p>
+                </div>
+              </div>
+              
+              {category.subcategories && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700">Breakdown:</h4>
+                  {Object.entries(category.subcategories)
+                    .sort(([,a], [,b]) => (b as number) - (a as number))
+                    .map(([subcat, amount]) => (
+                      <div key={subcat} className="flex justify-between text-sm">
+                        <span className="text-gray-600">{subcat}</span>
+                        <span className="font-medium">{formatCurrency(amount as number)}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
+      )}
+
+      {activeTab === 'crypto' && (
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Crypto Portfolio</h3>
+          {data.crypto && data.crypto.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">24h Change</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {data.crypto.map((holding: CryptoHolding, index: number) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{holding.symbol}</div>
+                          <div className="text-sm text-gray-500">{holding.network}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {holding.quantity.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatUSD(holding.price)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {formatUSD(holding.currentValue)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`${holding.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {holding.change >= 0 ? '+' : ''}{holding.change.toFixed(2)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-gray-500">No crypto holdings found. Import your crypto data to see portfolio.</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'transactions' && (
+        <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Transactions</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {data.transactions.slice(0, 20).map((transaction: Transaction) => (
+                  <tr key={transaction.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(transaction.date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {transaction.description}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {transaction.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <span className={transaction.amount < 0 ? 'text-red-600' : 'text-green-600'}>
+                        {formatCurrency(Math.abs(transaction.amount))}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {transaction.vendor}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex space-x-4">
+        <button
+          onClick={loadFinanceData}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          🔄 Refresh Data
+        </button>
+        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+          📊 Export Report
+        </button>
+        <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+          🤖 AI Analysis
+        </button>
       </div>
     </div>
   );
-}
-
-function getCategoryIcon(category: string): string {
-  const icons: { [key: string]: string } = {
-    'Pet Care': '🐱',
-    'Groceries': '🛒',
-    'Food Delivery': '🍕',
-    'Subscriptions': '📱',
-    'Transportation': '🚗',
-    'Savings/Investment': '💰',
-    'Healthcare': '⚕️',
-    'Housing': '🏠',
-    'Domestic Help': '👩‍🍳',
-    'Health & Fitness': '💪',
-    'Cash Withdrawal': '💳',
-    'Income': '💵',
-    'Other': '📊'
-  };
-  return icons[category] || '📊';
 }
