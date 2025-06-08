@@ -3,70 +3,27 @@ import { createServerClient } from '../../lib/supabase/server';
 
 const supabase = createServerClient(Astro.cookies);
 
-// Get the code and state from URL parameters
 const code = Astro.url.searchParams.get('code');
-const state = Astro.url.searchParams.get('state');
-const error = Astro.url.searchParams.get('error');
-const errorDescription = Astro.url.searchParams.get('error_description');
 
-console.log('🔄 Auth callback - Code:', code ? 'present' : 'missing');
-console.log('🔄 Auth callback - State:', state ? 'present' : 'missing');
-
-// Handle OAuth errors
-if (error) {
-  console.error('OAuth error:', error, errorDescription);
-  return Astro.redirect('/login?error=' + encodeURIComponent(error));
-}
-
-// Handle missing code
 if (!code) {
   console.error('No authorization code received');
   return Astro.redirect('/login?error=no_code');
 }
 
 try {
-  // Exchange the code for a session
-  const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  // For PKCE flow, we need to handle this differently
+  // The code verifier should be in localStorage, but server can't access it
+  // So we need to do the exchange on the client side
   
-  if (exchangeError) {
-    console.error('Code exchange error:', exchangeError);
-    return Astro.redirect('/login?error=exchange_failed');
-  }
-
-  console.log('✅ Session exchanged successfully for user:', data.user?.email);
-
-  // Create or update user profile
-  if (data.user) {
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: data.user.id,
-        username: data.user.user_metadata?.user_name || data.user.email?.split('@')[0],
-        full_name: data.user.user_metadata?.full_name || data.user.user_metadata?.name,
-        avatar_url: data.user.user_metadata?.avatar_url,
-        updated_at: new Date().toISOString()
-      });
-    
-    if (profileError) {
-      console.error('Profile creation error:', profileError);
-      // Continue anyway - profile creation isn't critical
-    } else {
-      console.log('✅ Profile created/updated for:', data.user.email);
-    }
-  }
-
-  // Redirect to dashboard
-  return Astro.redirect('/');
+  console.log('✅ Got auth code, redirecting to client for PKCE exchange');
+  
+  // Redirect to a client-side handler that can access localStorage
+  return Astro.redirect(`/auth/exchange?code=${code}`);
 
 } catch (error) {
-  console.error('Auth callback unexpected error:', error);
+  console.error('Auth callback error:', error);
   return Astro.redirect('/login?error=unexpected');
 }
 ---
 
-<!-- This page should never render, but just in case -->
-<html>
-<body>
-  <p>Processing authentication...</p>
-</body>
-</html>
+<html><body><p>Processing...</p></body></html>

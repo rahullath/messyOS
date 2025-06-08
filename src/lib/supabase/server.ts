@@ -9,19 +9,20 @@ export function createServerClient(cookies: AstroCookies) {
     {
       cookies: {
         get(name: string) {
-          return cookies.get(name)?.value
+          const cookie = cookies.get(name);
+          return cookie?.value;
         },
         set(name: string, value: string, options: any) {
           cookies.set(name, value, {
             ...options,
             httpOnly: false,
-            secure: false, // Allow HTTP for localhost
+            secure: false,
             sameSite: 'lax',
             path: '/'
-          })
+          });
         },
         remove(name: string, options: any) {
-          cookies.delete(name, options)
+          cookies.delete(name, options);
         },
       },
     }

@@ -1,0 +1,57 @@
+---
+// This page handles the PKCE exchange on the client side
+---
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Completing Login...</title>
+</head>
+<body>
+  <div style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui;">
+    <div style="text-align: center;">
+      <div style="margin-bottom: 20px;">🔄</div>
+      <p>Completing your login...</p>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../../lib/supabase/client.ts';
+    
+    async function handleAuthExchange() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        
+        if (!code) {
+          throw new Error('No auth code received');
+        }
+        
+        console.log('Exchanging code for session...');
+        
+        // This will use the code verifier from localStorage
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (error) {
+          console.error('Exchange error:', error);
+          window.location.href = '/login?error=exchange_failed';
+          return;
+        }
+        
+        console.log('✅ Successfully exchanged code for session:', data.user?.email);
+        
+        // Clear the URL and redirect to dashboard
+        window.history.replaceState(null, '', '/');
+        window.location.href = '/';
+        
+      } catch (error) {
+        console.error('Auth exchange error:', error);
+        window.location.href = '/login?error=unexpected';
+      }
+    }
+    
+    // Start the exchange process
+    handleAuthExchange();
+  </script>
+</body>
+</html>

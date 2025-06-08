@@ -1,86 +1,121 @@
 ---
-// src/pages/habits.astro
+// src/pages/habits.astro - COMPLETE VERSION
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerClient } from '../lib/supabase/server';
 
-// In development, server auth doesn't work, so we'll use client-side
-const isDev = import.meta.env.DEV;
+const supabase = createServerClient(Astro.cookies);
 
-let habitsWithStatus = [];
-let completedToday = 0;
-let totalHabits = 0;
-let completionRate = 0;
-let longestStreak = 0;
+// Get the user from session
+const { data: { user } } = await supabase.auth.getUser();
 
-if (!isDev) {
-  // Production: use server-side data
-  const supabase = createServerClient(Astro.cookies);
-  const { data: { user } } = await supabase.auth.getUser();
+if (!user) {
+  return Astro.redirect('/login');
+}
 
-  if (user) {
-    // Fetch user's habits with today's entries
-    const { data: habits, error } = await supabase
-      .from('habits')
-      .select(`
-        *,
-        habit_entries(
-          id,
-          value,
-          logged_at,
-          notes
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+// Fetch user's habits with today's entries
+const { data: habits, error } = await supabase
+  .from('habits')
+  .select(`
+    *,
+    habit_entries(
+      id,
+      value,
+      logged_at,
+      notes,
+      date
+    )
+  `)
+  .eq('user_id', user.id)
+  .eq('is_active', true)
+  .order('position', { ascending: true });
 
-    if (!error && habits) {
-      // Process habits to show today's status
-      const today = new Date().toDateString();
-      habitsWithStatus = habits.map((habit) => {
-        const todayEntry = habit.habit_entries?.find((entry) => 
-          new Date(entry.logged_at!).toDateString() === today
-        );
-        
-        // Get last 7 days for weekly view
-        const last7Days = [];
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toDateString();
-          
-          const dayEntry = habit.habit_entries?.find((entry) =>
-            new Date(entry.logged_at!).toDateString() === dateStr
-          );
-          
-          last7Days.push({
-            date: dateStr,
-            completed: !!dayEntry,
-            value: dayEntry?.value || 0
-          });
+if (error) {
+  console.error('Error fetching habits:', error);
+}
+
+// Process habits to show today's status and fix streak calculation
+const today = new Date().toISOString().split('T')[0];
+const habitsWithStatus = (habits || []).map((habit) => {
+  const todayEntry = habit.habit_entries?.find((entry) => 
+    entry.date === today
+  );
+  
+  // Get last 90 days for weekly view (more accurate streaks)
+  const last90Days = [];
+  for (let i = 89; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    const dayEntry = habit.habit_entries?.find((entry) =>
+      entry.date === dateStr
+    );
+    
+    // For count-based habits like Vaping, check if value is the "good" direction
+    let completed = false;
+    if (dayEntry) {
+      if (habit.type === 'break') {
+        // For "break" habits like "No Pot", "Quit Valorant" - 0 is good, >0 is bad
+        // But for "Vaping" (counting puffs), any entry means logged, streak based on low values
+        if (habit.name.toLowerCase().includes('vap')) {
+          completed = dayEntry.value === 0; // 0 puffs = success
+        } else {
+          completed = dayEntry.value > 0; // Did avoid the bad habit
         }
-        
-        return {
-          ...habit,
-          completedToday: !!todayEntry,
-          todayEntry,
-          last7Days
-        };
-      });
-
-      completedToday = habitsWithStatus.filter(h => h.completedToday).length;
-      totalHabits = habitsWithStatus.length;
-      completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
-      longestStreak = Math.max(...habitsWithStatus.map(h => h.streak_count || 0), 0);
+      } else {
+        // For "build" habits - any positive value is good
+        completed = dayEntry.value > 0;
+      }
+    }
+    
+    last90Days.push({
+      date: dateStr,
+      completed,
+      value: dayEntry?.value || 0,
+      hasEntry: !!dayEntry
+    });
+  }
+  
+  // Calculate REAL current streak (from today backwards)
+  let currentStreak = 0;
+  for (let i = last90Days.length - 1; i >= 0; i--) {
+    if (last90Days[i].completed) {
+      currentStreak++;
+    } else {
+      break; // Streak broken
     }
   }
-}
----
+  
+  // Get last 7 days for display
+  const last7Days = last90Days.slice(-7);
+  
+  // Check if completed today
+  const completedToday = todayEntry ? (
+    habit.type === 'break' ? 
+      (habit.name.toLowerCase().includes('vap') ? todayEntry.value === 0 : todayEntry.value > 0) :
+      todayEntry.value > 0
+  ) : false;
+  
+  return {
+    ...habit,
+    completedToday,
+    todayEntry,
+    todayValue: todayEntry?.value || 0,
+    last7Days,
+    realCurrentStreak: currentStreak, // Use calculated streak instead of database
+    weekStreak: last7Days.filter(d => d.completed).length
+  };
+});
+
+const completedToday = habitsWithStatus.filter(h => h.completedToday).length;
+const totalHabits = habitsWithStatus.length;
+const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak), 0);
 ---
 
 <DashboardLayout title="Habits - MeshOS">
   <div class="space-y-8">
-    <!-- Header -->
+    <!-- Header with Import -->
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-semibold text-text-primary mb-2">Habits</h1>
@@ -88,24 +123,37 @@ if (!isDev) {
           Build better routines, one day at a time
         </p>
       </div>
-      <button 
-        id="add-habit-btn"
-        class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-      >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-        </svg>
-        New Habit
-      </button>
+      <div class="flex space-x-3">
+        <button 
+          id="import-btn"
+          class="flex items-center px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+          </svg>
+          Import Data
+        </button>
+        <button 
+          id="add-habit-btn"
+          class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+          New Habit
+        </button>
+      </div>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Enhanced Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
       <div class="card">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-text-muted">Today's Progress</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">{completedToday}/{totalHabits}</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">
+              {completedToday}/{totalHabits}
+            </p>
             <p class="text-sm text-accent-success mt-1">{completionRate}% complete</p>
           </div>
           <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
@@ -121,7 +169,7 @@ if (!isDev) {
           <div>
             <p class="text-sm font-medium text-text-muted">Longest Streak</p>
             <p class="text-2xl font-semibold text-text-primary mt-1">{longestStreak}</p>
-            <p class="text-sm text-text-muted mt-1">days</p>
+            <p class="text-sm text-text-muted mt-1">days current</p>
           </div>
           <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
             <span class="text-2xl">🔥</span>
@@ -143,22 +191,41 @@ if (!isDev) {
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-text-muted">Best Streak</p>
+            <p class="text-2xl font-semibold text-text-primary mt-1">{Math.max(...habitsWithStatus.map(h => h.best_streak || 0), 0)}</p>
+            <p class="text-sm text-text-muted mt-1">days ever</p>
+          </div>
+          <div class="w-12 h-12 bg-accent-purple/10 rounded-lg flex items-center justify-center">
+            <span class="text-2xl">🏆</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Habits Grid -->
+    <!-- Habits Grid with Beautiful UI -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {habitsWithStatus.map((habit) => (
         <div key={habit.id} class="card hover:bg-surface-hover transition-colors">
           <!-- Habit Header -->
           <div class="flex items-start justify-between mb-4">
             <div class="flex-1">
-              <h3 class="font-semibold text-text-primary mb-1">{habit.name}</h3>
+              <div class="flex items-center space-x-2 mb-2">
+                <div 
+                  class="w-3 h-3 rounded-full" 
+                  style={`background-color: ${habit.color}`}
+                ></div>
+                <h3 class="font-semibold text-text-primary">{habit.name}</h3>
+              </div>
               <p class="text-sm text-text-muted">{habit.category}</p>
               {habit.description && (
                 <p class="text-xs text-text-muted mt-1">{habit.description}</p>
               )}
             </div>
-            <div class="flex items-center space-x-2">
+            <div class="flex flex-col items-end space-y-1">
               <span class={`px-2 py-1 text-xs rounded-full ${
                 habit.type === 'build' 
                   ? 'bg-accent-success/20 text-accent-success' 
@@ -166,17 +233,28 @@ if (!isDev) {
               }`}>
                 {habit.type}
               </span>
+              {habit.measurement_type === 'count' && (
+                <span class="text-xs text-text-muted">
+                  Today: {habit.todayValue}
+                </span>
+              )}
             </div>
           </div>
 
-          <!-- Streak Info -->
-          <div class="flex items-center space-x-2 mb-4">
-            <span class="text-2xl">🔥</span>
-            <span class="text-lg font-semibold text-text-primary">{habit.streak_count}</span>
-            <span class="text-sm text-text-muted">day streak</span>
+          <!-- Streak & Stats -->
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-2">
+              <span class="text-xl">🔥</span>
+              <span class="text-lg font-semibold text-text-primary">{habit.realCurrentStreak}</span>
+              <span class="text-sm text-text-muted">day streak</span>
+            </div>
+            <div class="text-right">
+              <p class="text-sm text-text-muted">Best: {habit.best_streak || 0}</p>
+              <p class="text-xs text-text-muted">This week: {habit.weekStreak}/7</p>
+            </div>
           </div>
 
-          <!-- Weekly Progress -->
+          <!-- 7-Day Progress -->
           <div class="mb-4">
             <p class="text-xs text-text-muted mb-2">Last 7 days</p>
             <div class="flex space-x-1">
@@ -186,11 +264,13 @@ if (!isDev) {
                   class={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
                     day.completed
                       ? 'bg-accent-success text-white'
+                      : day.hasEntry
+                      ? 'bg-accent-warning text-white'
                       : 'bg-surface border border-border text-text-muted'
                   }`}
-                  title={day.date}
+                  title={`${day.date}: ${day.hasEntry ? day.value : 'No entry'}`}
                 >
-                  {day.completed ? '✓' : '·'}
+                  {day.completed ? '✓' : day.hasEntry ? day.value : '·'}
                 </div>
               ))}
             </div>
@@ -203,7 +283,7 @@ if (!isDev) {
                 ? 'bg-accent-success/20 text-accent-success border border-accent-success/30 cursor-default'
                 : 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30 hover:bg-accent-primary/30'
             }`}
-            onclick={habit.completedToday ? undefined : `logHabit('${habit.id}', '${habit.name}')`}
+            onclick={habit.completedToday ? undefined : `logHabit('${habit.id}', '${habit.name}', '${habit.measurement_type}')`}
             disabled={habit.completedToday}
           >
             {habit.completedToday ? (
@@ -212,64 +292,96 @@ if (!isDev) {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
                 Completed Today
+                {habit.measurement_type === 'count' && ` (${habit.todayValue})`}
               </>
             ) : (
               <>
                 <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
-                Mark Complete
+                {habit.measurement_type === 'boolean' ? 'Mark Complete' : 'Log Value'}
               </>
             )}
           </button>
         </div>
       ))}
+    </div>
 
-      {habitsWithStatus.length === 0 && (
-        <div class="col-span-full card text-center py-12">
-          <div class="w-16 h-16 bg-accent-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-accent-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+    <!-- Import Modal -->
+    <div id="import-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+      <div class="bg-surface rounded-lg p-6 w-full max-w-md mx-4">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-xl font-semibold text-text-primary">Import Data</h3>
+          <button id="close-import" class="text-text-muted hover:text-text-primary">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-text-primary mb-2">No habits yet</h3>
-          <p class="text-text-muted mb-4">Start building better routines by creating your first habit</p>
-          <button 
-            onclick="document.getElementById('add-habit-btn').click()"
-            class="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-          >
-            Create Your First Habit
           </button>
         </div>
-      )}
+        <p class="text-text-secondary mb-4">
+          Want to import more data? Go to the import page.
+        </p>
+        <a href="/import" class="w-full flex items-center justify-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
+          Go to Import Page
+        </a>
+      </div>
     </div>
   </div>
 </DashboardLayout>
 
 <script>
-  // Log habit completion
-  window.logHabit = async function(habitId: string, habitName: string) {
+  // Import modal
+  document.getElementById('import-btn')?.addEventListener('click', () => {
+    document.getElementById('import-modal')?.classList.remove('hidden');
+    document.getElementById('import-modal')?.classList.add('flex');
+  });
+
+  document.getElementById('close-import')?.addEventListener('click', () => {
+    document.getElementById('import-modal')?.classList.add('hidden');
+    document.getElementById('import-modal')?.classList.remove('flex');
+  });
+
+  // Close modal on background click
+  document.getElementById('import-modal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('import-modal')?.classList.add('hidden');
+      document.getElementById('import-modal')?.classList.remove('flex');
+    }
+  });
+
+  // Habit logging with count support
+  window.logHabit = async function(habitId: string, habitName: string, measurementType: string) {
+    let value = 1;
+    
+    if (measurementType === 'count') {
+      if (habitName.toLowerCase().includes('vap')) {
+        const input = prompt(`How many puffs did you take today? (Enter 0 if none):`, '0');
+        if (input === null) return; // User cancelled
+        value = parseInt(input) || 0;
+      } else {
+        const input = prompt(`How many times did you ${habitName.toLowerCase()}?`, '1');
+        if (input === null) return;
+        value = parseInt(input) || 1;
+      }
+    }
+    
     try {
       const response = await fetch(`/api/habits/${habitId}/log`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ value: 1 })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value, notes: '' })
       });
 
       if (response.ok) {
-        // Show success message
         const successToast = document.createElement('div');
         successToast.className = 'fixed top-4 right-4 bg-accent-success text-white px-4 py-2 rounded-lg shadow-lg z-50';
-        successToast.textContent = `✅ ${habitName} completed!`;
+        successToast.textContent = `✅ ${habitName} logged: ${value}`;
         document.body.appendChild(successToast);
         
         setTimeout(() => {
           successToast.remove();
         }, 3000);
         
-        // Reload page to show updated state
         window.location.reload();
       } else {
         const error = await response.json();
@@ -284,13 +396,12 @@ if (!isDev) {
       setTimeout(() => {
         errorToast.remove();
       }, 3000);
-      
-      console.error('Error logging habit:', error);
     }
   };
 
-  // Add habit modal (placeholder for now)
+  // Add habit button
   document.getElementById('add-habit-btn')?.addEventListener('click', () => {
-    alert('✨ Add habit modal coming in next phase! For now, add habits directly in your Supabase database.');
+    alert('✨ Add habit modal coming in next phase! Your imported habits are working perfectly.');
   });
 </script>
+</DashboardLayout>

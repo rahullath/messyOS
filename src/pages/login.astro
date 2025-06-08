@@ -37,57 +37,20 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
-  import { SimpleAuth } from '../lib/auth/simple.ts';
+ import { supabase } from '../lib/supabase/client.ts';
 
-  let isProcessing = false;
-
-  async function updateStatus(message: string, isError = false) {
-    const status = document.getElementById('status');
-    if (status) {
-      status.textContent = message;
-      status.className = `text-center text-sm ${isError ? 'text-accent-error' : 'text-text-muted'}`;
+document.getElementById('google-signin')?.addEventListener('click', async () => {
+  console.log('Starting OAuth...');
+  
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`
     }
+  });
+  
+  if (error) {
+    console.error('OAuth error:', error);
+    alert('Login failed: ' + error.message);
   }
-
-  // Initialize auth
-  SimpleAuth.initialize().then(user => {
-    if (user) {
-      updateStatus('Already signed in, redirecting...');
-      setTimeout(() => window.location.href = '/', 1000);
-    }
-  });
-
-  // Handle URL params for auth success
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('auth') === 'success') {
-    updateStatus('Authentication successful, loading...');
-    setTimeout(() => window.location.href = '/', 2000);
-  }
-
-  document.getElementById('google-signin')?.addEventListener('click', async () => {
-    if (isProcessing) return;
-    isProcessing = true;
-
-    try {
-      updateStatus('Starting authentication...');
-      const result = await SimpleAuth.signInWithGoogle();
-      
-      if (!result.success) {
-        updateStatus(`Error: ${result.error}`, true);
-        isProcessing = false;
-      }
-      // If successful, the auth state change will handle redirect
-    } catch (error: any) {
-      updateStatus(`Error: ${error.message}`, true);
-      isProcessing = false;
-    }
-  });
-
-  // Listen for auth changes
-  SimpleAuth.onAuthChange((user) => {
-    if (user) {
-      updateStatus(`Welcome ${user.email}! Redirecting...`);
-      setTimeout(() => window.location.href = '/', 1000);
-    }
-  });
-</script>
+});
