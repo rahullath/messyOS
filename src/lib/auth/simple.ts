@@ -1,31 +1,29 @@
-// src/lib/auth/simple.ts
 import { supabase } from '../supabase/client';
 
-// Simple auth state management
+// SINGLE USER HARDCODED AUTH
+const ALLOWED_EMAIL = 'ketaminedevs@gmail.com';
+
 export class SimpleAuth {
   private static user: any = null;
   private static isReady = false;
-  private static callbacks: Array<(user: any) => void> = [];
 
   static async initialize() {
     if (this.isReady) return this.user;
 
     try {
-      // Check for existing session
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (session?.user) {
+      if (session?.user?.email === ALLOWED_EMAIL) {
         this.user = session.user;
-        console.log('✅ User found:', this.user.email);
+        console.log('✅ User authenticated:', this.user.email);
       } else {
-        console.log('ℹ️ No existing session');
+        console.log('❌ Unauthorized user');
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
     }
 
     this.isReady = true;
-    this.notifyCallbacks();
     return this.user;
   }
 
@@ -34,7 +32,7 @@ export class SimpleAuth {
   }
 
   static isAuthenticated() {
-    return !!this.user;
+    return this.user?.email === ALLOWED_EMAIL;
   }
 
   static async signInWithGoogle() {
@@ -49,60 +47,26 @@ export class SimpleAuth {
       if (error) throw error;
       return { success: true };
     } catch (error: any) {
-      return { success: false, error: error.message };
+      console.error('Login error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Login failed' 
+      };
     }
   }
 
   static async signOut() {
-    await supabase.auth.signOut();
-    this.user = null;
-    this.notifyCallbacks();
-    window.location.href = '/login';
-  }
-
-  static onAuthChange(callback: (user: any) => void) {
-    this.callbacks.push(callback);
-    
-    // If already initialized, call immediately
-    if (this.isReady) {
-      callback(this.user);
+    try {
+      await supabase.auth.signOut();
+      this.user = null;
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
     }
   }
+}
 
-  private static notifyCallbacks() {
-    this.callbacks.forEach(callback => callback(this.user));
-  }
-
-  // Listen for auth state changes
-  static {
-    if (typeof window !== 'undefined') {
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('🔄 Auth event:', event);
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          this.user = session.user;
-          console.log('✅ User signed in:', this.user.email);
-          
-          // Create profile if needed
-          await supabase.from('profiles').upsert({
-            id: this.user.id,
-            username: this.user.email?.split('@')[0],
-            full_name: this.user.user_metadata?.full_name || this.user.user_metadata?.name,
-            avatar_url: this.user.user_metadata?.avatar_url,
-            updated_at: new Date().toISOString()
-          });
-          
-          this.notifyCallbacks();
-          
-          // Redirect if on login page
-          if (window.location.pathname === '/login' || window.location.search.includes('auth=success')) {
-            window.location.href = '/';
-          }
-        } else if (event === 'SIGNED_OUT') {
-          this.user = null;
-          this.notifyCallbacks();
-        }
-      });
-    }
-  }
+// Automatically check authentication on script load
+if (typeof window !== 'undefined') {
+  SimpleAuth.initialize();
 }

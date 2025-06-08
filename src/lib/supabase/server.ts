@@ -10,68 +10,86 @@ export function createServerClient(cookies: AstroCookies) {
     {
       cookies: {
         get(name: string) {
-          const cookie = cookies.get(name);
-          
-          // Attempt to find cookie with variations
+          // Comprehensive cookie retrieval strategy
           const cookieVariations = [
             name,
             `${name}.0`,
             `${name}.1`,
             `${name}.2`,
             `${name}.3`,
-            `${name}.4`
+            `${name}.4`,
+            `sb-access-token`,
+            `sb-refresh-token`
           ];
 
           for (const variant of cookieVariations) {
             const variantCookie = cookies.get(variant);
             if (variantCookie?.value) {
-              console.log(`Found cookie variant: ${variant}`);
+              console.log(`🍪 Found session cookie: ${variant}`);
               return variantCookie.value;
             }
           }
 
-          console.log(`Getting cookie ${name}:`, cookie?.value ? 'exists' : 'not found');
-          return cookie?.value;
+          console.warn(`🚨 No session cookie found for: ${name}`);
+          return undefined;
         },
         set(name: string, value: string, options: any) {
-          const isDevelopment = import.meta.env.DEV;
+          const isDevelopment = import.meta.env.DEV || 
+                               process.env.VERCEL === '1';
           
           const cookieOptions = {
             ...options,
             sameSite: 'lax' as const,
             httpOnly: false,
             secure: !isDevelopment,
-            domain: isDevelopment ? 'localhost' : undefined,
+            domain: isDevelopment ? undefined : '.vercel.app',
             path: '/'
           };
           
-          // Set multiple cookie variants to ensure persistence
-          const variants = [name, `${name}.0`, `${name}.1`];
+          // Set multiple cookie variants for maximum compatibility
+          const variants = [
+            name, 
+            `${name}.0`, 
+            `${name}.1`, 
+            `sb-access-token`, 
+            `sb-refresh-token`
+          ];
+
           variants.forEach(variant => {
-            console.log(`Setting cookie ${variant}`);
-            cookies.set(variant, value, cookieOptions);
+            try {
+              console.log(`🍪 Setting cookie: ${variant}`);
+              cookies.set(variant, value, cookieOptions);
+            } catch (error) {
+              console.error(`Failed to set cookie ${variant}:`, error);
+            }
           });
         },
         remove(name: string, options: any) {
-          const isDevelopment = import.meta.env.DEV;
+          const isDevelopment = import.meta.env.DEV || 
+                               process.env.VERCEL === '1';
           
-          // Remove multiple cookie variants
           const variants = [
             name, 
             `${name}.0`, 
             `${name}.1`, 
             `${name}.2`, 
             `${name}.3`, 
-            `${name}.4`
+            `${name}.4`,
+            `sb-access-token`,
+            `sb-refresh-token`
           ];
 
           variants.forEach(variant => {
-            console.log(`Removing cookie ${variant}`);
-            cookies.delete(variant, {
-              ...options,
-              domain: isDevelopment ? 'localhost' : undefined,
-              path: '/'
-            });
+            try {
+              console.log(`🗑️ Removing cookie: ${variant}`);
+              cookies.delete(variant, {
+                ...options,
+                domain: isDevelopment ? undefined : '.vercel.app',
+                path: '/'
+              });
+            } catch (error) {
+              console.error(`Failed to remove cookie ${variant}:`, error);
+            }
           });
         },
       },
