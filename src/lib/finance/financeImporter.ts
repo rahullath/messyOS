@@ -33,6 +33,28 @@ interface BankTransaction {
 }
 
 export class EnhancedFinanceImporter {
+  // This function is used by src/pages/api/import/finance.ts
+  // It's a wrapper to use the importer's methods
+  async importFinanceData(csvFiles: { bank?: string; crypto?: string; expenses?: string }, userId: string, cookies: any) {
+    // For simplicity, this example directly calls the parsing methods.
+    // In a real scenario, you'd likely store these in the DB.
+    if (csvFiles.bank) {
+      const bankTransactions = this.parseBankTransactions(csvFiles.bank);
+      console.log(`Parsed ${bankTransactions.length} bank transactions.`);
+      // Here you would typically save to Supabase
+    }
+    if (csvFiles.crypto) {
+      const cryptoHoldings = this.parseCryptoHoldings(csvFiles.crypto);
+      console.log(`Parsed ${cryptoHoldings.length} crypto holdings.`);
+      // Here you would typically save to Supabase
+    }
+    if (csvFiles.expenses) {
+      const manualExpenses = this.parseManualExpenses(csvFiles.expenses);
+      console.log(`Parsed ${manualExpenses.length} manual expenses.`);
+      // Here you would typically save to Supabase
+    }
+    return { success: true, message: 'Files processed successfully (data not saved in this example)' };
+  }
   
   // Enhanced categorization system based on your actual expenses
   private categorizeExpense(description: string, amount: number, vendor?: string): { category: string; subcategory?: string } {

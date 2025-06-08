@@ -1,6 +1,6 @@
 // src/pages/api/import/finance.ts - UPDATED
 import type { APIRoute } from 'astro';
-import { importFinanceData } from '../../../lib/finance/financeImporter';
+import { EnhancedFinanceImporter } from '../../../lib/finance/financeImporter';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
@@ -45,7 +45,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       expensesSize: expensesFile?.size || 0
     });
     
-    const result = await importFinanceData(csvFiles, userId, cookies);
+    const importer = new EnhancedFinanceImporter();
+    const result = await importer.importFinanceData(csvFiles, userId, cookies);
     
     return new Response(JSON.stringify(result), {
       headers: { 'Content-Type': 'application/json' }
