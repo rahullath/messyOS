@@ -1,4 +1,4 @@
-// src/pages/api/import/finance.ts
+// src/pages/api/import/finance.ts - UPDATED
 import type { APIRoute } from 'astro';
 import { importFinanceData } from '../../../lib/finance/financeImporter';
 
@@ -6,84 +6,57 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const formData = await request.formData();
     const userId = formData.get('userId') as string;
-    const expensesFile = formData.get('expenses') as File | null;
-    const cryptoFile = formData.get('crypto') as File | null;
-    const bankStatementFile = formData.get('bankStatement') as File | null;
+    const bankFile = formData.get('bank') as File;
+    const cryptoFile = formData.get('crypto') as File;
+    const expensesFile = formData.get('expenses') as File;
     
     if (!userId) {
       return new Response(JSON.stringify({ 
         error: 'Missing user ID' 
-      }), { 
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      }), { status: 400 });
     }
     
-    if (!expensesFile && !cryptoFile && !bankStatementFile) {
+    if (!bankFile && !cryptoFile && !expensesFile) {
       return new Response(JSON.stringify({ 
-        error: 'At least one file is required',
-        required: 'expenses, crypto, or bankStatement file'
-      }), { 
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+        error: 'At least one file is required' 
+      }), { status: 400 });
     }
     
-    // Read file contents
-    const files: any = {};
+    const csvFiles: { bank?: string; crypto?: string; expenses?: string } = {};
     
-    if (expensesFile) {
-      files.expenses = await expensesFile.text();
+    if (bankFile && bankFile.size > 0) {
+      csvFiles.bank = await bankFile.text();
     }
     
-    if (cryptoFile) {
-      files.crypto = await cryptoFile.text();
+    if (cryptoFile && cryptoFile.size > 0) {
+      csvFiles.crypto = await cryptoFile.text();
     }
     
-    if (bankStatementFile) {
-      files.bankStatement = await bankStatementFile.text();
+    if (expensesFile && expensesFile.size > 0) {
+      csvFiles.expenses = await expensesFile.text();
     }
     
-    // Validate file formats
-    if (files.expenses && !files.expenses.includes('zepto\|swiggy\|blinkit\|supertails')) {
-      // Basic validation - check for common expense keywords
-      if (!files.expenses.toLowerCase().includes('total') && !files.expenses.toLowerCase().includes('order')) {
-        return new Response(JSON.stringify({ 
-          error: 'Invalid expense file format. Expected manual expense tracking format with totals and orders.' 
-        }), { status: 400 });
-      }
-    }
+    console.log('📊 Files received:', {
+      bank: !!csvFiles.bank,
+      crypto: !!csvFiles.crypto,
+      expenses: !!csvFiles.expenses,
+      bankSize: bankFile?.size || 0,
+      cryptoSize: cryptoFile?.size || 0,
+      expensesSize: expensesFile?.size || 0
+    });
     
-    if (files.crypto && !files.crypto.includes('Trust Wallet\|Total Balance')) {
-      if (!files.crypto.toLowerCase().includes('price:') && !files.crypto.toLowerCase().includes('quantity:')) {
-        return new Response(JSON.stringify({ 
-          error: 'Invalid crypto file format. Expected Trust Wallet export format.' 
-        }), { status: 400 });
-      }
-    }
-    
-    if (files.bankStatement && !files.bankStatement.includes('Date\|Particulars')) {
-      if (!files.bankStatement.toLowerCase().includes('withdrawals') && !files.bankStatement.toLowerCase().includes('deposits')) {
-        return new Response(JSON.stringify({ 
-          error: 'Invalid bank statement format. Expected CSV with Date, Particulars, Withdrawals, Deposits columns.' 
-        }), { status: 400 });
-      }
-    }
-    
-    const result = await importFinanceData(files, userId, cookies);
+    const result = await importFinanceData(csvFiles, userId, cookies);
     
     return new Response(JSON.stringify(result), {
       headers: { 'Content-Type': 'application/json' }
     });
     
   } catch (error: any) {
-    console.error('Finance import API error:', error);
+    console.error('❌ Finance API error:', error);
     return new Response(JSON.stringify({ 
-      error: 'Finance import failed', 
+      success: false,
+      error: 'Import failed', 
       details: error.message 
-    }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    }), { status: 500 });
   }
 };

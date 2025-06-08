@@ -1,455 +1,668 @@
-// src/lib/finance/financeImporter.ts
+// src/lib/finance/financeImporter.ts - FIXED VERSION
 import { createServerClient } from '../supabase/server';
 import type { AstroCookies } from 'astro';
 
 export interface FinanceData {
-  expenses: Array<{
-    date: string;
-    amount: number;
-    description: string;
-    category: string;
-    vendor: string;
-    type: 'expense' | 'income';
-  }>;
-  cryptoHoldings: Array<{
-    symbol: string;
-    quantity: number;
-    currentPrice?: number;
-    value: number;
-    chain: string;
-    change24h?: number;
-  }>;
-  bankTransactions: Array<{
-    date: string;
-    description: string;
-    amount: number;
-    type: 'debit' | 'credit';
-    category: string;
-    balance: number;
-  }>;
+  expenses: any[];
+  crypto: any[];
+  bank: any[];
 }
 
 export async function importFinanceData(
-  files: { expenses?: string; crypto?: string; bankStatement?: string },
+  files: { bank?: string; crypto?: string; expenses?: string },
   userId: string,
   cookies: AstroCookies
-): Promise<{ success: boolean; message: string; imported: { expenses: number; crypto: number; bank: number } }> {
+): Promise<{ success: boolean; message: string; data?: any }> {
   
-  console.log('💰 Starting finance data import for user:', userId);
+  console.log('🏦 Starting finance import for user:', userId);
   
   const supabase = createServerClient(cookies);
+  const financeData: FinanceData = { expenses: [], crypto: [], bank: [] };
   
   try {
-    let expenseData: FinanceData['expenses'] = [];
-    let cryptoData: FinanceData['cryptoHoldings'] = [];
-    let bankData: FinanceData['bankTransactions'] = [];
-    
-    // Parse expenses if provided
-    if (files.expenses) {
-      expenseData = parseExpenseData(files.expenses);
-    }
-    
-    // Parse crypto holdings if provided  
-    if (files.crypto) {
-      cryptoData = parseCryptoHoldings(files.crypto);
-    }
-    
     // Parse bank statement if provided
-    if (files.bankStatement) {
-      bankData = parseBankStatement(files.bankStatement);
+    if (files.bank) {
+      console.log('🏦 Parsing bank statement...');
+      const bankTransactions = parseBankCSV(files.bank);
+      console.log(`🏦 Total bank transactions: ${bankTransactions.length}`);
+      financeData.bank = bankTransactions;
+      
+      // Convert bank transactions to metrics
+      const bankMetrics = bankTransactions
+        .filter(transaction => isValidTransaction(transaction)) // Filter out invalid transactions
+        .map(transaction => {
+          const parsedDate = parseFlexibleDate(transaction.date);
+          if (!parsedDate) {
+            console.warn(`⚠️ Invalid date found: ${transaction.date}`);
+            return null;
+          }
+          
+          return {
+            user_id: userId,
+            type: transaction.amount > 0 ? 'income' : 'expense',
+            value: Math.abs(transaction.amount),
+            unit: 'INR',
+            metadata: {
+              description: transaction.description,
+              category: categorizeTransaction(transaction.description),
+              originalAmount: transaction.amount,
+              transactionType: transaction.amount > 0 ? 'credit' : 'debit',
+              reference: transaction.reference || null,
+              balance: transaction.balance || null
+            },
+            recorded_at: parsedDate.toISOString()
+          };
+        })
+        .filter(metric => metric !== null); // Remove null entries
+      
+      financeData.expenses = bankMetrics;
+      
+      console.log(`💰 Processed ${bankMetrics.length} valid bank metrics`);
+      
+      if (bankMetrics.length > 0) {
+        const { error: bankError } = await supabase
+          .from('metrics')
+          .insert(bankMetrics);
+          
+        if (bankError) {
+          console.error('❌ Bank metrics insert error:', bankError);
+          throw bankError;
+        }
+      }
     }
     
-    console.log('📊 Parsed finance data:', {
-      expenses: expenseData.length,
-      crypto: cryptoData.length,
-      bank: bankData.length
-    });
-    
-    // Clear existing finance metrics
-    await supabase
-      .from('metrics')
-      .delete()
-      .eq('user_id', userId)
-      .in('type', [
-        'expense', 'income', 'crypto_holding', 'bank_transaction',
-        'monthly_budget', 'cash_flow', 'net_worth'
-      ]);
-    
-    // Convert to metrics format
-    const allMetrics = [
-      // Expense metrics
-      ...expenseData.map(expense => ({
+    // Parse crypto holdings if provided
+    if (files.crypto) {
+      console.log('₿ Parsing crypto holdings...');
+      const cryptoHoldings = parseCryptoHoldings(files.crypto);
+      console.log(`₿ Total crypto holdings: ${cryptoHoldings.length}`);
+      financeData.crypto = cryptoHoldings;
+      
+      // Convert crypto to metrics
+      const cryptoMetrics = cryptoHoldings.map(holding => ({
         user_id: userId,
-        type: expense.type as string,
+        type: 'crypto_value',
+        value: holding.currentValue,
+        unit: 'USD',
+        metadata: {
+          symbol: holding.symbol,
+          quantity: holding.quantity,
+          price: holding.price,
+          change: holding.change,
+          network: holding.network
+        },
+        recorded_at: new Date().toISOString()
+      }));
+      
+      if (cryptoMetrics.length > 0) {
+        const { error: cryptoError } = await supabase
+          .from('metrics')
+          .insert(cryptoMetrics);
+          
+        if (cryptoError) {
+          console.error('❌ Crypto metrics insert error:', cryptoError);
+          throw cryptoError;
+        }
+      }
+    }
+    
+    // Parse manual expenses if provided (from expenses.txt)
+    if (files.expenses) {
+      console.log('🛒 Parsing manual expenses...');
+      const expenseData = parseManualExpenses(files.expenses);
+      console.log(`🛒 Total manual expenses: ${expenseData.length}`);
+      
+      // Convert to metrics
+      const expenseMetrics = expenseData.map(expense => ({
+        user_id: userId,
+        type: 'expense',
         value: expense.amount,
         unit: 'INR',
         metadata: {
           description: expense.description,
           category: expense.category,
-          vendor: expense.vendor,
-          originalAmount: expense.amount
+          source: expense.source,
+          items: expense.items || null
         },
-        recorded_at: new Date(expense.date).toISOString()
-      })),
+        recorded_at: expense.date.toISOString()
+      }));
       
-      // Crypto holdings
-      ...cryptoData.map(holding => ({
+      financeData.expenses = [...financeData.expenses, ...expenseMetrics];
+      
+      if (expenseMetrics.length > 0) {
+        const { error: expenseError } = await supabase
+          .from('metrics')
+          .insert(expenseMetrics);
+          
+        if (expenseError) {
+          console.error('❌ Manual expense metrics insert error:', expenseError);
+          throw expenseError;
+        }
+      }
+    }
+    if (files.subscriptions) {
+      console.log('📱 Parsing subscriptions...');
+      const subscriptions = parseSubscriptions(files.subscriptions);
+      
+      // Convert subscriptions to metrics
+      const subscriptionMetrics = subscriptions.map(sub => ({
         user_id: userId,
-        type: 'crypto_holding',
-        value: holding.value,
-        unit: 'USD',
+        type: 'subscription',
+        value: sub.cost,
+        unit: sub.currency,
         metadata: {
-          symbol: holding.symbol,
-          quantity: holding.quantity,
-          currentPrice: holding.currentPrice,
-          chain: holding.chain,
-          change24h: holding.change24h
+          service: sub.service,
+          plan: sub.plan,
+          renewalDate: sub.renewalDate,
+          status: sub.status
         },
         recorded_at: new Date().toISOString()
-      })),
+      }));
       
-      // Bank transactions
-      ...bankData.map(transaction => ({
-        user_id: userId,
-        type: 'bank_transaction',
-        value: transaction.amount,
-        unit: 'INR',
-        metadata: {
-          description: transaction.description,
-          category: transaction.category,
-          transactionType: transaction.type,
-          balance: transaction.balance
-        },
-        recorded_at: new Date(transaction.date).toISOString()
-      }))
-    ];
-    
-    // Batch insert all metrics
-    console.log(`📥 Inserting ${allMetrics.length} finance metrics...`);
-    const { error } = await supabase
-      .from('metrics')
-      .insert(allMetrics);
-    
-    if (error) {
-      throw new Error(`Database insert failed: ${error.message}`);
+      if (subscriptionMetrics.length > 0) {
+        const { error: subError } = await supabase
+          .from('metrics')
+          .insert(subscriptionMetrics);
+          
+        if (subError) {
+          console.error('❌ Subscription metrics insert error:', subError);
+          throw subError;
+        }
+      }
     }
     
-    // Calculate financial insights
-    await calculateFinancialInsights(userId, cookies);
+    console.log('📊 Parsed finance data:', {
+      expenses: financeData.expenses.length,
+      crypto: financeData.crypto.length,
+      bank: financeData.bank.length
+    });
     
     return {
       success: true,
-      message: `Successfully imported ${expenseData.length} expenses, ${cryptoData.length} crypto holdings, and ${bankData.length} bank transactions`,
-      imported: {
-        expenses: expenseData.length,
-        crypto: cryptoData.length,
-        bank: bankData.length
-      }
+      message: `Successfully imported finance data: ${financeData.expenses.length} expenses, ${financeData.crypto.length} crypto holdings`,
+      data: financeData
     };
     
   } catch (error: any) {
     console.error('❌ Finance import error:', error);
     return {
       success: false,
-      message: `Finance import failed: ${error.message}`,
-      imported: { expenses: 0, crypto: 0, bank: 0 }
+      message: `Finance import failed: ${error.message}`
     };
   }
 }
 
-// Parse your manual expense data
-function parseExpenseData(content: string): FinanceData['expenses'] {
-  const data: FinanceData['expenses'] = [];
-  const lines = content.split('\n');
-  
-  let currentDate = '';
-  let currentVendor = '';
-  
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    
-    // Parse Zepto orders: "2/4 - oil+ocean peach drink - 221 total"
-    const zeptoMatch = line.match(/(\d{1,2}\/\d{1,2})\s*-\s*(.+?)\s*-\s*(\d+)\s*total/);
-    if (zeptoMatch) {
-      const [, dateStr, description, amount] = zeptoMatch;
-      const date = parseDate(dateStr, '2025'); // Assuming 2025
-      
-      data.push({
-        date,
-        amount: parseInt(amount),
-        description: description.trim(),
-        category: categorizeExpense(description, 'Zepto'),
-        vendor: 'Zepto',
-        type: 'expense'
-      });
-      continue;
-    }
-    
-    // Parse Swiggy orders with ORDER # pattern
-    const swiggyMatch = line.match(/ORDER #(\d+).*(\d{1,2}\/\d{1,2}\/\d{4})/);
-    if (swiggyMatch) {
-      currentVendor = 'Swiggy';
-      const [, orderId, dateStr] = swiggyMatch;
-      currentDate = convertDate(dateStr);
-      continue;
-    }
-    
-    // Parse "Total Paid:" amounts
-    const totalMatch = line.match(/Total Paid:\s*(\d+)/);
-    if (totalMatch && currentDate && currentVendor) {
-      const amount = parseInt(totalMatch[1]);
-      data.push({
-        date: currentDate,
-        amount,
-        description: `${currentVendor} Food Order`,
-        category: 'Food Delivery',
-        vendor: currentVendor,
-        type: 'expense'
-      });
-      continue;
-    }
-    
-    // Parse Instamart orders: "17/5 - Pet Poop Bags 299, Bread 53..."
-    const instamartMatch = line.match(/(\d{1,2}\/\d{1,2})\s*-\s*(.+?);\s*Total\s*(\d+)/);
-    if (instamartMatch) {
-      const [, dateStr, itemsStr, total] = instamartMatch;
-      const date = parseDate(dateStr, '2025');
-      
-      data.push({
-        date,
-        amount: parseInt(total),
-        description: `Instamart: ${itemsStr.substring(0, 50)}...`,
-        category: categorizeInstamart(itemsStr),
-        vendor: 'Swiggy Instamart',
-        type: 'expense'
-      });
-      continue;
-    }
-    
-    // Parse Supertails orders: "13/4 - Carniwel Dry Food 2kgs - 890"
-    const supertailsMatch = line.match(/(\d{1,2}\/\d{1,2})\s*-\s*(.+?)\s*-\s*(\d+)/);
-    if (supertailsMatch && line.includes('Carniwel\|Royal Canin\|Duck\|Anxiety')) {
-      const [, dateStr, description, amount] = supertailsMatch;
-      const date = parseDate(dateStr, '2025');
-      
-      data.push({
-        date,
-        amount: parseInt(amount),
-        description: description.trim(),
-        category: 'Pet Care',
-        vendor: 'Supertails',
-        type: 'expense'
-      });
-      continue;
-    }
+// ROBUST DATE PARSER - Handles multiple Indian date formats
+function parseFlexibleDate(dateStr: string): Date | null {
+  if (!dateStr || typeof dateStr !== 'string') {
+    return null;
   }
   
-  console.log('💳 Expense data sample:', data.slice(0, 3));
-  console.log('💳 Total expense entries:', data.length);
-  return data;
-}
-
-// Parse crypto holdings from Trust Wallet format
-function parseCryptoHoldings(content: string): FinanceData['cryptoHoldings'] {
-  const data: FinanceData['cryptoHoldings'] = [];
-  const lines = content.split('\n');
+  const cleanDate = dateStr.trim();
   
-  for (const line of lines) {
-    // Parse crypto entry: "1. USDC (Base) Price: $0.99 | Change: -0.0% Quantity: 62.192612 | Value: $62.18"
-    const cryptoMatch = line.match(/(\d+)\.\s*(\w+)\s*\(([^)]+)\).*?Price:\s*\$?([\d.]+).*?Change:\s*([+-]?[\d.]+)%.*?Quantity:\s*([\d,.]+).*?Value:\s*\$?([\d.]+)/);
-    
-    if (cryptoMatch) {
-      const [, index, symbol, chain, price, change, quantity, value] = cryptoMatch;
-      
-      data.push({
-        symbol: symbol.trim(),
-        quantity: parseFloat(quantity.replace(/,/g, '')),
-        currentPrice: parseFloat(price),
-        value: parseFloat(value),
-        chain: chain.trim(),
-        change24h: parseFloat(change)
-      });
-    }
-  }
-  
-  console.log('₿ Crypto holdings sample:', data.slice(0, 3));
-  console.log('₿ Total crypto holdings:', data.length);
-  return data;
-}
-
-// Parse bank statement CSV
-function parseBankStatement(content: string): FinanceData['bankTransactions'] {
-  const data: FinanceData['bankTransactions'] = [];
-  const lines = content.split('\n').slice(1); // Skip header
-  
-  for (const line of lines) {
-    if (!line.trim()) continue;
-    
-    const parts = line.split(',');
-    if (parts.length < 8) continue;
-    
-    try {
-      const date = parts[1]?.trim();
-      const description = parts[3]?.trim();
-      const withdrawals = parseFloat(parts[5]?.trim() || '0');
-      const deposits = parseFloat(parts[6]?.trim() || '0');
-      const balance = parseFloat(parts[7]?.trim() || '0');
-      
-      if (date && description) {
-        const amount = withdrawals > 0 ? -withdrawals : deposits;
-        const type = withdrawals > 0 ? 'debit' : 'credit';
-        
-        data.push({
-          date: convertBankDate(date),
-          description: description,
-          amount: Math.abs(amount),
-          type,
-          category: categorizeBankTransaction(description),
-          balance
-        });
-      }
-    } catch (error) {
-      console.warn('Failed to parse bank line:', line);
-    }
-  }
-  
-  console.log('🏦 Bank transaction sample:', data.slice(0, 3));
-  console.log('🏦 Total bank transactions:', data.length);
-  return data;
-}
-
-// Smart categorization functions
-function categorizeExpense(description: string, vendor: string): string {
-  const desc = description.toLowerCase();
-  
-  if (vendor === 'Zepto' || vendor === 'Swiggy Instamart' || vendor === 'Blinkit') {
-    if (desc.includes('milk') || desc.includes('bread') || desc.includes('eggs')) return 'Groceries';
-    if (desc.includes('chicken') || desc.includes('paneer') || desc.includes('meat')) return 'Protein';
-    if (desc.includes('drink') || desc.includes('energy') || desc.includes('dew')) return 'Beverages';
-    if (desc.includes('cat') || desc.includes('litter') || desc.includes('pet')) return 'Pet Care';
-    if (desc.includes('shampoo') || desc.includes('toothpaste') || desc.includes('soap')) return 'Personal Care';
-    return 'Groceries';
-  }
-  
-  if (vendor === 'Swiggy' || vendor === 'Zomato') return 'Food Delivery';
-  if (vendor === 'Supertails') return 'Pet Care';
-  
-  return 'Other';
-}
-
-function categorizeInstamart(itemsStr: string): string {
-  const items = itemsStr.toLowerCase();
-  if (items.includes('cat') || items.includes('litter') || items.includes('pet')) return 'Pet Care';
-  if (items.includes('protein') || items.includes('workout') || items.includes('creatine')) return 'Fitness';
-  if (items.includes('chicken') || items.includes('eggs') || items.includes('paneer')) return 'Protein';
-  if (items.includes('milk') || items.includes('bread') || items.includes('curd')) return 'Groceries';
-  return 'Groceries';
-}
-
-function categorizeBankTransaction(description: string): string {
-  const desc = description.toLowerCase();
-  
-  if (desc.includes('spotify')) return 'Subscriptions';
-  if (desc.includes('blinkit') || desc.includes('zepto') || desc.includes('instamart')) return 'Groceries';
-  if (desc.includes('transfer to pot')) return 'Savings';
-  if (desc.includes('upi in')) return 'Income';
-  if (desc.includes('shettyarjun29')) return 'Rent';
-  if (desc.includes('interest')) return 'Interest';
-  
-  return 'Other';
-}
-
-// Date parsing utilities
-function parseDate(dateStr: string, year: string): string {
-  const [day, month] = dateStr.split('/');
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-}
-
-function convertDate(dateStr: string): string {
-  // Convert "Sun, May 11, 2025" to ISO
-  const date = new Date(dateStr);
-  return date.toISOString().split('T')[0];
-}
-
-function convertBankDate(dateStr: string): string {
-  // Convert "21-03-2025" to ISO
-  const [day, month, year] = dateStr.split('-');
-  return `${year}-${month}-${day}`;
-}
-
-// Calculate financial insights
-async function calculateFinancialInsights(userId: string, cookies: AstroCookies) {
-  console.log('💰 Calculating financial insights...');
-  
-  const supabase = createServerClient(cookies);
-  
-  // Get recent financial data
-  const { data: financeMetrics } = await supabase
-    .from('metrics')
-    .select('type, value, recorded_at, metadata')
-    .eq('user_id', userId)
-    .in('type', ['expense', 'income', 'crypto_holding', 'bank_transaction'])
-    .order('recorded_at', { ascending: false })
-    .limit(500);
-  
-  if (!financeMetrics || financeMetrics.length === 0) return;
-  
-  // Calculate key metrics
-  const expenses = financeMetrics.filter(m => m.type === 'expense');
-  const cryptoHoldings = financeMetrics.filter(m => m.type === 'crypto_holding');
-  
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.value, 0);
-  const totalCrypto = cryptoHoldings.reduce((sum, c) => sum + c.value, 0);
-  const monthlyExpenses = calculateMonthlyExpenses(expenses);
-  
-  // Store calculated insights
-  const insights = [
-    {
-      user_id: userId,
-      type: 'monthly_expenses',
-      value: monthlyExpenses,
-      unit: 'INR',
-      metadata: {
-        totalExpenses,
-        expenseCount: expenses.length,
-        avgExpense: totalExpenses / expenses.length,
-        calculatedAt: new Date().toISOString()
-      },
-      recorded_at: new Date().toISOString()
-    },
-    {
-      user_id: userId,
-      type: 'crypto_portfolio_value',
-      value: totalCrypto,
-      unit: 'USD',
-      metadata: {
-        holdings: cryptoHoldings.length,
-        lastUpdated: new Date().toISOString()
-      },
-      recorded_at: new Date().toISOString()
-    }
+  // Try multiple date formats common in Indian banking
+  const formats = [
+    // DD/MM/YYYY
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
+    // DD-MM-YYYY
+    /^(\d{1,2})-(\d{1,2})-(\d{4})$/,
+    // YYYY-MM-DD (ISO format)
+    /^(\d{4})-(\d{1,2})-(\d{1,2})$/,
+    // DD.MM.YYYY
+    /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/,
+    // MM/DD/YYYY (US format)
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
   ];
   
-  await supabase.from('metrics').insert(insights);
-  
-  console.log('✅ Financial insights calculated:', {
-    monthlyExpenses: `₹${monthlyExpenses.toLocaleString()}`,
-    totalCrypto: `$${totalCrypto.toFixed(2)}`,
-    expenseCount: expenses.length
-  });
-}
-
-function calculateMonthlyExpenses(expenses: any[]): number {
-  if (expenses.length === 0) return 0;
-  
-  // Group by month and calculate average
-  const monthlyTotals = new Map<string, number>();
-  
-  for (const expense of expenses) {
-    const month = expense.recorded_at.substring(0, 7); // YYYY-MM
-    monthlyTotals.set(month, (monthlyTotals.get(month) || 0) + expense.value);
+  for (const format of formats) {
+    const match = cleanDate.match(format);
+    if (match) {
+      let day: number, month: number, year: number;
+      
+      if (format.source.startsWith('^(\\d{4})')) {
+        // YYYY-MM-DD format
+        year = parseInt(match[1]);
+        month = parseInt(match[2]);
+        day = parseInt(match[3]);
+      } else {
+        // DD/MM/YYYY or DD-MM-YYYY format (most common in India)
+        day = parseInt(match[1]);
+        month = parseInt(match[2]);
+        year = parseInt(match[3]);
+      }
+      
+      // Validate date components
+      if (year >= 1900 && year <= 2030 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+        const date = new Date(year, month - 1, day); // month is 0-indexed in JS
+        
+        // Verify the date is valid (handles leap years, month lengths, etc.)
+        if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+          return date;
+        }
+      }
+    }
   }
   
-  const months = Array.from(monthlyTotals.values());
-  return months.reduce((sum, total) => sum + total, 0) / months.length;
+  // Try native Date parsing as fallback
+  const fallbackDate = new Date(cleanDate);
+  if (!isNaN(fallbackDate.getTime())) {
+    return fallbackDate;
+  }
+  
+  console.warn(`⚠️ Unable to parse date: "${dateStr}"`);
+  return null;
+}
+
+// Validate transaction has required fields
+function isValidTransaction(transaction: any): boolean {
+  return transaction && 
+         transaction.date && 
+         typeof transaction.amount === 'number' && 
+         !isNaN(transaction.amount) &&
+         transaction.description;
+}
+
+// Parse Jupiter Bank CSV format - FIXED for multi-line quoted fields
+function parseBankCSV(csvContent: string) {
+  console.log('🏦 Starting CSV parse...');
+  
+  // First, let's properly parse the CSV with quoted fields that may span multiple lines
+  const transactions = [];
+  const lines = csvContent.split('\n');
+  
+  // Find the header line (first line with actual column names)
+  let headerIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes('Date,Value Date,Particulars')) {
+      headerIndex = i;
+      break;
+    }
+  }
+  
+  if (headerIndex === -1) {
+    console.warn('⚠️ No header found in CSV');
+    return [];
+  }
+  
+  console.log(`🏦 Found header at line ${headerIndex + 1}`);
+  
+  // Skip header and asterisk lines, find start of data
+  let dataStart = headerIndex + 1;
+  while (dataStart < lines.length && (lines[dataStart].includes('*') || !lines[dataStart].trim())) {
+    dataStart++;
+  }
+  
+  // Parse CSV properly handling quoted multi-line fields
+  let currentRecord = '';
+  let inQuotedField = false;
+  
+  for (let i = dataStart; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Skip empty lines and end markers
+    if (!line.trim() || line.includes('GRAND TOTAL') || line.includes('****END')) {
+      break;
+    }
+    
+    // Handle quoted fields
+    currentRecord += line;
+    
+    // Count quotes to determine if we're inside a quoted field
+    const quoteCount = (line.match(/"/g) || []).length;
+    if (quoteCount % 2 === 1) {
+      inQuotedField = !inQuotedField;
+    }
+    
+    // If we're not in a quoted field, this record is complete
+    if (!inQuotedField) {
+      const transaction = parseTransactionRecord(currentRecord);
+      if (transaction) {
+        transactions.push(transaction);
+        console.log(`🏦 Parsed: ${transaction.date} | ${transaction.drCr} ₹${Math.abs(transaction.amount)} | ${transaction.description.substring(0, 30)}...`);
+      }
+      currentRecord = '';
+    } else {
+      // Add a space to continue the record on next line
+      currentRecord += ' ';
+    }
+  }
+  
+  console.log(`🏦 Successfully parsed ${transactions.length} transactions`);
+  return transactions;
+}
+
+// Parse a complete transaction record
+function parseTransactionRecord(record: string) {
+  // Clean up the record
+  const cleanRecord = record.replace(/\s+/g, ' ').trim();
+  
+  // Split by commas, but handle quoted fields
+  const fields = parseCSVRecord(cleanRecord);
+  
+  if (fields.length < 8) {
+    console.warn(`⚠️ Insufficient fields in record: ${cleanRecord.substring(0, 50)}...`);
+    return null;
+  }
+  
+  try {
+    const date = fields[0]?.trim();
+    const valueDate = fields[1]?.trim();
+    const particulars = fields[2]?.trim().replace(/"/g, ''); // Remove quotes
+    const tranType = fields[3]?.trim();
+    const chequeDetails = fields[4]?.trim();
+    const withdrawals = fields[5]?.trim();
+    const deposits = fields[6]?.trim();
+    const balance = fields[7]?.trim();
+    const drCr = fields[8]?.trim();
+    
+    // Skip opening balance entries
+    if (particulars.toLowerCase().includes('opening balance')) {
+      return null;
+    }
+    
+    // Parse amount
+    let amount = 0;
+    if (withdrawals && withdrawals !== '') {
+      amount = -parseFloat(withdrawals); // Withdrawal is negative
+    } else if (deposits && deposits !== '') {
+      amount = parseFloat(deposits); // Deposit is positive
+    }
+    
+    // Parse balance
+    const balanceValue = balance ? parseFloat(balance) : 0;
+    
+    // Validate date
+    const parsedDate = parseFlexibleDate(date);
+    if (!parsedDate) {
+      console.warn(`⚠️ Invalid date: ${date}`);
+      return null;
+    }
+    
+    // Skip if no amount
+    if (amount === 0) {
+      return null;
+    }
+    
+    return {
+      date: date,
+      valueDate: valueDate,
+      description: particulars,
+      amount: amount,
+      balance: balanceValue,
+      type: tranType,
+      drCr: drCr,
+      chequeDetails: chequeDetails
+    };
+    
+  } catch (error) {
+    console.warn(`⚠️ Error parsing record: ${error.message}`);
+    return null;
+  }
+}
+
+// Parse CSV record handling quoted fields properly
+function parseCSVRecord(record: string): string[] {
+  const fields = [];
+  let currentField = '';
+  let inQuotes = false;
+  let i = 0;
+  
+  while (i < record.length) {
+    const char = record[i];
+    
+    if (char === '"') {
+      // Handle escaped quotes
+      if (i + 1 < record.length && record[i + 1] === '"') {
+        currentField += '"';
+        i += 2;
+        continue;
+      }
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      fields.push(currentField);
+      currentField = '';
+    } else {
+      currentField += char;
+    }
+    i++;
+  }
+  
+  // Add the last field
+  fields.push(currentField);
+  
+  return fields;
+}
+
+// Parse CSV line handling quoted values
+function parseCSVLine(line: string): string[] {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current);
+  return result;
+}
+
+// Parse crypto holdings from text format - FIXED for your exact format
+function parseCryptoHoldings(textContent: string) {
+  const lines = textContent.split('\n');
+  const holdings = [];
+  
+  console.log('₿ Crypto text content preview:', textContent.substring(0, 200));
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Skip empty lines and headers
+    if (!line || line.includes('Total Balance') || line.includes('Crypto Holdings')) {
+      continue;
+    }
+    
+    // Parse format: "1. USDC (Base)"
+    const symbolMatch = line.match(/^\d+\.\s*(\w+)\s*\(([^)]+)\)/);
+    if (symbolMatch) {
+      const symbol = symbolMatch[1];
+      const network = symbolMatch[2];
+      
+      // Look for the next lines with Price, Quantity, Value
+      let priceValue = null, changeValue = null, quantityValue = null, dollarValue = null;
+      
+      // Check next few lines for data
+      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+        const dataLine = lines[j].trim();
+        
+        // Parse "Price: $0.99 | Change: -0.0%"
+        const priceMatch = dataLine.match(/Price:\s*\$?([\d,]+\.?\d*)\s*\|\s*Change:\s*([-+]?[\d.]+)%/);
+        if (priceMatch) {
+          priceValue = parseFloat(priceMatch[1].replace(/,/g, ''));
+          changeValue = parseFloat(priceMatch[2]);
+        }
+        
+        // Parse "Quantity: 62.192612 | Value: $62.18"
+        const quantityMatch = dataLine.match(/Quantity:\s*([\d,]+\.?\d*)\s*\|\s*Value:\s*\$?([\d,]+\.?\d*)/);
+        if (quantityMatch) {
+          quantityValue = parseFloat(quantityMatch[1].replace(/,/g, ''));
+          dollarValue = parseFloat(quantityMatch[2].replace(/,/g, ''));
+        }
+      }
+      
+      // If we found all required data, add to holdings
+      if (priceValue !== null && quantityValue !== null && dollarValue !== null) {
+        holdings.push({
+          symbol: symbol.toUpperCase(),
+          network: network,
+          price: priceValue,
+          quantity: quantityValue,
+          currentValue: dollarValue,
+          change: changeValue || 0
+        });
+        
+        console.log(`₿ Parsed: ${symbol} - ${dollarValue} (${quantityValue} @ ${priceValue})`);
+      }
+    }
+  }
+  
+  console.log(`₿ Total holdings parsed: ${holdings.length}`);
+  return holdings;
+}
+
+// Parse manual expenses from your expenses.txt format
+function parseManualExpenses(textContent: string) {
+  const expenses = [];
+  const lines = textContent.split('\n');
+  
+  let currentDate = null;
+  let currentSource = null;
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    // Parse date entries like "2/4 - oil+ocean peach drink - 221 total"
+    const dateMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\s*-\s*(.+?)\s*-\s*(\d+)\s*total/i);
+    if (dateMatch) {
+      const [, day, month, description, amount] = dateMatch;
+      currentDate = new Date(2025, parseInt(month) - 1, parseInt(day)); // Assuming 2025
+      
+      expenses.push({
+        date: currentDate,
+        description: description.trim(),
+        amount: parseInt(amount),
+        category: categorizeExpense(description),
+        source: currentSource || 'Manual'
+      });
+      continue;
+    }
+    
+    // Parse source headers like "april - zepto -" or "Swiggy Food + Instamart"
+    if (trimmed.toLowerCase().includes('zepto') || 
+        trimmed.toLowerCase().includes('swiggy') || 
+        trimmed.toLowerCase().includes('blinkit') ||
+        trimmed.toLowerCase().includes('zomato') ||
+        trimmed.toLowerCase().includes('supertails')) {
+      
+      if (trimmed.toLowerCase().includes('zepto')) currentSource = 'Zepto';
+      else if (trimmed.toLowerCase().includes('swiggy')) currentSource = 'Swiggy';
+      else if (trimmed.toLowerCase().includes('blinkit')) currentSource = 'Blinkit';
+      else if (trimmed.toLowerCase().includes('zomato')) currentSource = 'Zomato';
+      else if (trimmed.toLowerCase().includes('supertails')) currentSource = 'Supertails';
+      continue;
+    }
+    
+    // Parse specific order entries like "Total Paid: 222"
+    const totalMatch = trimmed.match(/Total Paid:\s*(\d+)/i);
+    if (totalMatch && currentDate) {
+      const amount = parseInt(totalMatch[1]);
+      // Look back a few lines for order description
+      let description = 'Food Order';
+      expenses.push({
+        date: currentDate,
+        description: description,
+        amount: amount,
+        category: 'Food',
+        source: currentSource || 'Food Delivery'
+      });
+      continue;
+    }
+    
+    // Parse Instamart entries like "17/5 - Pet Poop Bags 299, Bread 53... Total 550"
+    const instamartMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\s*-\s*(.+?)Total\s*(\d+)/i);
+    if (instamartMatch) {
+      const [, day, month, itemsDesc, total] = instamartMatch;
+      const date = new Date(2025, parseInt(month) - 1, parseInt(day));
+      
+      expenses.push({
+        date: date,
+        description: itemsDesc.trim(),
+        amount: parseInt(total),
+        category: categorizeExpense(itemsDesc),
+        source: 'Instamart',
+        items: itemsDesc.split(',').map(item => item.trim())
+      });
+      continue;
+    }
+    
+    // Parse Supertails entries like "13/4 - Carniwel Dry Food 2kgs - 890"
+    const supertailsMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\s*-\s*(.+?)\s*-\s*(\d+)/i);
+    if (supertailsMatch && currentSource === 'Supertails') {
+      const [, day, month, description, amount] = supertailsMatch;
+      const date = new Date(2025, parseInt(month) - 1, parseInt(day));
+      
+      expenses.push({
+        date: date,
+        description: description.trim(),
+        amount: parseInt(amount),
+        category: 'Pet Care',
+        source: 'Supertails'
+      });
+      continue;
+    }
+  }
+  
+  console.log(`🛒 Parsed ${expenses.length} manual expenses`);
+  return expenses;
+}
+
+// Categorize expenses based on description and source
+function categorizeExpense(description: string): string {
+  const desc = description.toLowerCase();
+  
+  if (desc.includes('cat') || desc.includes('pet') || desc.includes('litter') || desc.includes('food') && desc.includes('carniwel')) return 'Pet Care';
+  if (desc.includes('pizza') || desc.includes('burger') || desc.includes('chicken') || desc.includes('food')) return 'Food';
+  if (desc.includes('milk') || desc.includes('bread') || desc.includes('eggs') || desc.includes('paneer') || desc.includes('grocery')) return 'Groceries';
+  if (desc.includes('protein') || desc.includes('creatine') || desc.includes('workout') || desc.includes('gym')) return 'Fitness';
+  if (desc.includes('shampoo') || desc.includes('conditioner') || desc.includes('toothpaste') || desc.includes('gel')) return 'Personal Care';
+  if (desc.includes('drink') || desc.includes('mountain dew') || desc.includes('energy') || desc.includes('coffee')) return 'Beverages';
+  if (desc.includes('candy') || desc.includes('ice cream') || desc.includes('chocolate')) return 'Snacks';
+  if (desc.includes('towel') || desc.includes('freshener') || desc.includes('bags') || desc.includes('cleaner')) return 'Household';
+  
+  return 'Other';
+}
+
+// Categorize transactions based on description - Enhanced for Jupiter Bank
+function categorizeTransaction(description: string): string {
+  if (!description) return 'Other';
+  
+  const desc = description.toLowerCase();
+  
+  // UPI transactions
+  if (desc.includes('upi')) {
+    if (desc.includes('zomato') || desc.includes('swiggy') || desc.includes('food')) return 'Food Delivery';
+    if (desc.includes('blinkit') || desc.includes('zepto') || desc.includes('dunzo')) return 'Groceries';
+    if (desc.includes('spotify') || desc.includes('netflix') || desc.includes('prime')) return 'Subscriptions';
+    if (desc.includes('uber') || desc.includes('ola') || desc.includes('rapido')) return 'Transportation';
+    if (desc.includes('paytm') || desc.includes('gpay') || desc.includes('phonepe')) return 'Digital Wallet';
+    return 'UPI Transfer';
+  }
+  
+  // Jupiter-specific patterns
+  if (desc.includes('transfer to pot') || desc.includes('ifn/neo')) return 'Savings/Investment';
+  if (desc.includes('sbint') || desc.includes('interest')) return 'Interest';
+  if (desc.includes('atm') || desc.includes('withdrawal')) return 'Cash Withdrawal';
+  if (desc.includes('imps') || desc.includes('neft') || desc.includes('rtgs')) return 'Bank Transfer';
+  
+  // General patterns
+  if (desc.includes('grocery') || desc.includes('supermarket') || desc.includes('blinkit') || desc.includes('zepto')) return 'Groceries';
+  if (desc.includes('restaurant') || desc.includes('food') || desc.includes('zomato') || desc.includes('swiggy')) return 'Food Delivery';
+  if (desc.includes('fuel') || desc.includes('petrol') || desc.includes('diesel')) return 'Fuel';
+  if (desc.includes('medical') || desc.includes('pharmacy') || desc.includes('hospital')) return 'Healthcare';
+  if (desc.includes('electricity') || desc.includes('gas') || desc.includes('water') || desc.includes('utility')) return 'Utilities';
+  if (desc.includes('rent') || desc.includes('maintenance')) return 'Housing';
+  if (desc.includes('salary') || desc.includes('income')) return 'Salary';
+  if (desc.includes('refund') || desc.includes('cashback')) return 'Refund';
+  
+  return 'Other';
 }
