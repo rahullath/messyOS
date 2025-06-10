@@ -37,9 +37,11 @@
     "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
+    "@types/dotenv": "^6.1.1",
     "@types/node": "^22.15.29",
+    "astro": "^5.0.0",
+    "dotenv": "^16.5.0",
     "prettier": "^3.5.3",
-    "prettier-plugin-astro": "^0.14.1",
-    "astro": "^5.0.0"
+    "prettier-plugin-astro": "^0.14.1"
   }
 }

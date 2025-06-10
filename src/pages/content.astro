@@ -1,26 +1,21 @@
 ---
-import { Fragment } from 'astro:components';
-import React, { useState, useEffect } from 'react';
+// No Fragment import needed for Astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerClient } from '../lib/supabase/server';
 
 const supabase = createServerClient(Astro.cookies);
 
-// Get the user from session
-const { data: { user } } = await supabase.auth.getUser();
+// Hardcoded user ID for single-user system
+const USER_ID = '368deac7-8526-45eb-927a-6a373c95d8c6';
 
-if (!user) {
-  return Astro.redirect('/login');
-}
-
-// Fetch content data
+// Fetch content data from metrics table
 const { data: contentMetrics, error } = await supabase
   .from('metrics')
   .select('*')
-  .eq('user_id', user.id)
+  .eq('user_id', USER_ID)
   .eq('type', 'content')
   .order('recorded_at', { ascending: false })
-  .limit(20);
+  .limit(50);
 
 if (error) {
   console.error('Error fetching content metrics:', error);
@@ -110,20 +105,20 @@ const hasContentData = content.length > 0;
           </button>
           <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
             <button
-              onclick="addQuickContent('movie')"
-              class="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded-t-lg"
+              data-content-type="movie"
+              class="add-content-btn block w-full text-left px-4 py-2 hover:bg-gray-100 rounded-t-lg"
             >
               🎬 Movie
             </button>
             <button
-              onclick="addQuickContent('tv_show')"
-              class="block w-full text-left px-4 py-2 hover:bg-gray-100"
+              data-content-type="tv_show"
+              class="add-content-btn block w-full text-left px-4 py-2 hover:bg-gray-100"
             >
               📺 TV Show
             </button>
             <button
-              onclick="addQuickContent('book')"
-              class="block w-full text-left px-4 py-2 hover:bg-gray-100 rounded-b-lg"
+              data-content-type="book"
+              class="add-content-btn block w-full text-left px-4 py-2 hover:bg-gray-100 rounded-b-lg"
             >
               📚 Book
             </button>
@@ -208,7 +203,7 @@ const hasContentData = content.length > 0;
             <h3 class="text-lg font-semibold text-text-primary mb-4">Recent Activity</h3>
             <div class="space-y-3">
               {content.slice(0, 8).map((item) => (
-                <div class="flex items-center justify-between p-3 bg-surface-hover rounded-lg">
+                <div class="flex items-center justify-between p-3 bg-surface-hover rounded-lg" key={item.id}>
                   <div class="flex items-center space-x-3">
                     <span class="text-lg">
                       {item.type === 'movie' && '🎬'}
@@ -241,20 +236,18 @@ const hasContentData = content.length > 0;
               <h3 class="text-lg font-semibold text-text-primary mb-4">Top Genres</h3>
               <div class="space-y-4">
                 {topGenres.map((genre) => (
-                  <Fragment key={genre.genre}>
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm font-medium text-text-primary">{genre.genre}</span>
-                      <div class="flex items-center space-x-2">
-                        <div class="w-20 bg-border rounded-full h-2">
-                          <div
-                            class="bg-accent-purple h-2 rounded-full"
-                            style={`width: ${Math.min(genre.percentage, 100)}%`}
-                          ></div>
-                        </div>
-                        <span class="text-sm text-text-muted">{genre.count}</span>
+                  <div class="flex items-center justify-between" key={genre.genre}>
+                    <span class="text-sm font-medium text-text-primary">{genre.genre}</span>
+                    <div class="flex items-center space-x-2">
+                      <div class="w-20 bg-border rounded-full h-2">
+                        <div
+                          class="bg-accent-purple h-2 rounded-full"
+                          style={`width: ${Math.min(genre.percentage, 100)}%`}
+                        ></div>
                       </div>
+                      <span class="text-sm text-text-muted">{genre.count}</span>
                     </div>
-                  </Fragment>
+                  </div>
                 ))}
               </div>
             </div>
@@ -262,14 +255,26 @@ const hasContentData = content.length > 0;
         </div>
       </div>
     ) : (
-      <div class="text-center py-12">
-        <p class="text-text-muted">No content tracked yet. Import your Serializd data or add items manually!</p>
+      <!-- Empty State -->
+      <div class="text-center py-16">
+        <div class="w-24 h-24 mx-auto mb-4 bg-surface-hover rounded-full flex items-center justify-center">
+          <span class="text-4xl">📚</span>
+        </div>
+        <h3 class="text-xl font-semibold text-text-primary mb-2">No Content Yet</h3>
+        <p class="text-text-muted mb-6">Start tracking your movies, shows, and books!</p>
+        <button 
+          id="empty-state-add-btn"
+          class="px-6 py-3 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+        >
+          Add Your First Content
+        </button>
       </div>
     )}
   </div>
 </DashboardLayout>
 
 <script>
+  // Handle quick content addition
   function addQuickContent(type: string) {
     const title = prompt(`Enter ${type} title:`);
     if (!title) return;
@@ -279,7 +284,7 @@ const hasContentData = content.length > 0;
 
     const newEntry = {
       title,
-      type,
+      content_type: type,
       status: 'completed',
       rating: rating ? parseInt(rating) : undefined,
       platform,
@@ -293,47 +298,69 @@ const hasContentData = content.length > 0;
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newEntry)
     })
-    .then(response => {
-      if (response.ok) {
+    .then(async response => {
+      const result = await response.json();
+      if (result.success) {
         window.location.reload();
+      } else {
+        alert(`Failed to add content: ${result.error}`);
       }
     })
     .catch(error => {
       console.error('Failed to add content:', error);
+      alert('Failed to add content. Please try again.');
     });
   }
 
-  document.getElementById('import-serializd-btn')?.addEventListener('click', () => {
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.csv,.json';
-    
-    fileInput.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+  // Event listeners
+  document.addEventListener('DOMContentLoaded', () => {
+    // Quick add buttons
+    document.querySelectorAll('.add-content-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const type = (e.target as HTMLElement).dataset.contentType;
+        if (type) addQuickContent(type);
+      });
+    });
 
-      const formData = new FormData();
-      formData.append('serializd_data', file);
+    // Empty state button
+    document.getElementById('empty-state-add-btn')?.addEventListener('click', () => {
+      addQuickContent('movie');
+    });
 
-      try {
-        const response = await fetch('/api/content/import/serializd', {
-          method: 'POST',
-          body: formData
-        });
+    // Serializd import
+    document.getElementById('import-serializd-btn')?.addEventListener('click', () => {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.csv,.json';
+      
+      fileInput.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
 
-        const result = await response.json();
-        
-        if (result.success) {
-          alert(`Imported ${result.imported} items successfully!`);
-          window.location.reload();
-        } else {
-          alert(`Import failed: ${result.error}`);
+        const formData = new FormData();
+        formData.append('serializd_data', file);
+
+        try {
+          const response = await fetch('/api/content/import/serializd', {
+            method: 'POST',
+            body: formData
+          });
+
+          const result = await response.json();
+          
+          if (result.success) {
+            alert(`Successfully imported ${result.imported} items!`);
+            window.location.reload();
+          } else {
+            alert(`Import failed: ${result.error}`);
+          }
+        } catch (error) {
+          console.error('Import error:', error);
+          alert('Import failed. Please try again.');
         }
-      } catch (error) {
-        alert('Import failed. Please try again.');
-      }
-    };
+      };
 
-    fileInput.click();
+      fileInput.click();
+    });
   });
 </script>

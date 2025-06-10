@@ -1,178 +1,196 @@
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../../lib/supabase/server';
 
-// Helper function to parse CSV data
-function parseSerializdCSV(csvData: string) {
-  const lines = csvData.split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
-  const entries = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim());
-    const entry: any = {};
-    
-    headers.forEach((header, index) => {
-      if (values[index]) {
-        entry[header] = values[index];
-      }
-    });
-    
-    if (Object.keys(entry).length > 0) {
-      entries.push(entry);
-    }
-  }
-
-  return entries;
+interface SerializedEntry {
+  Title: string;
+  Type: 'Movie' | 'TV' | 'Book';
+  Year?: string;
+  Rating?: string;
+  'Date Watched'?: string;
+  'Date Added'?: string;
+  Platform?: string;
+  Genre?: string;
+  Language?: string;
+  Runtime?: string;
+  Status?: string;
 }
 
-async function importSerializdData(fileContent: string, userId: string, supabase: any) {
-  try {
-    let data;
-    
-    // Try to parse as JSON first
-    try {
-      data = JSON.parse(fileContent);
-    } catch {
-      // If JSON fails, try CSV parsing
-      data = parseSerializdCSV(fileContent);
-    }
-
-    if (!Array.isArray(data)) {
-      throw new Error('Invalid file format. Expected JSON array or CSV.');
-    }
-
-    let imported = 0;
-    let skipped = 0;
-    const errors = [];
-
-    for (const item of data) {
-      try {
-        // Convert Serializd item to content metric
-        const contentMetric = {
-          user_id: userId,
-          type: 'content',
-          value: parseFloat(item.rating) || 0,
-          unit: 'rating',
-          metadata: {
-            title: item.title || item.name,
-            content_type: item.type || (item.episodes ? 'tv_show' : 'movie'),
-            status: mapSerializdStatus(item.status),
-            rating: parseFloat(item.rating),
-            genre: parseGenres(item.genres),
-            language: item.language || 'English',
-            completed_at: item.watched_date ? new Date(item.watched_date).toISOString() : null,
-            platform: item.platform,
-            notes: item.review || item.notes,
-            runtime_minutes: parseInt(item.runtime) || null,
-            pages: parseInt(item.pages) || null,
-            serializd_id: item.id,
-            source: 'serializd'
-          },
-          recorded_at: new Date().toISOString()
-        };
-
-        // Check for duplicates
-        const { data: existingContent, error: duplicateError } = await supabase
-          .from('metrics')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('metadata->serializd_id', item.id)
-          .single();
-
-        if (duplicateError && duplicateError.code !== 'PGRST116') {
-          throw duplicateError;
-        }
-
-        if (existingContent) {
-          skipped++;
-          continue;
-        }
-
-        // Insert new content metric
-        const { error } = await supabase
-          .from('metrics')
-          .insert([contentMetric]);
-
-        if (error) throw error;
-        imported++;
-        
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        errors.push(`Failed to import ${item.title || 'Unknown item'}: ${errorMessage}`);
-      }
-    }
-
-    return {
-      success: true,
-      imported,
-      skipped,
-      errors
-    };
-    
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return {
-      success: false,
-      imported: 0,
-      skipped: 0,
-      errors: [`Serializd import failed: ${errorMessage}`]
-    };
-  }
-}
-
-// Helper function to map Serializd status to our status
-function mapSerializdStatus(status: string): string {
-  const statusMap: Record<string, string> = {
-    'watched': 'completed',
-    'completed': 'completed',
-    'watching': 'watching',
-    'reading': 'reading',
-    'plan to watch': 'planned',
-    'want to watch': 'planned',
-    'dropped': 'dropped',
-    'on hold': 'paused'
-  };
+function parseSerializedCSV(csvContent: string): SerializedEntry[] {
+  const lines = csvContent.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
   
-  return statusMap[status?.toLowerCase()] || 'completed';
+  return lines.slice(1).map(line => {
+    const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+    const entry: any = {};
+    headers.forEach((header, index) => {
+      entry[header] = values[index] || '';
+    });
+    return entry;
+  });
 }
 
-// Helper function to parse genres
-function parseGenres(genresStr: string): string[] {
-  if (!genresStr) return [];
-  return genresStr.split(',').map(g => g.trim()).filter(Boolean);
+function mapSerializedToMeshOS(entry: SerializedEntry) {
+  const contentType = entry.Type?.toLowerCase() === 'tv' ? 'tv_show' : 
+                     entry.Type?.toLowerCase() === 'book' ? 'book' : 'movie';
+  
+  const rating = entry.Rating ? parseFloat(entry.Rating) : undefined;
+  const completedDate = entry['Date Watched'] || entry['Date Added'] || new Date().toISOString();
+  
+  // Parse genre if it exists
+  const genres = entry.Genre ? entry.Genre.split('|').map(g => g.trim()) : [];
+  
+  // Parse runtime for movies/shows
+  const runtimeMatch = entry.Runtime?.match(/(\d+)/);
+  const runtime = runtimeMatch ? parseInt(runtimeMatch[1]) : undefined;
+
+  return {
+    user_id: '368deac7-8526-45eb-927a-6a373c95d8c6',
+    type: 'content',
+    value: rating || 0,
+    unit: 'rating',
+    metadata: {
+      title: entry.Title,
+      content_type: contentType,
+      status: entry.Status || 'completed',
+      rating,
+      platform: entry.Platform,
+      genre: genres,
+      language: entry.Language || 'English',
+      completed_at: completedDate,
+      runtime_minutes: runtime,
+      release_year: entry.Year ? parseInt(entry.Year) : undefined,
+      imported_from: 'serializd',
+      imported_at: new Date().toISOString()
+    }
+  };
 }
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   const supabase = createServerClient(cookies);
   
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
-
     const formData = await request.formData();
     const file = formData.get('serializd_data') as File;
     
     if (!file) {
-      return new Response(JSON.stringify({ 
-        error: 'No file provided' 
-      }), { status: 400 });
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No file provided'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    const fileContent = await file.text();
-    const importResult = await importSerializdData(fileContent, user.id, supabase);
+    const content = await file.text();
+    let entries: SerializedEntry[] = [];
 
-    return new Response(JSON.stringify(importResult), {
+    // Try to parse as CSV first
+    if (file.name.endsWith('.csv')) {
+      entries = parseSerializedCSV(content);
+    } else if (file.name.endsWith('.json')) {
+      // Handle JSON format
+      const jsonData = JSON.parse(content);
+      entries = Array.isArray(jsonData) ? jsonData : [jsonData];
+    } else {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Unsupported file format. Please use CSV or JSON.'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (entries.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No valid entries found in file'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Convert to MeshOS format
+    const meshOSEntries = entries
+      .filter(entry => entry.Title && entry.Title.trim())
+      .map(mapSerializedToMeshOS);
+
+    if (meshOSEntries.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'No valid entries to import'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check for existing entries to prevent duplicates
+    const existingTitles = new Set();
+    const { data: existingContent } = await supabase
+      .from('metrics')
+      .select('metadata')
+      .eq('user_id', '368deac7-8526-45eb-927a-6a373c95d8c6')
+      .eq('type', 'content');
+
+    if (existingContent) {
+      existingContent.forEach(item => {
+        if (item.metadata?.title) {
+          existingTitles.add(item.metadata.title.toLowerCase());
+        }
+      });
+    }
+
+    // Filter out duplicates
+    const newEntries = meshOSEntries.filter(entry => 
+      !existingTitles.has(entry.metadata.title.toLowerCase())
+    );
+
+    if (newEntries.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'All entries already exist in your library'
+      }), { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Insert in batches to avoid potential timeouts
+    const batchSize = 50;
+    let imported = 0;
+    
+    for (let i = 0; i < newEntries.length; i += batchSize) {
+      const batch = newEntries.slice(i, i + batchSize);
+      const { error } = await supabase
+        .from('metrics')
+        .insert(batch);
+      
+      if (error) {
+        console.error('Batch insert error:', error);
+        throw error;
+      }
+      
+      imported += batch.length;
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      imported,
+      total: entries.length,
+      skipped: entries.length - imported,
+      message: `Successfully imported ${imported} new items`
+    }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('❌ Serializd import error:', errorMessage);
+  } catch (error: any) {
+    console.error('Import error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: errorMessage
+      error: error.message || 'Import failed'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
