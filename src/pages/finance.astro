@@ -20,7 +20,7 @@ const { data: financeMetrics, error } = await supabase
   .from('metrics')
   .select('type, value, unit, metadata, recorded_at')
   .eq('user_id', user.id)
-  .in('type', ['expense', 'income', 'crypto_holding', 'bank_transaction', 'monthly_expenses', 'crypto_portfolio_value'])
+  .in('type', ['expense', 'income', 'crypto_value'])
   .gte('recorded_at', sixMonthsAgo.toISOString())
   .order('recorded_at', { ascending: false });
 
@@ -33,16 +33,16 @@ const metrics = financeMetrics || [];
 
 // Group by type
 const expenses = metrics.filter(m => m.type === 'expense');
-const cryptoHoldings = metrics.filter(m => m.type === 'crypto_holding');
+const cryptoHoldings = metrics.filter(m => m.type === 'crypto_value');  // ✅ Correct type
+const cryptoValue = cryptoHoldings.reduce((sum, c) => sum + c.value, 0); // ✅ Direct calculation
 const bankTransactions = metrics.filter(m => m.type === 'bank_transaction');
 const monthlyExpensesMetrics = metrics.filter(m => m.type === 'monthly_expenses');
-const cryptoPortfolioMetrics = metrics.filter(m => m.type === 'crypto_portfolio_value');
+// Removed cryptoPortfolioMetrics as it's no longer needed with direct calculation
 
 // Calculate key statistics
 const totalExpenses = expenses.reduce((sum, e) => sum + e.value, 0);
 const monthlyExpenses = monthlyExpensesMetrics.length > 0 ? monthlyExpensesMetrics[0].value : totalExpenses;
-const cryptoValue = cryptoPortfolioMetrics.length > 0 ? cryptoPortfolioMetrics[0].value : 
-  cryptoHoldings.reduce((sum, c) => sum + c.value, 0);
+// cryptoValue is now directly calculated above
 
 // Calculate financial runway (assuming current balance)
 const currentBalance = 94300; // From your analysis: ₹38,500 + ₹55,800 June salary
@@ -276,7 +276,7 @@ const financeStats = {
             <h3 class="text-lg font-semibold text-text-primary mb-4">Top Expense Categories</h3>
             <div class="space-y-4">
               {topCategories.map((category, index) => (
-                <div key={index} class="space-y-2">
+                <div class="space-y-2">
                   <div class="flex items-center justify-between">
                     <span class="text-text-primary font-medium">{category.category}</span>
                     <span class="text-text-secondary">₹{category.amount.toLocaleString()}</span>
@@ -303,7 +303,7 @@ const financeStats = {
             <h3 class="text-lg font-semibold text-text-primary mb-4">Recent Transactions</h3>
             <div class="space-y-3">
               {recentTransactions.slice(0, 8).map((transaction, index) => (
-                <div key={index} class="flex items-center justify-between p-3 bg-surface-hover rounded-lg">
+                <div class="flex items-center justify-between p-3 bg-surface-hover rounded-lg">
                   <div class="flex items-center space-x-3">
                     <div class={`w-8 h-8 rounded-lg flex items-center justify-center ${
                       transaction.category === 'Food Delivery' ? 'bg-accent-error/20' :
@@ -375,7 +375,7 @@ const financeStats = {
           <h3 class="text-lg font-semibold text-text-primary mb-4">💡 AI Budget Recommendations</h3>
           <div class="space-y-4">
             {budgetScore.recommendations.map((recommendation, index) => (
-              <div key={index} class="flex items-start space-x-3 p-4 bg-accent-primary/10 border border-accent-primary/20 rounded-lg">
+              <div class="flex items-start space-x-3 p-4 bg-accent-primary/10 border border-accent-primary/20 rounded-lg">
                 <div class="w-6 h-6 bg-accent-primary rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span class="text-white text-xs font-bold">{index + 1}</span>
                 </div>

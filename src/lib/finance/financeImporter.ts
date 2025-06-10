@@ -1,243 +1,201 @@
-// Enhanced Finance Importer - Fixed version for MeshOS
-// src/lib/finance/enhancedFinanceImporter.ts
+// CORRECTED FINANCE IMPORT SYSTEM
+// src/lib/finance/correctedFinanceImporter.ts
 
-interface ExpenseItem {
-  date: Date;
-  description: string;
-  amount: number;
-  category: string;
-  subcategory?: string;
-  source: string;
-  items?: string[];
-  vendor?: string;
+import { createServerClient } from '../supabase/server';
+import type { AstroCookies } from 'astro';
+
+export interface ImportResult {
+  success: boolean;
+  message: string;
+  stats: {
+    totalProcessed: number;
+    realExpenses: number;
+    internalTransfers: number;
+    duplicatesSkipped: number;
+    cryptoHoldings: number;
+    dateRange: string;
+  };
 }
 
-interface CryptoHolding {
-  symbol: string;
-  network: string;
-  price: number;
-  quantity: number;
-  currentValue: number;
-  change: number;
-}
+export class CorrectedFinanceImporter {
+  private supabase: any;
+  private userId: string;
 
-interface BankTransaction {
-  date: Date;
-  valueDate: Date;
-  description: string;
-  amount: number;
-  balance: number;
-  type: string;
-  drCr: string;
-  reference?: string;
-}
-
-export class EnhancedFinanceImporter {
-  // This function is used by src/pages/api/import/finance.ts
-  // It's a wrapper to use the importer's methods
-  async importFinanceData(csvFiles: { bank?: string; crypto?: string; expenses?: string }, userId: string, cookies: any) {
-    // For simplicity, this example directly calls the parsing methods.
-    // In a real scenario, you'd likely store these in the DB.
-    if (csvFiles.bank) {
-      const bankTransactions = this.parseBankTransactions(csvFiles.bank);
-      console.log(`Parsed ${bankTransactions.length} bank transactions.`);
-      // Here you would typically save to Supabase
-    }
-    if (csvFiles.crypto) {
-      const cryptoHoldings = this.parseCryptoHoldings(csvFiles.crypto);
-      console.log(`Parsed ${cryptoHoldings.length} crypto holdings.`);
-      // Here you would typically save to Supabase
-    }
-    if (csvFiles.expenses) {
-      const manualExpenses = this.parseManualExpenses(csvFiles.expenses);
-      console.log(`Parsed ${manualExpenses.length} manual expenses.`);
-      // Here you would typically save to Supabase
-    }
-    return { success: true, message: 'Files processed successfully (data not saved in this example)' };
+  constructor(cookies: AstroCookies, userId: string) {
+    this.supabase = createServerClient(cookies);
+    this.userId = userId;
   }
-  
-  // Enhanced categorization system based on your actual expenses
-  private categorizeExpense(description: string, amount: number, vendor?: string): { category: string; subcategory?: string } {
-    const desc = description.toLowerCase();
+
+  async importFinanceData(files: {
+    bank?: string;
+    crypto?: string;
+    expenses?: string;
+  }): Promise<ImportResult> {
+    console.log('🔄 Starting CORRECTED finance import...');
     
-    // Food & Grocery (detailed breakdown)
-    if (desc.includes('zepto') || desc.includes('blinkit') || desc.includes('swiggy instamart') || desc.includes('groceries')) {
-      if (desc.includes('bread') || desc.includes('milk') || desc.includes('eggs') || desc.includes('rice')) {
-        return { category: 'Food & Grocery', subcategory: 'Staples' };
-      } else if (desc.includes('snacks') || desc.includes('chips') || desc.includes('chocolate')) {
-        return { category: 'Food & Grocery', subcategory: 'Snacks' };
-      } else if (desc.includes('vegetables') || desc.includes('fruits') || desc.includes('tomato')) {
-        return { category: 'Food & Grocery', subcategory: 'Fresh Produce' };
+    let stats = {
+      totalProcessed: 0,
+      realExpenses: 0,
+      internalTransfers: 0,
+      duplicatesSkipped: 0,
+      cryptoHoldings: 0,
+      dateRange: ''
+    };
+
+    try {
+      // 1. Import Crypto (if provided) - REPLACE existing
+      if (files.crypto) {
+        await this.importCryptoHoldings(files.crypto, stats);
       }
-      return { category: 'Food & Grocery', subcategory: 'General' };
-    }
-    
-    // Pet Care (your major expense category)
-    if (desc.includes('royal canin') || desc.includes('pet') || desc.includes('supertails') || 
-        desc.includes('poop bags') || desc.includes('cat') || desc.includes('litter')) {
-      if (desc.includes('food') || desc.includes('royal canin')) {
-        return { category: 'Pet Care', subcategory: 'Food' };
-      } else if (desc.includes('litter') || desc.includes('poop bags')) {
-        return { category: 'Pet Care', subcategory: 'Hygiene' };
+
+      // 2. Import Bank Statement (if provided) - APPEND with duplicate prevention
+      if (files.bank) {
+        await this.importBankTransactions(files.bank, stats);
       }
-      return { category: 'Pet Care', subcategory: 'General' };
+
+      // 3. Manual expenses (if provided) - legacy support
+      if (files.expenses) {
+        await this.importManualExpenses(files.expenses, stats);
+      }
+
+      return {
+        success: true,
+        message: this.generateSuccessMessage(stats),
+        stats
+      };
+
+    } catch (error: any) {
+      console.error('❌ Import error:', error);
+      return {
+        success: false,
+        message: `Import failed: ${error.message}`,
+        stats
+      };
     }
-    
-    // Food Delivery
-    if (desc.includes('swiggy') || desc.includes('zomato') || desc.includes('food delivery') || 
-        desc.includes('dominos') || desc.includes('pizza') || desc.includes('burger')) {
-      return { category: 'Food Delivery', subcategory: 'Meals' };
-    }
-    
-    // Beverages (your energy drinks, etc.)
-    if (desc.includes('mountain dew') || desc.includes('energy drink') || desc.includes('coffee') || 
-        desc.includes('tea') || desc.includes('drink') || desc.includes('beverage')) {
-      return { category: 'Food & Grocery', subcategory: 'Beverages' };
-    }
-    
-    // MK Retail (your biggest optimization target)
-    if (desc.includes('mk retail') || vendor?.toLowerCase().includes('mk retail')) {
-      return { category: 'Food & Grocery', subcategory: 'MK Retail' };
-    }
-    
-    // Rent & Housing
-    if (desc.includes('rent') || desc.includes('shettyarjun') || amount === 10872) {
-      return { category: 'Housing', subcategory: 'Rent' };
-    }
-    
-    // Healthcare & Medicine
-    if (desc.includes('bupropion') || desc.includes('medicine') || desc.includes('pharmacy') || 
-        desc.includes('apollo') || desc.includes('doctor')) {
-      return { category: 'Healthcare', subcategory: 'Medicine' };
-    }
-    
-    // Transportation
-    if (desc.includes('yulu') || desc.includes('uber') || desc.includes('ola') || desc.includes('taxi')) {
-      return { category: 'Transportation', subcategory: 'Rides' };
-    }
-    
-    // Subscriptions
-    if (desc.includes('spotify') || desc.includes('netflix') || desc.includes('google one') || 
-        desc.includes('apple tv') || desc.includes('jiostar') || desc.includes('subscription')) {
-      return { category: 'Subscriptions', subcategory: 'Entertainment' };
-    }
-    
-    // Fitness & Health
-    if (desc.includes('gym') || desc.includes('fitness') || desc.includes('workout')) {
-      return { category: 'Health & Fitness', subcategory: 'Gym' };
-    }
-    
-    // Savings/Investment
-    if (desc.includes('transfer to pot') || desc.includes('investment') || desc.includes('saving')) {
-      return { category: 'Savings/Investment', subcategory: 'Pot Transfer' };
-    }
-    
-    // Domestic Help
-    if (desc.includes('cook') || desc.includes('maid') || desc.includes('domestic')) {
-      return { category: 'Domestic Help', subcategory: 'Salary' };
-    }
-    
-    // UPI Transfers (need better categorization)
-    if (desc.includes('upi') || desc.includes('transfer')) {
-      return { category: 'UPI Transfer', subcategory: 'General' };
-    }
-    
-    return { category: 'Other', subcategory: 'Uncategorized' };
   }
-  
-  // Parse your expenses.txt format with enhanced categorization
-  parseManualExpenses(textContent: string): ExpenseItem[] {
-    const expenses: ExpenseItem[] = [];
+
+  // 1. CRYPTO IMPORT - Replace existing data
+  private async importCryptoHoldings(cryptoText: string, stats: any) {
+    console.log('₿ Processing crypto holdings...');
+
+    // Clear existing crypto data first
+    await this.supabase
+      .from('metrics')
+      .delete()
+      .eq('user_id', this.userId)
+      .eq('type', 'crypto_value');
+
+    const holdings = this.parseCryptoHoldings(cryptoText);
+    
+    if (holdings.length > 0) {
+      const cryptoMetrics = holdings.map(holding => ({
+        user_id: this.userId,
+        type: 'crypto_value',
+        value: holding.currentValue,
+        unit: 'USD',
+        metadata: {
+          symbol: holding.symbol,
+          network: holding.network,
+          quantity: holding.quantity,
+          price: holding.price,
+          change: holding.change
+        },
+        recorded_at: new Date().toISOString()
+      }));
+
+      const { error } = await this.supabase
+        .from('metrics')
+        .insert(cryptoMetrics);
+
+      if (error) throw error;
+
+      stats.cryptoHoldings = holdings.length;
+      const totalValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
+      console.log(`✅ Imported ${holdings.length} crypto holdings worth $${totalValue.toFixed(2)}`);
+    }
+  }
+
+  // 2. BANK IMPORT - Append with duplicate prevention
+  private async importBankTransactions(bankText: string, stats: any) {
+    console.log('🏦 Processing bank transactions...');
+
+    // Get existing transaction dates to prevent duplicates
+    const existingDates = await this.getExistingTransactionDates();
+    
+    const transactions = this.parseJupiterBankCSV(bankText, existingDates);
+    
+    if (transactions.realTransactions.length > 0) {
+      const bankMetrics = transactions.realTransactions.map(tx => ({
+        user_id: this.userId,
+        type: tx.amount > 0 ? 'income' : 'expense',
+        value: Math.abs(tx.amount),
+        unit: 'INR',
+        metadata: {
+          description: tx.description,
+          category: tx.category,
+          vendor: tx.vendor,
+          source: 'bank',
+          reference: tx.reference,
+          balance: tx.balance
+        },
+        recorded_at: tx.date.toISOString()
+      }));
+
+      const { error } = await this.supabase
+        .from('metrics')
+        .insert(bankMetrics);
+
+      if (error) throw error;
+
+      // Update stats
+      stats.totalProcessed = transactions.totalProcessed;
+      stats.realExpenses = transactions.realTransactions.length;
+      stats.internalTransfers = transactions.internalTransfers;
+      stats.duplicatesSkipped = transactions.duplicatesSkipped;
+      stats.dateRange = transactions.dateRange;
+
+      console.log(`✅ Imported ${transactions.realTransactions.length} real transactions`);
+      console.log(`🚫 Excluded ${transactions.internalTransfers} internal transfers`);
+      console.log(`⏭️ Skipped ${transactions.duplicatesSkipped} duplicates`);
+    }
+  }
+
+  // 3. MANUAL EXPENSES - Legacy support
+  private async importManualExpenses(expensesText: string, stats: any) {
+    console.log('📝 Processing manual expenses (legacy)...');
+    
+    const expenses = this.parseManualExpenses(expensesText);
+    
+    if (expenses.length > 0) {
+      const expenseMetrics = expenses.map(expense => ({
+        user_id: this.userId,
+        type: 'expense',
+        value: expense.amount,
+        unit: 'INR',
+        metadata: {
+          description: expense.description,
+          category: expense.category,
+          source: expense.source,
+          vendor: expense.vendor || 'Manual'
+        },
+        recorded_at: expense.date.toISOString()
+      }));
+
+      const { error } = await this.supabase
+        .from('metrics')
+        .insert(expenseMetrics);
+
+      if (error) throw error;
+
+      stats.realExpenses += expenses.length;
+      console.log(`✅ Imported ${expenses.length} manual expenses`);
+    }
+  }
+
+  // CRYPTO PARSER - Fixed version
+  private parseCryptoHoldings(textContent: string) {
     const lines = textContent.split('\n');
-    
-    let currentDate: Date | null = null;
-    let currentSource = 'Manual';
-    
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      
-      // Parse date entries like "2/4 - oil+ocean peach drink - 221 total"
-      const dateMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\s*-\s*(.+?)\s*-\s*(\d+)\s*total/i);
-      if (dateMatch) {
-        const [, day, month, description, amount] = dateMatch;
-        currentDate = new Date(2025, parseInt(month) - 1, parseInt(day));
-        
-        const { category, subcategory } = this.categorizeExpense(description, parseInt(amount));
-        
-        expenses.push({
-          date: currentDate,
-          description: description.trim(),
-          amount: parseInt(amount),
-          category,
-          subcategory,
-          source: currentSource
-        });
-        continue;
-      }
-      
-      // Enhanced source detection
-      const sourceDetection = [
-        { keywords: ['zepto'], source: 'Zepto' },
-        { keywords: ['swiggy'], source: 'Swiggy' },
-        { keywords: ['blinkit'], source: 'Blinkit' },
-        { keywords: ['supertails'], source: 'Supertails' },
-        { keywords: ['mk retail'], source: 'MK Retail' }
-      ];
-      
-      for (const { keywords, source } of sourceDetection) {
-        if (keywords.some(keyword => trimmed.toLowerCase().includes(keyword))) {
-          currentSource = source;
-          break;
-        }
-      }
-      
-      // Parse detailed order entries like "17/5 - Pet Poop Bags 299, Bread 53... Total 550"
-      const detailedMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\s*-\s*(.+?)Total\s*(\d+)/i);
-      if (detailedMatch) {
-        const [, day, month, itemsDesc, total] = detailedMatch;
-        const date = new Date(2025, parseInt(month) - 1, parseInt(day));
-        
-        const { category, subcategory } = this.categorizeExpense(itemsDesc, parseInt(total), currentSource);
-        
-        expenses.push({
-          date: date,
-          description: itemsDesc.trim(),
-          amount: parseInt(total),
-          category,
-          subcategory,
-          source: currentSource,
-          items: itemsDesc.split(',').map(item => item.trim())
-        });
-        continue;
-      }
-      
-      // Parse simple totals with context
-      const totalMatch = trimmed.match(/Total Paid:\s*(\d+)/i);
-      if (totalMatch && currentDate) {
-        const amount = parseInt(totalMatch[1]);
-        const { category, subcategory } = this.categorizeExpense('Food Order', amount, currentSource);
-        
-        expenses.push({
-          date: currentDate,
-          description: `${currentSource} Order`,
-          amount: amount,
-          category,
-          subcategory,
-          source: currentSource
-        });
-      }
-    }
-    
-    return expenses;
-  }
-  
-  // Fixed crypto holdings parser
-  parseCryptoHoldings(textContent: string): CryptoHolding[] {
-    const lines = textContent.split('\n');
-    const holdings: CryptoHolding[] = [];
-    
-    console.log('₿ Parsing crypto holdings...');
+    const holdings = [];
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -254,19 +212,17 @@ export class EnhancedFinanceImporter {
         for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
           const dataLine = lines[j].trim();
           
-          // Parse "Price: $0.99 | Change: -0.0%"
           const priceMatch = dataLine.match(/Price:\s*\$?([\d,]+\.?\d*)\s*\|\s*Change:\s*([-+]?[\d.]+)%/);
           if (priceMatch) {
             price = parseFloat(priceMatch[1].replace(/,/g, ''));
             change = parseFloat(priceMatch[2]);
           }
           
-          // Parse "Quantity: 62.192612 | Value: $62.18"
           const quantityMatch = dataLine.match(/Quantity:\s*([\d,]+\.?\d*)\s*\|\s*Value:\s*\$?([\d,]+\.?\d*)/);
           if (quantityMatch) {
             quantity = parseFloat(quantityMatch[1].replace(/,/g, ''));
             value = parseFloat(quantityMatch[2].replace(/,/g, ''));
-            break; // Found all needed data
+            break;
           }
         }
         
@@ -279,139 +235,348 @@ export class EnhancedFinanceImporter {
             currentValue: value,
             change: change
           });
-          
-          console.log(`₿ Parsed: ${symbol} - $${value} (${quantity} @ $${price})`);
         }
       }
     }
     
-    console.log(`₿ Total holdings parsed: ${holdings.length}, Total value: $${holdings.reduce((sum, h) => sum + h.currentValue, 0)}`);
     return holdings;
   }
-  
-  // Enhanced bank transaction parser
-  parseBankTransactions(csvContent: string): BankTransaction[] {
+
+  // BANK PARSER - Enhanced with filtering and duplicate prevention
+  private parseJupiterBankCSV(csvContent: string, existingDates: Set<string>) {
     const lines = csvContent.split('\n');
-    const transactions: BankTransaction[] = [];
+    const realTransactions = [];
+    let totalProcessed = 0;
+    let internalTransfers = 0;
+    let duplicatesSkipped = 0;
+    const dates = [];
     
-    // Skip header and asterisk line
-    for (let i = 2; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line || line.includes('Opening Balance')) continue;
+    // Skip header lines and process records
+    let i = 2;
+    while (i < lines.length) {
+      const record = this.parseMultiLineCSVRecord(lines, i);
+      if (!record.transaction) {
+        i = record.nextIndex;
+        continue;
+      }
       
-      try {
-        const fields = this.parseCSVLine(line);
-        
-        if (fields.length < 9) continue;
-        
-        const [date, valueDate, particulars, tranType, chequeDetails, withdrawals, deposits, balance, drCr] = fields;
-        
-        if (!date || date === '******') continue;
-        
-        const parsedDate = this.parseDate(date);
-        const parsedValueDate = this.parseDate(valueDate);
-        
-        if (!parsedDate) continue;
-        
-        const withdrawalAmount = parseFloat(withdrawals?.replace(/,/g, '') || '0');
-        const depositAmount = parseFloat(deposits?.replace(/,/g, '') || '0');
-        const amount = depositAmount > 0 ? depositAmount : -withdrawalAmount;
-        
-        if (amount === 0) continue;
-        
-        transactions.push({
-          date: parsedDate,
-          valueDate: parsedValueDate || parsedDate,
-          description: particulars.trim(),
-          amount: amount,
-          balance: parseFloat(balance?.replace(/,/g, '') || '0'),
-          type: tranType,
-          drCr: drCr,
-          reference: chequeDetails || undefined
-        });
-        
-      } catch (error) {
-        console.warn(`⚠️ Error parsing bank record: ${error.message}`);
+      totalProcessed++;
+      const tx = record.transaction;
+      i = record.nextIndex;
+      
+      // Check for duplicates
+      const dateStr = tx.date.toISOString().split('T')[0];
+      const duplicateKey = `${dateStr}-${tx.description.substring(0, 30)}-${Math.abs(tx.amount)}`;
+      
+      if (existingDates.has(duplicateKey)) {
+        duplicatesSkipped++;
+        continue;
+      }
+      
+      // Filter internal transfers
+      if (this.isInternalTransfer(tx.description, tx.amount)) {
+        internalTransfers++;
+        continue;
+      }
+      
+      realTransactions.push(tx);
+      dates.push(dateStr);
+    }
+    
+    // Calculate date range
+    const uniqueDates = [...new Set(dates)].sort();
+    const dateRange = uniqueDates.length > 0 ? 
+      `${uniqueDates[0]} to ${uniqueDates[uniqueDates.length - 1]}` : 'No dates';
+    
+    return {
+      realTransactions,
+      totalProcessed,
+      internalTransfers,
+      duplicatesSkipped,
+      dateRange
+    };
+  }
+
+  // MULTI-LINE CSV PARSER - Handles Jupiter's complex format
+  private parseMultiLineCSVRecord(lines: string[], startIndex: number) {
+    let currentRecord = '';
+    let i = startIndex;
+    
+    // Combine lines until we have a complete record
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      if (!line) {
+        i++;
+        continue;
+      }
+      
+      currentRecord += (currentRecord ? ' ' : '') + line;
+      
+      // Check if record is complete (even number of quotes)
+      const quoteCount = (currentRecord.match(/"/g) || []).length;
+      const isComplete = quoteCount % 2 === 0;
+      
+      i++;
+      
+      if (isComplete && currentRecord.includes(',')) {
+        const transaction = this.parseJupiterTransaction(currentRecord);
+        return { transaction, nextIndex: i };
       }
     }
     
-    return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+    return { transaction: null, nextIndex: i };
   }
-  
-  // Utility methods
-  private parseCSVLine(line: string): string[] {
-    const result = [];
+
+  // TRANSACTION PARSER - Enhanced
+  private parseJupiterTransaction(record: string) {
+    try {
+      const fields = this.parseCSVFields(record);
+      if (fields.length < 8) return null;
+      
+      const [date, valueDate, particulars, tranType, chequeDetails, withdrawals, deposits, balance] = fields;
+      
+      if (!date || date.includes('*') || !particulars) return null;
+      
+      const withdrawalAmount = parseFloat(withdrawals?.replace(/,/g, '') || '0');
+      const depositAmount = parseFloat(deposits?.replace(/,/g, '') || '0');
+      const amount = depositAmount > 0 ? depositAmount : -withdrawalAmount;
+      
+      if (amount === 0) return null;
+      
+      const parsedDate = this.parseIndianDate(date);
+      if (!parsedDate) return null;
+      
+      const cleanDescription = particulars.replace(/"/g, '').trim();
+      
+      return {
+        date: parsedDate,
+        description: cleanDescription,
+        amount: amount,
+        balance: parseFloat(balance?.replace(/,/g, '') || '0'),
+        type: tranType,
+        reference: chequeDetails || '',
+        category: this.categorizeTransaction(cleanDescription),
+        vendor: this.extractVendor(cleanDescription)
+      };
+      
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // INTERNAL TRANSFER DETECTION - Critical for accurate expenses
+  private isInternalTransfer(description: string, amount: number): boolean {
+    const desc = description.toLowerCase();
+    
+    // 1. Jupiter internal transfers
+    if (desc.includes('transfer to pot') || desc.includes('ifn/neosiexeddd')) {
+      return true;
+    }
+    
+    // 2. Large amounts (user specified no expense >₹20k)
+    if (Math.abs(amount) > 20000) {
+      console.log(`🚫 Excluding large transfer: ₹${amount.toLocaleString()} - ${description.substring(0, 50)}...`);
+      return true;
+    }
+    
+    // 3. Common internal transfer patterns
+    const internalPatterns = [
+      'pot to main',
+      'savings account',
+      'internal fund transfer',
+      'account transfer'
+    ];
+    
+    for (const pattern of internalPatterns) {
+      if (desc.includes(pattern)) return true;
+    }
+    
+    return false;
+  }
+
+  // ENHANCED CATEGORIZATION
+  private categorizeTransaction(description: string): string {
+    const desc = description.toLowerCase();
+    
+    // Food & Grocery
+    if (desc.includes('zepto') || desc.includes('blinkit') || desc.includes('swiggy instamart')) {
+      return 'Food & Grocery';
+    }
+    if (desc.includes('mkretailco') || desc.includes('mk retail')) {
+      return 'Food & Grocery';
+    }
+    
+    // Food Delivery
+    if (desc.includes('swiggy') || desc.includes('zomato')) {
+      return 'Food Delivery';
+    }
+    
+    // Pet Care
+    if (desc.includes('supertails') || desc.includes('pawsome')) {
+      return 'Pet Care';
+    }
+    
+    // Housing
+    if (desc.includes('shettyarjun29') || desc.includes('rent')) {
+      return 'Housing';
+    }
+    
+    // Transportation
+    if (desc.includes('yulu')) {
+      return 'Transportation';
+    }
+    
+    // Subscriptions
+    if (desc.includes('spotify') || desc.includes('netflix') || desc.includes('myjio')) {
+      return 'Subscriptions';
+    }
+    
+    // Healthcare
+    if (desc.includes('apollo') || desc.includes('medicine')) {
+      return 'Healthcare';
+    }
+    
+    // UPI transfers (might be various)
+    if (desc.includes('upi')) {
+      return 'UPI Transfer';
+    }
+    
+    return 'Other';
+  }
+
+  // VENDOR EXTRACTION
+  private extractVendor(description: string): string {
+    const desc = description.toLowerCase();
+    
+    if (desc.includes('zepto')) return 'Zepto';
+    if (desc.includes('swiggy')) return 'Swiggy';
+    if (desc.includes('blinkit')) return 'Blinkit';
+    if (desc.includes('supertails')) return 'Supertails';
+    if (desc.includes('mkretailco')) return 'MK Retail';
+    if (desc.includes('yulu')) return 'Yulu';
+    if (desc.includes('spotify')) return 'Spotify';
+    if (desc.includes('zomato')) return 'Zomato';
+    if (desc.includes('myjio')) return 'Jio';
+    if (desc.includes('shettyarjun29')) return 'Rent';
+    
+    return 'Unknown';
+  }
+
+  // UTILITY METHODS
+  private async getExistingTransactionDates(): Promise<Set<string>> {
+    const { data } = await this.supabase
+      .from('metrics')
+      .select('recorded_at, metadata')
+      .eq('user_id', this.userId)
+      .in('type', ['expense', 'income']);
+    
+    const existingKeys = new Set<string>();
+    
+    for (const metric of data || []) {
+      const dateStr = metric.recorded_at.split('T')[0];
+      const description = metric.metadata?.description || '';
+      const duplicateKey = `${dateStr}-${description.substring(0, 30)}-*`;
+      existingKeys.add(duplicateKey);
+    }
+    
+    return existingKeys;
+  }
+
+  private parseCSVFields(record: string): string[] {
+    const fields = [];
     let current = '';
     let inQuotes = false;
     
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
+    for (let i = 0; i < record.length; i++) {
+      const char = record[i];
       
       if (char === '"') {
         inQuotes = !inQuotes;
       } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
+        fields.push(current.trim());
         current = '';
       } else {
         current += char;
       }
     }
     
-    result.push(current.trim());
-    return result;
+    fields.push(current.trim());
+    return fields;
   }
-  
-  private parseDate(dateStr: string): Date | null {
-    if (!dateStr || dateStr === '******') return null;
+
+  private parseIndianDate(dateStr: string): Date | null {
+    if (!dateStr || dateStr.includes('*')) return null;
     
     try {
-      // Handle DD/MM/YYYY format
       const parts = dateStr.split('/');
       if (parts.length === 3) {
         const day = parseInt(parts[0]);
-        const month = parseInt(parts[1]) - 1; // JS months are 0-based
+        const month = parseInt(parts[1]) - 1;
         const year = parseInt(parts[2]);
-        return new Date(year, month, day);
+        
+        if (year >= 2020 && year <= 2030 && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
+          return new Date(year, month, day);
+        }
       }
     } catch (error) {
-      console.warn(`Invalid date: ${dateStr}`);
+      return null;
     }
     
     return null;
   }
-  
-  // Generate category breakdown with subcategories
-  generateCategoryBreakdown(expenses: ExpenseItem[]): any[] {
-    const categoryMap = new Map<string, { total: number; subcategories: Map<string, number>; transactions: ExpenseItem[] }>();
+
+  private parseManualExpenses(textContent: string) {
+    // Legacy manual expense parsing
+    const expenses = [];
+    const lines = textContent.split('\n');
     
-    for (const expense of expenses) {
-      const category = expense.category;
-      const subcategory = expense.subcategory || 'General';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
       
-      if (!categoryMap.has(category)) {
-        categoryMap.set(category, {
-          total: 0,
-          subcategories: new Map(),
-          transactions: []
+      // Simple parsing for manual entries
+      const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\s*-\s*(.+?)\s*-\s*(\d+)\s*total/i);
+      if (match) {
+        const [, day, month, description, amount] = match;
+        const date = new Date(2025, parseInt(month) - 1, parseInt(day));
+        
+        expenses.push({
+          date: date,
+          description: description.trim(),
+          amount: parseInt(amount),
+          category: this.categorizeTransaction(description),
+          source: 'manual',
+          vendor: this.extractVendor(description)
         });
       }
-      
-      const categoryData = categoryMap.get(category)!;
-      categoryData.total += expense.amount;
-      categoryData.subcategories.set(subcategory, (categoryData.subcategories.get(subcategory) || 0) + expense.amount);
-      categoryData.transactions.push(expense);
     }
     
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    return expenses;
+  }
+
+  private generateSuccessMessage(stats: any): string {
+    const parts = [];
     
-    return Array.from(categoryMap.entries())
-      .map(([category, data]) => ({
-        category,
-        total: data.total,
-        percentage: (data.total / totalExpenses) * 100,
-        subcategories: Object.fromEntries(data.subcategories),
-        transactions: data.transactions.slice(0, 5) // Latest 5 transactions
-      }))
-      .sort((a, b) => b.total - a.total);
+    if (stats.cryptoHoldings > 0) {
+      parts.push(`${stats.cryptoHoldings} crypto holdings`);
+    }
+    
+    if (stats.realExpenses > 0) {
+      parts.push(`${stats.realExpenses} transactions`);
+    }
+    
+    if (stats.internalTransfers > 0) {
+      parts.push(`excluded ${stats.internalTransfers} internal transfers`);
+    }
+    
+    if (stats.duplicatesSkipped > 0) {
+      parts.push(`skipped ${stats.duplicatesSkipped} duplicates`);
+    }
+    
+    if (stats.dateRange) {
+      parts.push(`covering ${stats.dateRange}`);
+    }
+    
+    return `✅ Successfully imported: ${parts.join(', ')}`;
   }
 }
