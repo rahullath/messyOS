@@ -12,24 +12,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     const formData = await request.formData();
-    const serializdFile = formData.get('serializd') as File;
+    const contentFile = formData.get('content') as File;
     
-    if (!serializdFile) {
-      return new Response(JSON.stringify({ success: false, error: 'No Serializd file provided' }), { status: 400 });
+    if (!contentFile) {
+      return new Response(JSON.stringify({ success: false, error: 'No content file provided' }), { status: 400 });
     }
 
-    console.log('🎬 Serializd file received:', {
-      name: serializdFile.name,
-      size: serializdFile.size,
-      type: serializdFile.type
+    console.log('🎬 Content file received:', {
+      name: contentFile.name,
+      size: contentFile.size,
+      type: contentFile.type
     });
 
-    const serializdText = await serializdFile.text();
+    const contentText = await contentFile.text();
     const importer = new SerializdImporter(supabase);
-    const importResult = await importer.importSerializdData(serializdText, user.id);
+    const importResult = await importer.importSerializdData(contentText, user.id);
 
     if (!importResult.success) {
-      console.error('❌ Serializd import failed:', importResult.errors);
+      console.error('❌ Content import failed:', importResult.errors);
       return new Response(JSON.stringify({
         success: false,
         error: `Import failed: ${importResult.errors.join(', ')}`

@@ -3,6 +3,7 @@
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import LoopHabitsImport from '../components/import/LoopHabitsImport.tsx';
 import FinanceDataImport from '../components/import/FinanceDataImport.tsx';
+import ContentDataImport from '../components/import/ContentDataImport.tsx';
 ---
 
 <DashboardLayout title="Import Data - MeshOS">
@@ -69,6 +70,34 @@ import FinanceDataImport from '../components/import/FinanceDataImport.tsx';
             <li><strong>Bank Statements:</strong> CSV format from Jupiter Bank</li>
             <li><strong>Crypto Portfolio:</strong> Text format with holdings</li>
             <li><strong>Subscription List:</strong> Manual text input</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Content Import -->
+      <div class="space-y-6">
+        <div class="flex items-center space-x-3 mb-4">
+          <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 110 2h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4zM9 6h6V4H9v2zm0 3a1 1 0 112 0v6a1 1 0 11-2 0V9zm4 0a1 1 0 112 0v6a1 1 0 11-2 0V9z" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-xl font-semibold text-text-primary">Content Data</h2>
+            <p class="text-sm text-text-muted">Movies, TV shows, books & more</p>
+          </div>
+        </div>
+        
+        <ContentDataImport client:load />
+        
+        <!-- Content Import Instructions -->
+        <div class="card p-4 bg-purple-50 border border-purple-200">
+          <h4 class="font-medium text-purple-600 mb-2">🎬 Supported Content Data</h4>
+          <ul class="text-sm text-text-secondary space-y-1 list-disc list-inside">
+            <li><strong>CSV Format:</strong> Title,Status,Rating,Seasons,Page</li>
+            <li><strong>JSON Format:</strong> Array of content objects</li>
+            <li><strong>Status:</strong> "Watched", "Watching", "Planned", etc.</li>
+            <li><strong>Rating & Seasons:</strong> Numbers or "N/A"</li>
           </ul>
         </div>
       </div>
@@ -146,6 +175,14 @@ import FinanceDataImport from '../components/import/FinanceDataImport.tsx';
           
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
+              <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span class="text-sm text-text-secondary">Content Data</span>
+            </div>
+            <span class="text-sm text-text-muted">Ready for import</span>
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
               <div class="w-2 h-2 bg-accent-error rounded-full"></div>
               <span class="text-sm text-text-secondary">Health Data</span>
             </div>
@@ -211,6 +248,7 @@ import FinanceDataImport from '../components/import/FinanceDataImport.tsx';
         <ul class="list-disc list-inside ml-4 space-y-1">
           <li><code>/api/import/loop-habits</code> - Habits CSV import</li>
           <li><code>/api/import/finance</code> - Finance data import</li>
+          <li><code>/api/import/content</code> - Content CSV/JSON import</li>
           <li><code>/api/import/health</code> - Health data (coming soon)</li>
         </ul>
       </div>

@@ -22,6 +22,9 @@ export interface ContentEntry {
     personal_tags?: string[];
     rewatch_count?: number;
     source?: 'serializd' | 'manual' | 'import';
+    seasons?: string; // For TV shows
+    page?: number; // For pagination/tracking
+    imported_at?: string; // When imported
   };
   recorded_at: Date;
 }
