@@ -1,252 +1,126 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ContentEntry } from '../../types/content';
 
-interface ImportedContentEntry {
-  Title: string;
-  Status: string;
-  Rating?: string;
-  Seasons?: string;
-  Page?: number;
-}
+export async function processSerializdData(file: File): Promise<{ success: boolean; message: string; content: ContentEntry[]; errors: string[] }> {
+  const errors: string[] = [];
+  const importedContent: ContentEntry[] = [];
 
-interface ImportResult {
-  success: boolean;
-  imported: number;
-  skipped: number;
-  errors: string[];
-}
+  try {
+    const fileContent = await file.text();
+    let parsedData: any[] = [];
 
-export class SerializdImporter {
-  constructor(private supabase: SupabaseClient) {}
-
-  async importSerializdData(data: string, userId: string): Promise<ImportResult> {
-    try {
-      let entries: ImportedContentEntry[] = [];
-      
-      // Try to parse as JSON first
-      try {
-        const jsonData = JSON.parse(data);
-        entries = Array.isArray(jsonData) ? jsonData : [jsonData];
-      } catch {
-        // If JSON parsing fails, try CSV
-        entries = this.parseCSV(data);
+    if (file.type === 'application/json') {
+      parsedData = JSON.parse(fileContent);
+    } else if (file.type === 'text/csv') {
+      // Basic CSV parsing - a more robust solution might use a library like 'papaparse'
+      const lines = fileContent.split('\n').filter(line => line.trim() !== '');
+      if (lines.length === 0) {
+        return { success: false, message: 'CSV file is empty', content: [], errors: [] };
       }
-
-      if (entries.length === 0) {
-        return {
-          success: false,
-          imported: 0,
-          skipped: 0,
-          errors: ['No valid entries found in the data']
-        };
-      }
-
-      // Get existing content to prevent duplicates
-      const { data: existingContent } = await this.supabase
-        .from('content')
-        .select('title')
-        .eq('user_id', userId);
-
-      const existingTitles = new Set(
-        existingContent?.map(item => item.title.toLowerCase()) || []
-      );
-
-      // Convert and filter entries
-      const contentEntries: Omit<ContentEntry, 'id'>[] = [];
-      const errors: string[] = [];
-      let skipped = 0;
-
-      for (const entry of entries) {
-        try {
-          if (!entry.Title || !entry.Title.trim()) {
-            errors.push('Entry missing title, skipping');
-            continue;
-          }
-
-          if (existingTitles.has(entry.Title.toLowerCase())) {
-            skipped++;
-            continue;
-          }
-
-          const contentEntry = this.mapToContentEntry(entry, userId);
-          contentEntries.push(contentEntry);
-        } catch (error) {
-          errors.push(`Error processing "${entry.Title}": ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-      }
-
-      if (contentEntries.length === 0) {
-        return {
-          success: false,
-          imported: 0,
-          skipped,
-          errors: errors.length > 0 ? errors : ['No new entries to import']
-        };
-      }
-
-      // Insert in batches
-      const batchSize = 50;
-      let imported = 0;
-
-      for (let i = 0; i < contentEntries.length; i += batchSize) {
-        const batch = contentEntries.slice(i, i + batchSize);
-        const { error } = await this.supabase
-          .from('content')
-          .insert(batch);
-
-        if (error) {
-          errors.push(`Batch insert error: ${error.message}`);
-          continue;
-        }
-
-        imported += batch.length;
-      }
-
-      return {
-        success: imported > 0,
-        imported,
-        skipped,
-        errors
-      };
-
-    } catch (error) {
-      return {
-        success: false,
-        imported: 0,
-        skipped: 0,
-        errors: [error instanceof Error ? error.message : 'Unknown import error']
-      };
-    }
-  }
-
-  private parseCSV(csvContent: string): ImportedContentEntry[] {
-    const lines = csvContent.trim().split('\n');
-    if (lines.length < 2) return [];
-
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    
-    return lines.slice(1).map(line => {
-      const values = this.parseCSVLine(line);
-      const entry: any = {};
-      
-      headers.forEach((header, index) => {
-        if (values[index] !== undefined) {
-          entry[header] = values[index];
-        }
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      parsedData = lines.slice(1).map(line => {
+        const values = line.split(',');
+        const obj: any = {};
+        headers.forEach((header, index) => {
+          obj[header] = values[index];
+        });
+        return obj;
       });
-      
-      return entry;
-    }).filter(entry => entry.Title && entry.Title.trim());
-  }
+    } else {
+      return { success: false, message: 'Unsupported file type', content: [], errors: [] };
+    }
 
-  private parseCSVLine(line: string): string[] {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
+    for (const item of parsedData) {
+      try {
+        // Assuming Serializd rating is out of 5, convert to 0-10 scale
+        let rating = parseFloat(item.rating) || 0;
+        if (rating > 0 && rating <= 5) { // Assuming 0-5 scale
+          rating = rating * 2; // Convert to 0-10
+        } else if (rating > 5 && rating <= 100) { // Assuming percentage
+          rating = rating / 10; // Convert to 0-10
+        } else if (rating > 10) { // If it's already a large number, assume it's a raw value that needs scaling
+          rating = Math.min(10, Math.max(0, rating / 10)); // Example: if 376, becomes 37.6, then capped at 10
+          errors.push(`Rating for "${item.title}" (${item.rating}) was outside 0-10 range and scaled.`);
+        }
+        
+        // Clean up review text
+        let cleanedReviewText = item.review_text || '';
+        // Remove common Serializd UI text from review_text
+        cleanedReviewText = cleanedReviewText.replace(/(\d+ reviews\s*Sort by:.*Rating\s*Any\s*.*Grid view)/s, '').trim();
+        cleanedReviewText = cleanedReviewText.replace(/(\n\s*)+/g, '\n').trim(); // Remove excessive newlines
+
+        const entry: ContentEntry = {
+          id: item.id || crypto.randomUUID(),
+          user_id: '', // This will be filled by the API route
+          type: item.content_type || (item.is_episode || item.season_episode ? 'tv_show' : 'movie'), // Map to top-level type
+          title: item.title || item.original_title || 'Untitled',
+          status: item.status || 'completed', // Assuming default status
+          rating: rating > 0 ? rating : undefined, // Use undefined for optional if 0
+          genre: item.genres ? (Array.isArray(item.genres) ? item.genres : item.genres.split(',').map((g: string) => g.trim())) : [],
+          language: item.language || 'en', // Default language
+          runtime_minutes: item.runtime_minutes ? parseInt(item.runtime_minutes) : undefined,
+          pages: item.pages ? parseInt(item.pages) : undefined,
+          release_year: item.release_year ? parseInt(item.release_year) : undefined,
+          completed_at: item.watched_date ? new Date(item.watched_date) : undefined, // Convert to Date object
+          started_at: undefined, // Assuming no start date from Serializd
+          platform: item.platform || 'Serializd', // Default platform
+          notes: cleanedReviewText || undefined, // Map to notes
+          metadata: {
+            tmdb_id: item.TMDB_ID ? String(item.TMDB_ID) : undefined, // Use item.TMDB_ID
+            isbn: item.ISBN || undefined, // Assuming ISBN might be present
+            serializd_id: item.Review_ID ? String(item.Review_ID) : item.id || undefined, // Use Review_ID as serializd_id
+            imdb_rating: item.Vote_Average ? parseFloat(item.Vote_Average) : undefined, // Use item.Vote_Average for imdb_rating
+            personal_tags: undefined, // Not available from Serializd export
+            rewatch_count: undefined, // Not available
+            source: 'serializd',
+            seasons: item.Season_Episode || undefined, // Map Season_Episode to seasons
+            page: undefined, // Not applicable
+            imported_at: new Date().toISOString(), // When imported
+
+            // Additional fields from Serializd export / TMDB that are useful
+            original_title: item.Original_Title || undefined,
+            overview: item.Overview || undefined,
+            cast: item.Cast ? (Array.isArray(item.Cast) ? item.Cast : item.Cast.split(',').map((c: string) => c.trim())) : undefined,
+            imdb_id: item.IMDB_ID || undefined,
+            popularity: item.Popularity ? parseFloat(item.Popularity) : undefined,
+            production_countries: item.Production_Countries ? (Array.isArray(item.Production_Countries) ? item.Production_Countries : item.Production_Countries.split(',').map((c: string) => c.trim())) : undefined,
+            is_episode: item.is_episode === 'true' || item.is_episode === true || (item.Season_Episode && item.Season_Episode.includes('Episode')),
+            is_season: item.is_season === 'true' || item.is_season === true || (item.Season_Episode && item.Season_Episode.includes('Season') && !item.Season_Episode.includes('Episode')),
+            created_at: item.created_at || new Date().toISOString(), // Use item.created_at or current date
+            vote_average: item.Vote_Average ? parseFloat(item.Vote_Average) : undefined,
+            vote_count: item.Vote_Count ? parseInt(item.Vote_Count) : undefined,
+            adult: item.Adult === 'true' || item.Adult === true,
+            homepage: item.Homepage || undefined,
+            created_by: item.Created_By || undefined,
+            keywords: item.Keywords ? (Array.isArray(item.Keywords) ? item.Keywords : item.Keywords.split(',').map((k: string) => k.trim())) : undefined,
+
+            // Fields duplicated for metrics table compatibility (if needed by the metrics table schema directly)
+            watched_date: item.Watch_Date ? new Date(item.Watch_Date).toISOString() : undefined, // Use item.Watch_Date
+            season_episode: item.Season_Episode || undefined, // Use item.Season_Episode
+            review_text: cleanedReviewText || undefined, // Use cleanedReviewText
+          },
+          recorded_at: item.recorded_at ? new Date(item.recorded_at) : new Date(),
+        };
+        importedContent.push(entry);
+      } catch (itemError: any) {
+        errors.push(`Error processing item "${item.title || 'Unknown'}": ${itemError.message}`);
+        console.error(`Error processing Serializd item:`, item, itemError);
       }
     }
-    
-    result.push(current.trim());
-    return result;
-  }
-
-  private mapToContentEntry(entry: ImportedContentEntry, userId: string): Omit<ContentEntry, 'id'> {
-    // Determine content type based on title patterns or default to tv_show
-    const type = this.determineContentType(entry.Title);
-    
-    // Map status
-    const status = this.mapStatus(entry.Status);
-    
-    // Parse rating if available
-    const rating = entry.Rating && entry.Rating !== 'N/A' ? 
-      this.parseRating(entry.Rating) : undefined;
 
     return {
-      user_id: userId,
-      type,
-      title: entry.Title.trim(),
-      status,
-      rating,
-      genre: [], // Empty for now since not provided in your format
-      language: 'English', // Default since not provided
-      platform: undefined,
-      notes: undefined,
-      metadata: {
-        source: 'serializd',
-        seasons: entry.Seasons && entry.Seasons !== 'N/A' ? entry.Seasons : undefined,
-        page: entry.Page || 1,
-        imported_at: new Date().toISOString()
-      },
-      recorded_at: new Date()
+      success: true,
+      message: `Successfully processed ${importedContent.length} entries.`,
+      content: importedContent,
+      errors: errors,
     };
-  }
 
-  private determineContentType(title: string): ContentEntry['type'] {
-    // Simple heuristics to determine content type
-    const lowerTitle = title.toLowerCase();
-    
-    // Common TV show indicators
-    if (lowerTitle.includes('season') || 
-        lowerTitle.includes('series') ||
-        lowerTitle.includes('show')) {
-      return 'tv_show';
-    }
-    
-    // Common book indicators
-    if (lowerTitle.includes('book') || 
-        lowerTitle.includes('novel') ||
-        lowerTitle.includes('guide')) {
-      return 'book';
-    }
-    
-    // Default to movie for most content
-    return 'movie';
-  }
-
-  private mapStatus(status: string): ContentEntry['status'] {
-    const lowerStatus = status.toLowerCase();
-    
-    switch (lowerStatus) {
-      case 'watched':
-      case 'completed':
-      case 'finished':
-        return 'completed';
-      case 'watching':
-      case 'reading':
-      case 'in progress':
-        return 'watching';
-      case 'planned':
-      case 'to watch':
-      case 'to read':
-        return 'planned';
-      case 'dropped':
-        return 'dropped';
-      case 'paused':
-      case 'on hold':
-        return 'paused';
-      default:
-        return 'completed'; // Default for "Watched" status
-    }
-  }
-
-  private parseRating(rating: string): number | undefined {
-    if (!rating || rating === 'N/A') return undefined;
-    
-    const parsed = parseFloat(rating);
-    if (isNaN(parsed)) return undefined;
-    
-    // Ensure rating is within 1-10 scale
-    return Math.max(1, Math.min(10, parsed));
+  } catch (parseError: any) {
+    console.error('Error parsing Serializd file:', parseError);
+    return {
+      success: false,
+      message: `Failed to parse file: ${parseError.message}`,
+      content: [],
+      errors: [parseError.message],
+    };
   }
 }

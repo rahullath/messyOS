@@ -1,79 +1,6 @@
 ---
-// No Fragment import needed for Astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { createServerClient } from '../lib/supabase/server';
-
-const supabase = createServerClient(Astro.cookies);
-
-// Hardcoded user ID for single-user system
-const USER_ID = '368deac7-8526-45eb-927a-6a373c95d8c6';
-
-// Fetch content data from metrics table
-const { data: contentMetrics, error } = await supabase
-  .from('metrics')
-  .select('*')
-  .eq('user_id', USER_ID)
-  .eq('type', 'content')
-  .order('recorded_at', { ascending: false })
-  .limit(50);
-
-if (error) {
-  console.error('Error fetching content metrics:', error);
-}
-
-// Process content data
-const content = (contentMetrics || []).map(metric => ({
-  id: metric.id,
-  title: metric.metadata?.title || 'Unknown',
-  type: metric.metadata?.content_type || 'movie',
-  status: metric.metadata?.status || 'completed',
-  rating: metric.metadata?.rating,
-  genre: metric.metadata?.genre || [],
-  language: metric.metadata?.language || 'English',
-  completed_at: metric.metadata?.completed_at,
-  platform: metric.metadata?.platform,
-  notes: metric.metadata?.notes,
-  runtime_minutes: metric.metadata?.runtime_minutes,
-  recorded_at: metric.recorded_at
-}));
-
-// Calculate basic stats
-const thisYear = new Date().getFullYear();
-const thisYearContent = content.filter(c => 
-  c.completed_at && new Date(c.completed_at).getFullYear() === thisYear
-);
-
-const stats = {
-  totalMovies: content.filter(c => c.type === 'movie').length,
-  totalShows: content.filter(c => c.type === 'tv_show').length,
-  totalBooks: content.filter(c => c.type === 'book').length,
-  thisYearMovies: thisYearContent.filter(c => c.type === 'movie').length,
-  thisYearShows: thisYearContent.filter(c => c.type === 'tv_show').length,
-  thisYearBooks: thisYearContent.filter(c => c.type === 'book').length,
-  averageRating: content.filter(c => c.rating).reduce((sum, c) => sum + c.rating, 0) / Math.max(content.filter(c => c.rating).length, 1),
-  totalWatchTime: content.filter(c => c.runtime_minutes).reduce((sum, c) => sum + c.runtime_minutes, 0)
-};
-
-// Genre analysis
-const genreCount = new Map();
-content.forEach(item => {
-  if (item.genre && Array.isArray(item.genre)) {
-    item.genre.forEach(genre => {
-      genreCount.set(genre, (genreCount.get(genre) || 0) + 1);
-    });
-  }
-});
-
-const topGenres = Array.from(genreCount.entries())
-  .map(([genre, count]) => ({
-    genre,
-    count,
-    percentage: content.length > 0 ? (count / content.length) * 100 : 0
-  }))
-  .sort((a, b) => b.count - a.count)
-  .slice(0, 5);
-
-const hasContentData = content.length > 0;
+// Don't import React components in the frontmatter - they need client:load
 ---
 
 <DashboardLayout title="Content - MeshOS">
@@ -86,281 +13,54 @@ const hasContentData = content.length > 0;
           Track movies, shows, books, and get personalized recommendations
         </p>
       </div>
-      <div class="flex space-x-3">
-        <button 
-          id="import-serializd-btn"
-          class="flex items-center px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/90 transition-colors"
-        >
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-          </svg>
-          Import Serializd
-        </button>
-        <div class="relative group">
-          <button class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-            </svg>
-            Quick Add
-          </button>
-          <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-            <button
-              data-content-type="movie"
-              class="add-content-btn block w-full text-left px-4 py-2 hover:bg-gray-100 rounded-t-lg"
-            >
-              🎬 Movie
-            </button>
-            <button
-              data-content-type="tv_show"
-              class="add-content-btn block w-full text-left px-4 py-2 hover:bg-gray-100"
-            >
-              📺 TV Show
-            </button>
-            <button
-              data-content-type="book"
-              class="add-content-btn block w-full text-left px-4 py-2 hover:bg-gray-100 rounded-b-lg"
-            >
-              📚 Book
-            </button>
-          </div>
-        </div>
-      </div>
+      <button 
+        id="import-serializd-btn"
+        class="flex items-center px-4 py-2 bg-accent-purple text-white rounded-lg hover:bg-accent-purple/90 transition-colors"
+      >
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+        </svg>
+        Import Serializd
+      </button>
     </div>
 
-    {hasContentData ? (
-      <div>
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <!-- Movies This Year -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-text-muted">Movies This Year</p>
-                <p class="text-2xl font-semibold text-text-primary mt-1">
-                  {stats.thisYearMovies}
-                </p>
-                <p class="text-xs text-text-muted mt-1">Total: {stats.totalMovies}</p>
-              </div>
-              <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <span class="text-2xl">🎬</span>
-              </div>
-            </div>
-          </div>
+    <!-- Import Section - This will load the React component -->
+    <div id="content-import-container"></div>
 
-          <!-- Shows This Year -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-text-muted">Shows This Year</p>
-                <p class="text-2xl font-semibold text-text-primary mt-1">
-                  {stats.thisYearShows}
-                </p>
-                <p class="text-xs text-text-muted mt-1">Total: {stats.totalShows}</p>
-              </div>
-              <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <span class="text-2xl">📺</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Books This Year -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-text-muted">Books This Year</p>
-                <p class="text-2xl font-semibold text-text-primary mt-1">
-                  {stats.thisYearBooks}
-                </p>
-                <p class="text-xs text-text-muted mt-1">Total: {stats.totalBooks}</p>
-              </div>
-              <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <span class="text-2xl">📚</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Average Rating -->
-          <div class="card p-6">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-text-muted">Average Rating</p>
-                <p class="text-2xl font-semibold text-text-primary mt-1">
-                  {stats.averageRating.toFixed(1)}
-                </p>
-                <p class="text-xs text-text-muted mt-1">{Math.round(stats.totalWatchTime / 60)}h watched</p>
-              </div>
-              <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <span class="text-2xl">⭐</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Content Overview -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <!-- Recent Activity -->
-          <div class="card p-6">
-            <h3 class="text-lg font-semibold text-text-primary mb-4">Recent Activity</h3>
-            <div class="space-y-3">
-              {content.slice(0, 8).map((item) => (
-                <div class="flex items-center justify-between p-3 bg-surface-hover rounded-lg" key={item.id}>
-                  <div class="flex items-center space-x-3">
-                    <span class="text-lg">
-                      {item.type === 'movie' && '🎬'}
-                      {item.type === 'tv_show' && '📺'}
-                      {item.type === 'book' && '📚'}
-                      {item.type === 'podcast' && '🎧'}
-                    </span>
-                    <div>
-                      <p class="font-medium text-text-primary">{item.title}</p>
-                      <p class="text-sm text-text-muted capitalize">
-                        {item.status} • {item.language}
-                        {item.platform && ` • ${item.platform}`}
-                      </p>
-                    </div>
-                  </div>
-                  {item.rating && (
-                    <div class="flex items-center space-x-1">
-                      <span class="text-yellow-400">⭐</span>
-                      <span class="text-sm font-medium">{item.rating}/10</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <!-- Top Genres -->
-          {topGenres.length > 0 && (
-            <div class="card p-6">
-              <h3 class="text-lg font-semibold text-text-primary mb-4">Top Genres</h3>
-              <div class="space-y-4">
-                {topGenres.map((genre) => (
-                  <div class="flex items-center justify-between" key={genre.genre}>
-                    <span class="text-sm font-medium text-text-primary">{genre.genre}</span>
-                    <div class="flex items-center space-x-2">
-                      <div class="w-20 bg-border rounded-full h-2">
-                        <div
-                          class="bg-accent-purple h-2 rounded-full"
-                          style={`width: ${Math.min(genre.percentage, 100)}%`}
-                        ></div>
-                      </div>
-                      <span class="text-sm text-text-muted">{genre.count}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    ) : (
-      <!-- Empty State -->
-      <div class="text-center py-16">
-        <div class="w-24 h-24 mx-auto mb-4 bg-surface-hover rounded-full flex items-center justify-center">
-          <span class="text-4xl">📚</span>
-        </div>
-        <h3 class="text-xl font-semibold text-text-primary mb-2">No Content Yet</h3>
-        <p class="text-text-muted mb-6">Start tracking your movies, shows, and books!</p>
-        <button 
-          id="empty-state-add-btn"
-          class="px-6 py-3 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-        >
-          Add Your First Content
-        </button>
-      </div>
-    )}
+    <!-- Content Dashboard - This will load the React component -->
+    <div id="content-dashboard-container"></div>
   </div>
 </DashboardLayout>
 
 <script>
-  // Handle quick content addition
-  function addQuickContent(type: string) {
-    const title = prompt(`Enter ${type} title:`);
-    if (!title) return;
+  // Handle Serializd import button
+  document.getElementById('import-serializd-btn')?.addEventListener('click', () => {
+    // For now, just redirect to the import page
+    window.location.href = '/import';
+  });
 
-    const rating = prompt('Rating (1-10, optional):');
-    const platform = prompt('Platform/Source (optional):');
-
-    const newEntry = {
-      title,
-      content_type: type,
-      status: 'completed',
-      rating: rating ? parseInt(rating) : undefined,
-      platform,
-      genre: [],
-      language: 'English',
-      completed_at: new Date().toISOString()
-    };
-
-    fetch('/api/content/add', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newEntry)
-    })
-    .then(async response => {
-      const result = await response.json();
-      if (result.success) {
-        window.location.reload();
-      } else {
-        alert(`Failed to add content: ${result.error}`);
-      }
-    })
-    .catch(error => {
-      console.error('Failed to add content:', error);
-      alert('Failed to add content. Please try again.');
-    });
-  }
-
-  // Event listeners
-  document.addEventListener('DOMContentLoaded', () => {
-    // Quick add buttons
-    document.querySelectorAll('.add-content-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const type = (e.target as HTMLElement).dataset.contentType;
-        if (type) addQuickContent(type);
+  // We'll add the React components here using dynamic imports
+  import('../components/import/ContentDataImport').then(({ default: ContentDataImport }) => {
+    import('react').then(React => {
+      import('react-dom/client').then(({ createRoot }) => {
+        const container = document.getElementById('content-import-container');
+        if (container) {
+          const root = createRoot(container);
+          root.render(React.createElement(ContentDataImport));
+        }
       });
     });
+  });
 
-    // Empty state button
-    document.getElementById('empty-state-add-btn')?.addEventListener('click', () => {
-      addQuickContent('movie');
-    });
-
-    // Serializd import
-    document.getElementById('import-serializd-btn')?.addEventListener('click', () => {
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = '.csv,.json';
-      
-      fileInput.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (!file) return;
-
-        const formData = new FormData();
-        formData.append('serializd_data', file);
-
-        try {
-          const response = await fetch('/api/content/import/serializd', {
-            method: 'POST',
-            body: formData
-          });
-
-          const result = await response.json();
-          
-          if (result.success) {
-            alert(`Successfully imported ${result.imported} items!`);
-            window.location.reload();
-          } else {
-            alert(`Import failed: ${result.error}`);
-          }
-        } catch (error) {
-          console.error('Import error:', error);
-          alert('Import failed. Please try again.');
+  import('../components/dashboard/ContentDashboardComponent').then(({ default: ContentDashboardComponent }) => {
+    import('react').then(React => {
+      import('react-dom/client').then(({ createRoot }) => {
+        const container = document.getElementById('content-dashboard-container');
+        if (container) {
+          const root = createRoot(container);
+          root.render(React.createElement(ContentDashboardComponent));
         }
-      };
-
-      fileInput.click();
+      });
     });
   });
 </script>
