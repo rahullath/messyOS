@@ -39,6 +39,96 @@ interface ContentItem {
   vote_average?: number;
 }
 
+// Dynamic poster loading component
+const DynamicPoster: React.FC<{
+  tmdbId?: number;
+  title: string;
+  type: string;
+  rating?: number;
+  vote_average?: number;
+  watch_date?: string;
+}> = ({ tmdbId, title, type, rating, vote_average, watch_date }) => {
+  const [posterUrl, setPosterUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (tmdbId && !loading && !posterUrl && !error) {
+      setLoading(true);
+      
+      fetch(`/api/content/poster/${tmdbId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.posterUrl) {
+            setPosterUrl(data.posterUrl);
+          } else {
+            setError(true);
+          }
+        })
+        .catch(err => {
+          console.log('Failed to fetch poster for', title, ':', err);
+          setError(true);
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [tmdbId, title]);
+
+  const gradientClass = type === 'movie' ? 'from-blue-600 to-purple-700' :
+                       type === 'tv_show' ? 'from-purple-600 to-pink-700' :
+                       'from-green-600 to-teal-700';
+
+  return (
+    <div className={`aspect-[2/3] rounded-t-lg flex flex-col items-center justify-center text-white relative overflow-hidden bg-gradient-to-br ${gradientClass}`}>
+      {/* Poster image if loaded */}
+      {posterUrl ? (
+        <img 
+          src={posterUrl} 
+          alt={title}
+          className="w-full h-full object-cover"
+          onError={() => {
+            setPosterUrl(null);
+            setError(true);
+          }}
+        />
+      ) : (
+        <>
+          {/* Background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 bg-gradient-radial from-white/20 to-transparent"></div>
+          </div>
+          
+          {/* Content type icon */}
+          <div className={`text-4xl mb-2 relative z-10 ${loading ? 'animate-pulse' : ''}`}>
+            {loading ? '🔄' : type === 'movie' ? '🎬' : type === 'tv_show' ? '📺' : '📚'}
+          </div>
+        </>
+      )}
+      
+      {/* Rating badge if available */}
+      {rating && (
+        <div className="absolute top-2 right-2 bg-black/70 text-yellow-400 px-2 py-1 rounded text-xs font-medium flex items-center z-10">
+          <span className="mr-1">⭐</span>
+          {rating.toFixed(1)}
+        </div>
+      )}
+      
+      {/* TMDB rating if different from personal rating */}
+      {vote_average && (!rating || Math.abs(vote_average - rating) > 0.5) && (
+        <div className="absolute top-2 left-2 bg-blue-600/80 text-white px-2 py-1 rounded text-xs font-medium z-10">
+          TMDB {vote_average.toFixed(1)}
+        </div>
+      )}
+      
+      {/* Year badge if available */}
+      {watch_date && (
+        <div className="absolute bottom-2 left-2 bg-black/70 text-gray-300 px-2 py-1 rounded text-xs z-10">
+          {new Date(watch_date).getFullYear()}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function ContentDashboardComponent() {
   const [content, setContent] = useState<ContentItem[]>([]);
   const [stats, setStats] = useState<ContentStats | null>(null);
@@ -247,19 +337,6 @@ export default function ContentDashboardComponent() {
         </div>
       )}
 
-      {/* Add TMDB Posters Section */}
-      <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/20 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-300 mb-2 flex items-center">
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
-          🎨 Want Movie Posters?
-        </h3>
-        <p className="text-xs text-gray-400">
-          Your enriched data has TMDB IDs! Add a TMDB API key to automatically fetch posters for all {stats.total} items.
-        </p>
-      </div>
-
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
@@ -343,44 +420,14 @@ export default function ContentDashboardComponent() {
             onClick={() => setSelectedItem(item)}
             className="bg-gray-800/50 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-700/50 transition-all border border-gray-700/50 hover:border-purple-500/50"
           >
-            {/* Beautiful poster placeholder with genre-based colors */}
-            <div className={`aspect-[2/3] rounded-t-lg flex flex-col items-center justify-center text-white relative overflow-hidden ${
-              item.type === 'movie' ? 'bg-gradient-to-br from-blue-600 to-purple-700' :
-              item.type === 'tv_show' ? 'bg-gradient-to-br from-purple-600 to-pink-700' :
-              'bg-gradient-to-br from-green-600 to-teal-700'
-            }`}>
-              {/* Genre-based background pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0 bg-gradient-radial from-white/20 to-transparent"></div>
-              </div>
-              
-              {/* Content type icon */}
-              <div className="text-4xl mb-2 relative z-10">
-                {item.type === 'movie' ? '🎬' : item.type === 'tv_show' ? '📺' : '📚'}
-              </div>
-              
-              {/* Rating badge if available */}
-              {item.rating && (
-                <div className="absolute top-2 right-2 bg-black/70 text-yellow-400 px-2 py-1 rounded text-xs font-medium flex items-center z-10">
-                  <span className="mr-1">⭐</span>
-                  {item.rating.toFixed(1)}
-                </div>
-              )}
-              
-              {/* TMDB rating if different from personal rating */}
-              {item.vote_average && (!item.rating || Math.abs(item.vote_average - item.rating) > 0.5) && (
-                <div className="absolute top-2 left-2 bg-blue-600/80 text-white px-2 py-1 rounded text-xs font-medium z-10">
-                  TMDB {item.vote_average.toFixed(1)}
-                </div>
-              )}
-              
-              {/* Year badge if available */}
-              {item.watch_date && (
-                <div className="absolute bottom-2 left-2 bg-black/70 text-gray-300 px-2 py-1 rounded text-xs z-10">
-                  {new Date(item.watch_date).getFullYear()}
-                </div>
-              )}
-            </div>
+            <DynamicPoster
+              tmdbId={item.tmdb_id}
+              title={item.title}
+              type={item.type}
+              rating={item.rating}
+              vote_average={item.vote_average}
+              watch_date={item.watch_date}
+            />
             
             {/* Content Info */}
             <div className="p-3">
