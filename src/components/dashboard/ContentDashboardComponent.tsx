@@ -72,10 +72,37 @@ export default function ContentDashboardComponent() {
             }
           }
 
-          // Get poster URL from TMDB_ID
-          const poster_url = metadata.tmdb_id ? 
-            `https://image.tmdb.org/t/p/w300${metadata.poster_path || ''}` : 
-            undefined;
+          // Debug: Check what poster fields are available
+          console.log('Sample metadata for poster debugging:', {
+            tmdb_id: metadata.tmdb_id,
+            available_fields: Object.keys(metadata).filter(key => 
+              key.toLowerCase().includes('poster') || 
+              key.toLowerCase().includes('image') || 
+              key.toLowerCase().includes('photo')
+            )
+          });
+
+          // Get poster URL from TMDB data - check multiple possible field names
+          let poster_url = undefined;
+          if (metadata.tmdb_id) {
+            // Try different possible poster path fields from your enriched data
+            const posterPath = metadata.poster_path || 
+                             metadata.Poster_Path || 
+                             metadata.poster || 
+                             metadata.poster_url ||
+                             metadata.image ||
+                             metadata.backdrop_path;
+            
+            if (posterPath && typeof posterPath === 'string') {
+              // If it's already a full URL, use it
+              if (posterPath.startsWith('http')) {
+                poster_url = posterPath;
+              } else if (posterPath.startsWith('/')) {
+                // If it's a TMDB path, construct the full URL
+                poster_url = `https://image.tmdb.org/t/p/w300${posterPath}`;
+              }
+            }
+          }
 
           return {
             id: item.id,
@@ -83,7 +110,7 @@ export default function ContentDashboardComponent() {
             type: metadata.content_type || 'movie',
             rating: rating,
             genres: Array.isArray(metadata.genres) ? metadata.genres : 
-                   (typeof metadata.genres === 'string' ? metadata.genres.split(', ').filter((g: string) => g.trim()) : []),
+                   (typeof metadata.genres === 'string' ? metadata.genres.split(', ').filter(g => g.trim()) : []),
             overview: metadata.overview,
             poster_url: poster_url,
             tmdb_id: metadata.tmdb_id,
@@ -95,7 +122,7 @@ export default function ContentDashboardComponent() {
             vote_average: metadata.vote_average,
             imdb_id: metadata.imdb_id,
             keywords: typeof metadata.keywords === 'string' ? 
-              metadata.keywords.split(', ').filter((k: string) => k.trim()) : 
+              metadata.keywords.split(', ').filter(k => k.trim()) : 
               (metadata.keywords || [])
           };
         });
@@ -174,7 +201,7 @@ export default function ContentDashboardComponent() {
       recentlyWatched: contentData
         .filter(c => c.watch_date)
         .sort((a, b) => new Date(b.watch_date!).getTime() - new Date(a.watch_date!).getTime())
-        .slice(0, 10) as unknown as ContentEntry[],
+        .slice(0, 10) as ContentEntry[],
       monthlyProgress,
       upcomingEpisodes
     };
@@ -333,21 +360,23 @@ export default function ContentDashboardComponent() {
             className="bg-gray-800/50 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-700/50 transition-all border border-gray-700/50 hover:border-purple-500/50"
           >
             {/* Poster placeholder */}
-            <div className="aspect-[2/3] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+            <div className="aspect-[2/3] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center relative">
               {item.poster_url ? (
                 <img 
                   src={item.poster_url} 
                   alt={item.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
+                    console.log('Failed to load poster:', item.poster_url);
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
-              ) : (
-                <div className="text-4xl">
-                  {item.type === 'movie' ? '🎬' : item.type === 'tv_show' ? '📺' : '📚'}
-                </div>
-              )}
+              ) : null}
+              
+              {/* Always show emoji as fallback/overlay */}
+              <div className={`text-4xl ${item.poster_url ? 'absolute inset-0 flex items-center justify-center bg-gray-800/50 opacity-0 hover:opacity-100 transition-opacity' : ''}`}>
+                {item.type === 'movie' ? '🎬' : item.type === 'tv_show' ? '📺' : '📚'}
+              </div>
             </div>
             
             {/* Content Info */}
