@@ -2,7 +2,7 @@
 import type { AstroCookies } from 'astro';
 // Since you're the only user, we can simplify server-side auth
 export function getServerUser(cookies: AstroCookies) {
-  const supabaseUrl = import.meta.env.SUPABASE_URL;
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
   const projectRef = supabaseUrl.split('.')[0].split('//')[1];
 
   const authCookieNames = [

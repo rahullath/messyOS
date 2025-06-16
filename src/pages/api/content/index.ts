@@ -9,7 +9,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     const user = requireAuth(cookies);
     console.log('✅ User authenticated:', user.email);
 
-    const supabase = createServerClient();
+    const supabase = createServerClient(cookies);
     
     // Parse query parameters
     const searchParams = url.searchParams;
