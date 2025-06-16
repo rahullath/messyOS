@@ -3,20 +3,22 @@ import { defineMiddleware } from 'astro/middleware'
 import { createServerClient } from './lib/supabase/server'
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  // Skip auth for API routes (especially poster fetching)
-  if (context.url.pathname.startsWith('/api/')) {
-    return next();
-  }
-  
   const supabase = createServerClient(context.cookies);
   
+  // Store supabase for server-side use in all routes (including API routes)
+  context.locals.supabase = supabase;
+
   // Public routes that don't need auth
   const publicRoutes = ['/login', '/auth/callback', '/auth/exchange'];
   const isPublicRoute = publicRoutes.some(route => 
     context.url.pathname === route
   );
   
-  if (isPublicRoute) {
+  // Skip auth check for public routes and API routes (except for specific API routes that need auth)
+  if (isPublicRoute || context.url.pathname.startsWith('/api/')) {
+    // For API routes, we still need the supabase client initialized with cookies,
+    // but we don't necessarily need to perform an auth check here.
+    // Individual API routes can decide if they need authentication.
     return next();
   }
   
@@ -34,7 +36,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
     // Store user for server-side use
     context.locals.user = user;
-    context.locals.supabase = supabase;
 
     // Protected routes
     const protectedRoutes = ['/', '/dashboard', '/habits', '/health', '/finance', '/content', '/tasks', '/import'];
