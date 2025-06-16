@@ -1,3 +1,4 @@
+// src/middleware.ts
 import { defineMiddleware } from 'astro/middleware'
 import { createServerClient } from './lib/supabase/server'
 
