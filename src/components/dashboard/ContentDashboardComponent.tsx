@@ -72,37 +72,8 @@ export default function ContentDashboardComponent() {
             }
           }
 
-          // Debug: Check what poster fields are available
-          console.log('Sample metadata for poster debugging:', {
-            tmdb_id: metadata.tmdb_id,
-            available_fields: Object.keys(metadata).filter(key => 
-              key.toLowerCase().includes('poster') || 
-              key.toLowerCase().includes('image') || 
-              key.toLowerCase().includes('photo')
-            )
-          });
-
-          // Get poster URL from TMDB data - check multiple possible field names
-          let poster_url = undefined;
-          if (metadata.tmdb_id) {
-            // Try different possible poster path fields from your enriched data
-            const posterPath = metadata.poster_path || 
-                             metadata.Poster_Path || 
-                             metadata.poster || 
-                             metadata.poster_url ||
-                             metadata.image ||
-                             metadata.backdrop_path;
-            
-            if (posterPath && typeof posterPath === 'string') {
-              // If it's already a full URL, use it
-              if (posterPath.startsWith('http')) {
-                poster_url = posterPath;
-              } else if (posterPath.startsWith('/')) {
-                // If it's a TMDB path, construct the full URL
-                poster_url = `https://image.tmdb.org/t/p/w300${posterPath}`;
-              }
-            }
-          }
+          // Since your enriched data doesn't have poster paths, we'll use beautiful placeholders
+          // You can add TMDB API integration later if you want actual posters
 
           return {
             id: item.id,
@@ -112,7 +83,7 @@ export default function ContentDashboardComponent() {
             genres: Array.isArray(metadata.genres) ? metadata.genres : 
                    (typeof metadata.genres === 'string' ? metadata.genres.split(', ').filter(g => g.trim()) : []),
             overview: metadata.overview,
-            poster_url: poster_url,
+            poster_url: undefined, // No poster data in your enriched files
             tmdb_id: metadata.tmdb_id,
             season_episode: metadata.season_episode,
             watch_date: metadata.watched_date || metadata.completed_at,
@@ -276,6 +247,19 @@ export default function ContentDashboardComponent() {
         </div>
       )}
 
+      {/* Add TMDB Posters Section */}
+      <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/20 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-blue-300 mb-2 flex items-center">
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          🎨 Want Movie Posters?
+        </h3>
+        <p className="text-xs text-gray-400">
+          Your enriched data has TMDB IDs! Add a TMDB API key to automatically fetch posters for all {stats.total} items.
+        </p>
+      </div>
+
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
@@ -359,24 +343,43 @@ export default function ContentDashboardComponent() {
             onClick={() => setSelectedItem(item)}
             className="bg-gray-800/50 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-700/50 transition-all border border-gray-700/50 hover:border-purple-500/50"
           >
-            {/* Poster placeholder */}
-            <div className="aspect-[2/3] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center relative">
-              {item.poster_url ? (
-                <img 
-                  src={item.poster_url} 
-                  alt={item.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.log('Failed to load poster:', item.poster_url);
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : null}
+            {/* Beautiful poster placeholder with genre-based colors */}
+            <div className={`aspect-[2/3] rounded-t-lg flex flex-col items-center justify-center text-white relative overflow-hidden ${
+              item.type === 'movie' ? 'bg-gradient-to-br from-blue-600 to-purple-700' :
+              item.type === 'tv_show' ? 'bg-gradient-to-br from-purple-600 to-pink-700' :
+              'bg-gradient-to-br from-green-600 to-teal-700'
+            }`}>
+              {/* Genre-based background pattern */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute inset-0 bg-gradient-radial from-white/20 to-transparent"></div>
+              </div>
               
-              {/* Always show emoji as fallback/overlay */}
-              <div className={`text-4xl ${item.poster_url ? 'absolute inset-0 flex items-center justify-center bg-gray-800/50 opacity-0 hover:opacity-100 transition-opacity' : ''}`}>
+              {/* Content type icon */}
+              <div className="text-4xl mb-2 relative z-10">
                 {item.type === 'movie' ? '🎬' : item.type === 'tv_show' ? '📺' : '📚'}
               </div>
+              
+              {/* Rating badge if available */}
+              {item.rating && (
+                <div className="absolute top-2 right-2 bg-black/70 text-yellow-400 px-2 py-1 rounded text-xs font-medium flex items-center z-10">
+                  <span className="mr-1">⭐</span>
+                  {item.rating.toFixed(1)}
+                </div>
+              )}
+              
+              {/* TMDB rating if different from personal rating */}
+              {item.vote_average && (!item.rating || Math.abs(item.vote_average - item.rating) > 0.5) && (
+                <div className="absolute top-2 left-2 bg-blue-600/80 text-white px-2 py-1 rounded text-xs font-medium z-10">
+                  TMDB {item.vote_average.toFixed(1)}
+                </div>
+              )}
+              
+              {/* Year badge if available */}
+              {item.watch_date && (
+                <div className="absolute bottom-2 left-2 bg-black/70 text-gray-300 px-2 py-1 rounded text-xs z-10">
+                  {new Date(item.watch_date).getFullYear()}
+                </div>
+              )}
             </div>
             
             {/* Content Info */}
