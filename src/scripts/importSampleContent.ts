@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.PUBLIC_SUPABASE_URL || 'https://mdhtpjpwwbuepsytgrva.supabase.co';
 const SUPABASE_KEY = process.env.PUBLIC_SUPABASE_ANON_KEY || 'your_supabase_anon_key';
-const USER_ID = '368deac7-8526-45eb-927a-6a373c95d8c6';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -161,9 +160,18 @@ const sampleContent = [
 
 async function importSampleContent() {
   console.log('Starting content import...');
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    console.error('Authentication error: No user logged in. Please log in to import sample data.');
+    return;
+  }
+
+  const userId = user.id;
+  console.log(`Importing sample content for user: ${userId}`);
   
   const metricsData = sampleContent.map(item => ({
-    user_id: USER_ID,
+    user_id: userId,
     type: 'content',
     value: item.rating || 0,
     unit: 'rating',

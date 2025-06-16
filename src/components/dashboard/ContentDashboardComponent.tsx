@@ -1,4 +1,4 @@
-// src/components/dashboard/ContentDashboard.tsx
+// src/components/dashboard/ContentDashboardComponent.tsx
 import React, { useState, useEffect } from 'react';
 import type { ContentEntry } from '../../types/content';
 
@@ -11,14 +11,41 @@ interface ContentStats {
   topGenres: { genre: string; count: number }[];
   recentlyWatched: ContentEntry[];
   monthlyProgress: { month: string; count: number }[];
+  upcomingEpisodes: UpcomingEpisode[];
+}
+
+interface UpcomingEpisode {
+  title: string;
+  season_episode: string;
+  air_date: string;
+  network: string;
+  poster_url?: string;
+}
+
+interface ContentItem {
+  id: string;
+  title: string;
+  type: string;
+  rating?: number;
+  genres: string[];
+  overview?: string;
+  poster_url?: string;
+  tmdb_id?: number;
+  season_episode?: string;
+  watch_date?: string;
+  cast?: string;
+  networks?: string;
+  status?: string;
+  vote_average?: number;
 }
 
 export default function ContentDashboardComponent() {
-  const [content, setContent] = useState<ContentEntry[]>([]);
+  const [content, setContent] = useState<ContentItem[]>([]);
   const [stats, setStats] = useState<ContentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'movie' | 'tv_show' | 'book'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'rating' | 'title'>('date');
+  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null);
 
   useEffect(() => {
     fetchContentData();
@@ -30,40 +57,51 @@ export default function ContentDashboardComponent() {
       const data = await response.json();
       
       if (data.success) {
-        // Map the API response (metrics table format) to ContentEntry interface
-        const mappedContent: ContentEntry[] = data.content.map((item: any) => ({
-          id: item.id,
-          user_id: item.user_id,
-          type: item.metadata.content_type, // Map metadata.content_type to top-level type
-          title: item.metadata.title,
-          status: item.metadata.status || 'completed',
-          rating: item.metadata.rating,
-          genre: item.metadata.genres || [],
-          language: item.metadata.language || 'en',
-          runtime_minutes: item.metadata.runtime_minutes,
-          pages: item.metadata.pages,
-          release_year: item.metadata.release_year,
-          completed_at: item.metadata.watched_date ? new Date(item.metadata.watched_date) : undefined,
-          started_at: undefined,
-          platform: item.metadata.platform || 'Unknown',
-          notes: item.metadata.review_text || undefined,
-          metadata: { // This metadata is for additional details, not the main fields
-            tmdb_id: item.metadata.tmdb_id ? String(item.metadata.tmdb_id) : undefined,
-            isbn: item.metadata.isbn,
-            serializd_id: item.metadata.serializd_id,
-            imdb_rating: item.metadata.vote_average,
-            personal_tags: item.metadata.personal_tags,
-            rewatch_count: item.metadata.rewatch_count,
-            source: item.metadata.source,
-            seasons: item.metadata.season_episode,
-            page: item.metadata.page,
-            imported_at: item.metadata.imported_at,
-          },
-          recorded_at: new Date(item.recorded_at),
-        }));
-        
-        setContent(mappedContent);
-        setStats(calculateStats(mappedContent));
+        // Process the enriched data structure from your existing API
+        const processedContent = data.content.map((item: any) => {
+          // Handle both enriched_Reviews and enriched_Watched_shows format
+          const metadata = item.metadata || {};
+          
+          let rating = null;
+          if (metadata.rating) {
+            // Parse "188/5" format from enriched_Reviews or use direct rating
+            if (typeof metadata.rating === 'string' && metadata.rating.includes('/')) {
+              rating = parseInt(metadata.rating.split('/')[0]) / 20; // Convert to 1-10 scale
+            } else if (typeof metadata.rating === 'number') {
+              rating = metadata.rating;
+            }
+          }
+
+          // Get poster URL from TMDB_ID
+          const poster_url = metadata.tmdb_id ? 
+            `https://image.tmdb.org/t/p/w300${metadata.poster_path || ''}` : 
+            undefined;
+
+          return {
+            id: item.id,
+            title: metadata.tmdb_title || metadata.title || 'Unknown',
+            type: metadata.content_type || 'movie',
+            rating: rating,
+            genres: Array.isArray(metadata.genres) ? metadata.genres : 
+                   (typeof metadata.genres === 'string' ? metadata.genres.split(', ').filter((g: string) => g.trim()) : []),
+            overview: metadata.overview,
+            poster_url: poster_url,
+            tmdb_id: metadata.tmdb_id,
+            season_episode: metadata.season_episode,
+            watch_date: metadata.watched_date || metadata.completed_at,
+            cast: metadata.cast,
+            networks: metadata.networks,
+            status: metadata.status,
+            vote_average: metadata.vote_average,
+            imdb_id: metadata.imdb_id,
+            keywords: typeof metadata.keywords === 'string' ? 
+              metadata.keywords.split(', ').filter((k: string) => k.trim()) : 
+              (metadata.keywords || [])
+          };
+        });
+
+        setContent(processedContent);
+        setStats(calculateStats(processedContent));
       }
     } catch (error) {
       console.error('Failed to fetch content:', error);
@@ -72,109 +110,98 @@ export default function ContentDashboardComponent() {
     }
   };
 
-  const calculateStats = (contentData: ContentEntry[]): ContentStats => {
+  const calculateStats = (contentData: ContentItem[]): ContentStats => {
     const movies = contentData.filter(c => c.type === 'movie');
     const tvShows = contentData.filter(c => c.type === 'tv_show');
     const books = contentData.filter(c => c.type === 'book');
 
     const ratedContent = contentData.filter(c => c.rating && c.rating > 0);
     const avgRating = ratedContent.length > 0 
-      ? ratedContent.reduce((sum, c) => sum + (c.rating || 0), 0) / ratedContent.length
+      ? ratedContent.reduce((sum, c) => sum + (c.rating || 0), 0) / ratedContent.length 
       : 0;
 
-    // Genre analysis
-    const genreCounts: { [key: string]: number } = {};
+    // Generate genre counts
+    const genreCount = new Map<string, number>();
     contentData.forEach(item => {
-      if (item.genre) {
-        item.genre.forEach(genre => {
-          genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+      if (item.genres && Array.isArray(item.genres)) {
+        item.genres.forEach(genre => {
+          genreCount.set(genre, (genreCount.get(genre) || 0) + 1);
         });
       }
     });
 
-    const topGenres = Object.entries(genreCounts)
+    const topGenres = Array.from(genreCount.entries())
       .map(([genre, count]) => ({ genre, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // Recent content (last 10)
-    const recentlyWatched = contentData
-      .sort((a, b) => (b.completed_at?.getTime() || 0) - (a.completed_at?.getTime() || 0))
-      .slice(0, 10);
+    // Calculate monthly progress (last 12 months)
+    const monthlyProgress = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthKey = date.toISOString().slice(0, 7); // YYYY-MM format
+      
+      const count = contentData.filter(item => 
+        item.watch_date && item.watch_date.startsWith(monthKey)
+      ).length;
 
-    // Monthly progress
-    const monthlyData: { [key: string]: number } = {};
-    contentData.forEach(item => {
-      if (item.completed_at) {
-        const month = item.completed_at.toISOString().slice(0, 7);
-        monthlyData[month] = (monthlyData[month] || 0) + 1;
-      }
-    });
+      monthlyProgress.push({
+        month: date.toLocaleDateString('en-US', { month: 'short' }),
+        count
+      });
+    }
 
-    const monthlyProgress = Object.entries(monthlyData)
-      .map(([month, count]) => ({ month, count }))
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-6); // Last 6 months
+    // Get upcoming episodes for returning series
+    const upcomingEpisodes: UpcomingEpisode[] = tvShows
+      .filter(show => show.status === 'Returning Series')
+      .slice(0, 5)
+      .map(show => ({
+        title: show.title,
+        season_episode: 'Next Episode',
+        air_date: 'TBA',
+        network: show.networks || 'Unknown',
+        poster_url: show.poster_url
+      }));
 
     return {
       total: contentData.length,
       movies: movies.length,
       tv_shows: tvShows.length,
       books: books.length,
-      avgRating,
+      avgRating: Math.round(avgRating * 10) / 10,
       topGenres,
-      recentlyWatched,
-      monthlyProgress
+      recentlyWatched: contentData
+        .filter(c => c.watch_date)
+        .sort((a, b) => new Date(b.watch_date!).getTime() - new Date(a.watch_date!).getTime())
+        .slice(0, 10) as unknown as ContentEntry[],
+      monthlyProgress,
+      upcomingEpisodes
     };
   };
 
   const filteredContent = content.filter(item => {
     if (filter === 'all') return true;
-    return item.type === filter; // Use item.type
+    return item.type === filter;
   });
 
   const sortedContent = [...filteredContent].sort((a, b) => {
     switch (sortBy) {
-      case 'date':
-        return (b.completed_at?.getTime() || 0) - (a.completed_at?.getTime() || 0); // Use completed_at
       case 'rating':
-        return (b.rating || 0) - (a.rating || 0); // Use item.rating
+        return (b.rating || 0) - (a.rating || 0);
       case 'title':
-        return a.title.localeCompare(b.title); // Use item.title
+        return a.title.localeCompare(b.title);
+      case 'date':
       default:
-        return 0;
+        return new Date(b.watch_date || 0).getTime() - new Date(a.watch_date || 0).getTime();
     }
   });
-
-  const formatDate = (date: Date | undefined) => { // Accept Date object or undefined
-    if (!date) return 'N/A';
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  const getContentIcon = (type: string) => { // type is now directly 'movie' | 'tv_show' | 'book'
-    switch (type) {
-      case 'movie': return '🎬';
-      case 'tv_show': return '📺';
-      case 'book': return '📚';
-      default: return '📄';
-    }
-  };
-
-  const getRatingColor = (rating: number) => {
-    if (rating >= 8) return 'text-green-600';
-    if (rating >= 6) return 'text-yellow-600';
-    if (rating >= 4) return 'text-orange-600';
-    return 'text-red-600';
-  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+        <span className="ml-3 text-gray-300">Loading content...</span>
       </div>
     );
   }
@@ -182,15 +209,18 @@ export default function ContentDashboardComponent() {
   if (!stats || content.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        <div className="w-16 h-16 bg-purple-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 011 1v1a1 1 0 01-1 1h-1v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7H3a1 1 0 01-1-1V5a1 1 0 011-1h4z"/>
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">No content data yet</h3>
-        <p className="text-gray-600 mb-4">Import your Serializd data to start tracking your entertainment</p>
-        <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-          Import Serializd Data
+        <h3 className="text-lg font-semibold text-gray-200 mb-2">No content data yet</h3>
+        <p className="text-gray-400 mb-4">Import your enriched Serializd data to start tracking</p>
+        <button 
+          onClick={() => window.location.href = '/import'}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          Import Content Data
         </button>
       </div>
     );
@@ -198,158 +228,217 @@ export default function ContentDashboardComponent() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg p-4 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Entries</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-            <div className="2xl">📊</div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-4 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Movies</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.movies}</p>
-            </div>
-            <div className="2xl">🎬</div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-4 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">TV Shows</p>
-              <p className="2xl font-bold text-purple-600">{stats.tv_shows}</p>
-            </div>
-            <div className="2xl">📺</div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg p-4 shadow-sm border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="sm text-gray-600">Avg Rating</p>
-              <p className="2xl font-bold text-yellow-600">{stats.avgRating.toFixed(1)}</p>
-            </div>
-            <div className="2xl">⭐</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Genres */}
-      {stats.topGenres.length > 0 && (
-        <div className="bg-white rounded-lg p-6 shadow-sm border">
-          <h3 className="lg font-semibold text-gray-900 mb-4">Top Genres</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {stats.topGenres.map((genre, index) => (
-              <div key={index} className="text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white font-bold">{genre.count}</span>
-                </div>
-                <p className="sm font-medium text-gray-900">{genre.genre}</p>
+      {/* Upcoming Episodes Calendar */}
+      {stats.upcomingEpisodes.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/20 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-300 mb-4 flex items-center">
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Upcoming Episodes
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {stats.upcomingEpisodes.map((episode, index) => (
+              <div key={index} className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+                <div className="text-sm font-medium text-gray-200 truncate">{episode.title}</div>
+                <div className="text-xs text-gray-400 mt-1">{episode.network}</div>
+                <div className="text-xs text-blue-400 mt-1">{episode.air_date}</div>
               </div>
             ))}
           </div>
         </div>
       )}
 
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Total Entries</p>
+              <p className="text-2xl font-bold text-gray-200">{stats.total}</p>
+            </div>
+            <div className="text-2xl">📊</div>
+          </div>
+        </div>
+        
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Movies</p>
+              <p className="text-2xl font-bold text-blue-400">{stats.movies}</p>
+            </div>
+            <div className="text-2xl">🎬</div>
+          </div>
+        </div>
+        
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">TV Shows</p>
+              <p className="text-2xl font-bold text-purple-400">{stats.tv_shows}</p>
+            </div>
+            <div className="text-2xl">📺</div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Avg Rating</p>
+              <p className="text-2xl font-bold text-yellow-400">{stats.avgRating}</p>
+            </div>
+            <div className="text-2xl">⭐</div>
+          </div>
+        </div>
+      </div>
+
       {/* Filters and Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex gap-2">
-          {(['all', 'movie', 'tv_show', 'book'] as const).map(type => (
+          {(['all', 'movie', 'tv_show', 'book'] as const).map((filterType) => (
             <button
-              key={type}
-              onClick={() => setFilter(type)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                filter === type
+              key={filterType}
+              onClick={() => setFilter(filterType)}
+              className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+                filter === filterType
                   ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
               }`}
             >
-              {type === 'all' ? 'All' : type === 'tv_show' ? 'TV Shows' : 
-               type.charAt(0).toUpperCase() + type.slice(1)}
+              {filterType === 'all' ? 'All' : filterType === 'tv_show' ? 'TV Shows' : 
+               filterType.charAt(0).toUpperCase() + filterType.slice(1)}
             </button>
           ))}
         </div>
-        
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'date' | 'rating' | 'title')}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-        >
-          <option value="date">Sort by Date</option>
-          <option value="rating">Sort by Rating</option>
-          <option value="title">Sort by Title</option>
-        </select>
+
+        <div className="flex gap-2">
+          <select 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="bg-gray-700 text-gray-200 px-3 py-1 rounded-lg text-sm border border-gray-600"
+          >
+            <option value="date">Sort by Date</option>
+            <option value="rating">Sort by Rating</option>
+            <option value="title">Sort by Title</option>
+          </select>
+        </div>
       </div>
 
       {/* Content Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {sortedContent.map((item) => (
-          <div key={item.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-            <div className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{getContentIcon(item.type)}</span>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
-                    {item.metadata.seasons && (
-                      <p className="text-xs text-gray-500">{item.metadata.seasons}</p>
-                    )}
-                  </div>
+          <div
+            key={item.id}
+            onClick={() => setSelectedItem(item)}
+            className="bg-gray-800/50 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-700/50 transition-all border border-gray-700/50 hover:border-purple-500/50"
+          >
+            {/* Poster placeholder */}
+            <div className="aspect-[2/3] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+              {item.poster_url ? (
+                <img 
+                  src={item.poster_url} 
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="text-4xl">
+                  {item.type === 'movie' ? '🎬' : item.type === 'tv_show' ? '📺' : '📚'}
                 </div>
-                {item.rating && (
-                  <span className={`text-sm font-bold ${getRatingColor(item.rating)}`}>
-                    {item.rating.toFixed(1)}
-                  </span>
-                )}
-              </div>
-              
-              {item.notes && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                  {item.notes.length > 100 
-                    ? item.notes.substring(0, 100) + '...'
-                    : item.notes}
+              )}
+            </div>
+            
+            {/* Content Info */}
+            <div className="p-3">
+              <h3 className="font-medium text-sm text-gray-200 truncate mb-1">{item.title}</h3>
+              {item.season_episode && (
+                <p className="text-xs text-gray-400 truncate mb-1">{item.season_episode}</p>
+              )}
+              {item.rating && (
+                <div className="flex items-center gap-1">
+                  <span className="text-yellow-400 text-xs">⭐</span>
+                  <span className="text-xs text-gray-300">{item.rating.toFixed(1)}</span>
+                </div>
+              )}
+              {item.watch_date && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(item.watch_date).toLocaleDateString()}
                 </p>
               )}
-              
-              {item.genre && item.genre.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {item.genre.slice(0, 3).map((genre, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                    >
-                      {genre}
-                    </span>
-                  ))}
-                  {item.genre.length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
-                      +{item.genre.length - 3}
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              <div className="flex items-center justify-between text-sm text-gray-500">
-                <span>{formatDate(item.completed_at)}</span>
-                {item.notes && (
-                  <span className="text-purple-600">📝 Review</span>
-                )}
-              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {sortedContent.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No content found for the selected filter.</p>
+      {/* Item Detail Modal */}
+      {selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedItem(null)}>
+          <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h2 className="text-xl font-bold text-gray-200">{selectedItem.title}</h2>
+                <button 
+                  onClick={() => setSelectedItem(null)}
+                  className="text-gray-400 hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  {selectedItem.overview && (
+                    <p className="text-gray-300 mb-4">{selectedItem.overview}</p>
+                  )}
+                  
+                  <div className="space-y-2 text-sm">
+                    {selectedItem.genres.length > 0 && (
+                      <p><strong className="text-gray-400">Genres:</strong> <span className="text-gray-300">{selectedItem.genres.join(', ')}</span></p>
+                    )}
+                    {selectedItem.cast && (
+                      <p><strong className="text-gray-400">Cast:</strong> <span className="text-gray-300">{selectedItem.cast}</span></p>
+                    )}
+                    {selectedItem.networks && (
+                      <p><strong className="text-gray-400">Network:</strong> <span className="text-gray-300">{selectedItem.networks}</span></p>
+                    )}
+                    {selectedItem.rating && (
+                      <p><strong className="text-gray-400">Your Rating:</strong> <span className="text-yellow-400">⭐ {selectedItem.rating.toFixed(1)}/10</span></p>
+                    )}
+                    {selectedItem.vote_average && (
+                      <p><strong className="text-gray-400">TMDB Rating:</strong> <span className="text-blue-400">{selectedItem.vote_average.toFixed(1)}/10</span></p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="text-center">
+                  {selectedItem.poster_url && (
+                    <img 
+                      src={selectedItem.poster_url} 
+                      alt={selectedItem.title}
+                      className="w-full max-w-48 mx-auto rounded-lg"
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Top Genres */}
+      {stats.topGenres.length > 0 && (
+        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700/50">
+          <h3 className="text-lg font-semibold text-gray-200 mb-4">Top Genres</h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {stats.topGenres.map((genre, index) => (
+              <div key={genre.genre} className="text-center">
+                <div className="text-lg font-bold text-purple-400">{genre.count}</div>
+                <div className="text-sm text-gray-400">{genre.genre}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
