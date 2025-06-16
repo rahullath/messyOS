@@ -1,30 +1,43 @@
-import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
-import type { Database } from '../../types/supabase'
-import type { AstroCookies } from 'astro'
+import { createClient } from '@supabase/supabase-js';
+import type { AstroCookies } from 'astro';
+import type { Database } from '../../types/supabase';
 
-export function createServerClient(cookies: AstroCookies) {
-  return createSupabaseServerClient<Database>(
-    import.meta.env.PUBLIC_SUPABASE_URL!,
-    import.meta.env.PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          const cookie = cookies.get(name);
-          return cookie?.value;
-        },
-        set(name: string, value: string, options: any) {
-          cookies.set(name, value, {
-            ...options,
-            httpOnly: false,
-            secure: false,
-            sameSite: 'lax',
-            path: '/'
-          });
-        },
-        remove(name: string, options: any) {
-          cookies.delete(name, options);
-        },
+export function createServerClient(cookies?: AstroCookies) {
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
+
+  // If no cookies provided (e.g., for public API routes), use simple client
+  if (!cookies) {
+    return createClient<Database>(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
+  }
+
+  return createClient<Database>(supabaseUrl, supabaseKey, {
+    auth: {
+      flowType: 'pkce'
+    },
+    global: {
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    },
+    cookies: {
+      get: (key: string) => cookies.get(key)?.value,
+      set: (key: string, value: string, options: any) => {
+        cookies.set(key, value, options);
       },
+      remove: (key: string, options: any) => {
+        cookies.delete(key, options);
+      }
     }
-  )
+  });
 }

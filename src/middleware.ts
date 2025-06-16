@@ -2,6 +2,11 @@ import { defineMiddleware } from 'astro/middleware'
 import { createServerClient } from './lib/supabase/server'
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  // Skip auth for API routes (especially poster fetching)
+  if (context.url.pathname.startsWith('/api/')) {
+    return next();
+  }
+  
   const supabase = createServerClient(context.cookies);
   
   // Public routes that don't need auth
@@ -15,17 +20,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
   
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    // USE getUser() instead of getSession() to avoid the warning
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    // Only log for page routes, not API routes
     console.log('🔍 Auth Check:', {
       path: context.url.pathname,
-      hasSession: !!session,
-      userEmail: session?.user?.email,
+      hasUser: !!user,
+      userEmail: user?.email,
       error: error?.message
     });
 
-    // Store session for server-side use
-    context.locals.session = session;
-    context.locals.user = session?.user || null;
+    // Store user for server-side use
+    context.locals.user = user;
     context.locals.supabase = supabase;
 
     // Protected routes
@@ -34,8 +41,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
       context.url.pathname.startsWith(route)
     );
 
-    if (isProtectedRoute && !session) {
-      console.log('❌ No session found, redirecting to login');
+    if (isProtectedRoute && !user) {
+      console.log('❌ No user found, redirecting to login');
       return context.redirect('/login');
     }
 

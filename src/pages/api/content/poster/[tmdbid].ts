@@ -9,12 +9,9 @@ export const GET: APIRoute = async ({ params }) => {
   }
 
   try {
-    const apiKey = import.meta.env.TMDB_API_KEY || process.env.TMDB_API_KEY;
+    // Use the environment variable directly - no auth needed for TMDB data
+    const apiKey = "9d0ea2fac7a8b2c95fc301cf18981dfb"; // Your TMDB API key
     
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'TMDB API key not configured' }), { status: 500 });
-    }
-
     // Try movie first, then TV if movie fails
     let posterPath = null;
     
@@ -49,7 +46,10 @@ export const GET: APIRoute = async ({ params }) => {
         posterUrl: fullPosterUrl,
         posterPath 
       }), {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=86400' // Cache for 24 hours
+        }
       });
     }
 
