@@ -132,6 +132,7 @@ function formatDate(timestamp) {
             </div>
             <button 
               id="stop-timer-btn"
+              data-task-id={activeSession.task_id}
               class="px-3 py-1 bg-accent-error text-white text-sm rounded hover:bg-accent-error/90"
             >
               Stop
@@ -644,113 +645,205 @@ function formatDate(timestamp) {
 </DashboardLayout>
 
 <script>
-  // Comprehensive Task Management System
-  console.log('Tasks page loaded with', processedTasks.length, 'tasks');
+  console.log('Tasks page loaded successfully');
+  
+  // Modal handlers
+  document.getElementById('new-task-btn')?.addEventListener('click', () => {
+    document.getElementById('new-task-modal')?.classList.remove('hidden');
+    document.getElementById('new-task-modal')?.classList.add('flex');
+  });
 
-  // Global state
-  let activeTimer = null;
-  let timerInterval = null;
+  document.getElementById('close-task-modal')?.addEventListener('click', () => {
+    document.getElementById('new-task-modal')?.classList.add('hidden');
+    document.getElementById('new-task-modal')?.classList.remove('flex');
+  });
 
-  // DOM Elements
-  const newTaskBtn = document.getElementById('new-task-btn');
-  const newTaskModal = document.getElementById('new-task-modal');
-  const closeTaskModal = document.getElementById('close-task-modal');
-  const cancelTask = document.getElementById('cancel-task');
-  const newTaskForm = document.getElementById('new-task-form');
-  const toggleAdvanced = document.getElementById('toggle-advanced');
-  const advancedOptions = document.getElementById('advanced-options');
-  const aiAssistantBtn = document.getElementById('ai-assistant-btn');
-  const aiAssistantModal = document.getElementById('ai-assistant-modal');
-  const closeAiAssistant = document.getElementById('close-ai-assistant');
-  const stopTimerBtn = document.getElementById('stop-timer-btn');
+  document.getElementById('ai-assistant-btn')?.addEventListener('click', () => {
+    document.getElementById('ai-assistant-modal')?.classList.remove('hidden');
+    document.getElementById('ai-assistant-modal')?.classList.add('flex');
+    loadAIAnalysis('productivity_analysis');
+  });
 
-  // Utility Functions
-  function formatDuration(seconds) {
-    if (!seconds) return '0m';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
-  }
+  document.getElementById('close-ai-assistant')?.addEventListener('click', () => {
+    document.getElementById('ai-assistant-modal')?.classList.add('hidden');
+    document.getElementById('ai-assistant-modal')?.classList.remove('flex');
+  });
 
-  function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 ${
-      type === 'success' ? 'bg-accent-success' : 
-      type === 'error' ? 'bg-accent-error' : 'bg-accent-warning'
-    }`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
-  }
-
-  function showLoading(element, show = true) {
-    if (show) {
-      element.disabled = true;
-      element.innerHTML = '<div class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mx-auto"></div>';
+  // Advanced options toggle
+  document.getElementById('toggle-advanced')?.addEventListener('click', () => {
+    const advanced = document.getElementById('advanced-options');
+    const toggle = document.getElementById('toggle-advanced');
+    if (advanced?.classList.contains('hidden')) {
+      advanced.classList.remove('hidden');
+      toggle.textContent = '▲ Advanced Options (Optional)';
     } else {
-      element.disabled = false;
-    }
-  }
-
-  // Modal Management
-  function openModal(modal) {
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-  }
-
-  function closeModal(modal) {
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-  }
-
-  // New Task Modal
-  newTaskBtn?.addEventListener('click', () => openModal(newTaskModal));
-  closeTaskModal?.addEventListener('click', () => closeModal(newTaskModal));
-  cancelTask?.addEventListener('click', () => closeModal(newTaskModal));
-
-  // Advanced Options Toggle
-  toggleAdvanced?.addEventListener('click', () => {
-    const isHidden = advancedOptions.classList.contains('hidden');
-    if (isHidden) {
-      advancedOptions.classList.remove('hidden');
-      toggleAdvanced.textContent = '▲ Advanced Options (Optional)';
-    } else {
-      advancedOptions.classList.add('hidden');
-      toggleAdvanced.textContent = '▼ Advanced Options (Optional)';
+      advanced?.classList.add('hidden');
+      toggle.textContent = '▼ Advanced Options (Optional)';
     }
   });
 
-  // Task Creation
-  newTaskForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  // Task action handlers
+  document.addEventListener('click', async (e) => {
+    const target = e.target;
     
+    // Start timer
+    if (target.classList.contains('start-timer-btn')) {
+      const taskId = target.getAttribute('data-task-id');
+      const taskTitle = target.getAttribute('data-task-title');
+      
+      try {
+        const response = await fetch(`/api/tasks/${taskId}/timer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'start' })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(`Timer started for: ${taskTitle}`, 'success');
+          window.location.reload();
+        } else {
+          showToast('Error: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showToast('Network error starting timer', 'error');
+      }
+    }
+    
+    // Complete task
+    if (target.classList.contains('complete-task-btn')) {
+      const taskId = target.getAttribute('data-task-id');
+      
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            status: 'completed', 
+            completed_at: new Date().toISOString() 
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('Task completed!', 'success');
+          window.location.reload();
+        } else {
+          showToast('Error: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showToast('Network error completing task', 'error');
+      }
+    }
+    
+    // Pause task
+    if (target.classList.contains('pause-task-btn')) {
+      const taskId = target.getAttribute('data-task-id');
+      
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'on_hold' })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('Task paused', 'success');
+          window.location.reload();
+        } else {
+          showToast('Error: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showToast('Network error pausing task', 'error');
+      }
+    }
+    
+    // Resume task
+    if (target.classList.contains('resume-task-btn')) {
+      const taskId = target.getAttribute('data-task-id');
+      
+      try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'todo' })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast('Task resumed', 'success');
+          window.location.reload();
+        } else {
+          showToast('Error: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showToast('Network error resuming task', 'error');
+      }
+    }
+    
+    // Stop timer
+    if (target.id === 'stop-timer-btn') {
+      const productivity = prompt('Rate your productivity (1-10):');
+      const energy = prompt('Rate your energy level (1-10):');
+      const completed = confirm('Did you complete the task?');
+      
+      const activeTaskId = target.getAttribute('data-task-id');
+      
+      try {
+        const response = await fetch(`/api/tasks/${activeTaskId}/timer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            action: 'stop',
+            productivity_score: productivity ? parseInt(productivity) : undefined,
+            energy_level: energy ? parseInt(energy) : undefined,
+            task_completed: completed
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(`Session completed! Duration: ${result.duration} minutes`, 'success');
+          window.location.reload();
+        } else {
+          showToast('Error: ' + result.error, 'error');
+        }
+      } catch (error) {
+        showToast('Network error stopping timer', 'error');
+      }
+    }
+  });
+
+  // Form submission
+  document.getElementById('new-task-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
     const formData = new FormData(e.target);
-    const contextCheckboxes = document.querySelectorAll('input[name="context"]:checked');
-    const context = Array.from(contextCheckboxes).map(cb => cb.value);
+    
+    // Process context checkboxes
+    const context = [];
+    formData.getAll('context').forEach(ctx => context.push(ctx));
     
     const taskData = {
       title: formData.get('title'),
       description: formData.get('description'),
       category: formData.get('category'),
       priority: formData.get('priority'),
-      estimated_duration: formData.get('estimated_duration'),
-      due_date: formData.get('due_date'),
-      scheduled_for: formData.get('scheduled_for'),
+      estimated_duration: formData.get('estimated_duration') ? parseInt(formData.get('estimated_duration')) : null,
+      due_date: formData.get('due_date') || null,
+      scheduled_for: formData.get('scheduled_for') || null,
       energy_required: formData.get('energy_required'),
       complexity: formData.get('complexity'),
       location: formData.get('location'),
-      tags: formData.get('tags'),
-      context: context,
+      tags: formData.get('tags') ? formData.get('tags').split(',').map(tag => tag.trim()) : [],
+      context,
       email_reminders: formData.get('email_reminders') === 'on'
     };
-
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    showLoading(submitBtn);
 
     try {
       const response = await fetch('/api/tasks', {
@@ -760,127 +853,25 @@ function formatDate(timestamp) {
       });
 
       const result = await response.json();
-
+      
       if (result.success) {
-        showNotification('Task created successfully!');
-        closeModal(newTaskModal);
-        newTaskForm.reset();
-        // Reload page to show new task
+        showToast('Task created successfully!', 'success');
         window.location.reload();
       } else {
-        showNotification(result.error || 'Failed to create task', 'error');
+        showToast('Error: ' + result.error, 'error');
       }
     } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      showToast('Network error creating task', 'error');
     }
   });
 
-  // Timer Management
-  async function startTimer(taskId, taskTitle) {
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/timer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'start' })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        showNotification(`Timer started for: ${taskTitle}`);
-        // Reload to show active timer
-        window.location.reload();
-      } else {
-        if (result.activeTaskId) {
-          showNotification('Please stop the current timer first', 'warning');
-        } else {
-          showNotification(result.error || 'Failed to start timer', 'error');
-        }
-      }
-    } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
-    }
-  }
-
-  async function stopTimer(taskId) {
-    // Show productivity scoring modal
-    const productivityScore = prompt('Rate your productivity (1-10):');
-    const energyLevel = prompt('Rate your energy level (1-10):');
-    const interruptions = prompt('Number of interruptions:') || '0';
-    const notes = prompt('Session notes (optional):') || '';
-    const taskCompleted = confirm('Did you complete this task?');
-    
-    let completionNotes = '';
-    let satisfactionScore = null;
-    
-    if (taskCompleted) {
-      completionNotes = prompt('Completion notes (optional):') || '';
-      satisfactionScore = prompt('Satisfaction with completion (1-10):');
-    }
-
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/timer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'stop',
-          productivity_score: parseInt(productivityScore) || null,
-          energy_level: parseInt(energyLevel) || null,
-          interruptions: parseInt(interruptions) || 0,
-          notes,
-          task_completed: taskCompleted,
-          completion_notes: completionNotes,
-          satisfaction_score: parseInt(satisfactionScore) || null
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        showNotification(`Timer stopped. Session: ${result.duration} minutes`);
-        window.location.reload();
-      } else {
-        showNotification(result.error || 'Failed to stop timer', 'error');
-      }
-    } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
-    }
-  }
-
-  // Task Status Updates
-  async function updateTaskStatus(taskId, status) {
-    try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        showNotification(`Task ${status.replace('_', ' ')}`);
-        window.location.reload();
-      } else {
-        showNotification(result.error || 'Failed to update task', 'error');
-      }
-    } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
-    }
-  }
-
-  // AI Assistant
-  aiAssistantBtn?.addEventListener('click', async () => {
-    openModal(aiAssistantModal);
-    
+  // AI Assistant functionality
+  async function loadAIAnalysis(type) {
     const content = document.getElementById('ai-assistant-content');
     content.innerHTML = `
       <div class="text-center py-8">
         <div class="animate-spin w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p class="text-text-secondary">AI is analyzing your tasks and productivity patterns...</p>
+        <p class="text-text-secondary">AI is analyzing your ${type.replace('_', ' ')}...</p>
       </div>
     `;
 
@@ -888,298 +879,114 @@ function formatDate(timestamp) {
       const response = await fetch('/api/tasks/ai-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'productivity_analysis' })
+        body: JSON.stringify({ type })
       });
 
       const result = await response.json();
-
+      
       if (result.success) {
-        displayAIAnalysis(result.analysis);
+        renderAIAnalysis(result.analysis, type);
       } else {
-        content.innerHTML = `
-          <div class="text-center py-8">
-            <p class="text-accent-error mb-4">Failed to get AI analysis</p>
-            <button onclick="location.reload()" class="px-4 py-2 bg-accent-primary text-white rounded">Try Again</button>
-          </div>
-        `;
+        content.innerHTML = `<p class="text-accent-error">Failed to load AI analysis: ${result.error}</p>`;
       }
     } catch (error) {
-      content.innerHTML = `
-        <div class="text-center py-8">
-          <p class="text-accent-error mb-4">Network error occurred</p>
-          <button onclick="location.reload()" class="px-4 py-2 bg-accent-primary text-white rounded">Try Again</button>
-        </div>
-      `;
+      content.innerHTML = `<p class="text-accent-error">Network error loading AI analysis</p>`;
     }
-  });
+  }
 
-  function displayAIAnalysis(analysis) {
+  function renderAIAnalysis(analysis, type) {
     const content = document.getElementById('ai-assistant-content');
-    
     let html = `
       <div class="space-y-6">
-        <div class="flex space-x-4 mb-6">
-          <button class="ai-tab-btn px-4 py-2 bg-accent-primary text-white rounded" data-type="productivity_analysis">
-            📊 Productivity
+        <div class="flex space-x-2 mb-6">
+          <button onclick="loadAIAnalysis('productivity_analysis')" class="px-4 py-2 bg-accent-primary text-white rounded hover:bg-accent-primary/90">
+            Productivity Analysis
           </button>
-          <button class="ai-tab-btn px-4 py-2 bg-surface text-text-secondary rounded" data-type="task_prioritization">
-            🎯 Prioritization
+          <button onclick="loadAIAnalysis('task_prioritization')" class="px-4 py-2 bg-accent-success text-white rounded hover:bg-accent-success/90">
+            Task Prioritization
           </button>
-          <button class="ai-tab-btn px-4 py-2 bg-surface text-text-secondary rounded" data-type="time_blocking">
-            ⏰ Time Blocking
+          <button onclick="loadAIAnalysis('time_blocking')" class="px-4 py-2 bg-accent-purple text-white rounded hover:bg-accent-purple/90">
+            Time Blocking
           </button>
         </div>
-        
-        <div id="ai-analysis-content">
     `;
 
     if (analysis.insights) {
       html += `
-        <div class="mb-6">
-          <h4 class="text-lg font-semibold text-text-primary mb-4">🔍 Productivity Insights</h4>
+        <div>
+          <h4 class="text-lg font-semibold text-text-primary mb-3">📊 Insights</h4>
           <div class="space-y-3">
-      `;
-      
-      analysis.insights.forEach(insight => {
-        html += `
-          <div class="card p-4">
-            <div class="flex items-start justify-between mb-2">
-              <h5 class="font-medium text-text-primary">${insight.title}</h5>
-              <span class="text-xs px-2 py-1 bg-accent-success/20 text-accent-success rounded">
-                ${Math.round(insight.confidence * 100)}% confidence
-              </span>
-            </div>
-            <p class="text-sm text-text-secondary mb-2">${insight.description}</p>
-            <p class="text-sm text-accent-primary font-medium">💡 ${insight.recommendation}</p>
+            ${analysis.insights.map(insight => `
+              <div class="p-4 bg-accent-primary/10 rounded-lg">
+                <h5 class="font-medium text-text-primary">${insight.title}</h5>
+                <p class="text-text-secondary text-sm mt-1">${insight.description}</p>
+                ${insight.recommendation ? `<p class="text-accent-primary text-sm mt-2 font-medium">💡 ${insight.recommendation}</p>` : ''}
+              </div>
+            `).join('')}
           </div>
-        `;
-      });
-      
-      html += `</div></div>`;
+        </div>
+      `;
     }
 
     if (analysis.optimizations) {
       html += `
-        <div class="mb-6">
-          <h4 class="text-lg font-semibold text-text-primary mb-4">⚡ Optimization Opportunities</h4>
+        <div>
+          <h4 class="text-lg font-semibold text-text-primary mb-3">🚀 Optimizations</h4>
           <div class="space-y-3">
-      `;
-      
-      analysis.optimizations.forEach(opt => {
-        html += `
-          <div class="card p-4">
-            <div class="flex items-start justify-between mb-2">
-              <h5 class="font-medium text-text-primary capitalize">${opt.area.replace('_', ' ')}</h5>
-              <span class="text-xs px-2 py-1 ${
-                opt.difficulty === 'easy' ? 'bg-accent-success/20 text-accent-success' :
-                opt.difficulty === 'medium' ? 'bg-accent-warning/20 text-accent-warning' :
-                'bg-accent-error/20 text-accent-error'
-              } rounded">
-                ${opt.difficulty}
-              </span>
-            </div>
-            <p class="text-sm text-text-muted mb-2"><strong>Issue:</strong> ${opt.current_issue}</p>
-            <p class="text-sm text-text-secondary mb-2"><strong>Solution:</strong> ${opt.solution}</p>
-            <p class="text-sm text-accent-success"><strong>Expected Impact:</strong> ${opt.expected_impact}</p>
+            ${analysis.optimizations.map(opt => `
+              <div class="p-4 bg-accent-success/10 rounded-lg">
+                <h5 class="font-medium text-text-primary">${opt.area}</h5>
+                <p class="text-text-secondary text-sm mt-1">${opt.current_issue}</p>
+                <p class="text-accent-success text-sm mt-2 font-medium">✅ ${opt.solution}</p>
+                <p class="text-text-muted text-xs mt-1">Expected: ${opt.expected_impact} | Difficulty: ${opt.difficulty}</p>
+              </div>
+            `).join('')}
           </div>
-        `;
-      });
-      
-      html += `</div></div>`;
+        </div>
+      `;
     }
 
     if (analysis.focus_suggestions) {
       html += `
         <div>
-          <h4 class="text-lg font-semibold text-text-primary mb-4">🎯 Focus Suggestions</h4>
+          <h4 class="text-lg font-semibold text-text-primary mb-3">🎯 Focus Suggestions</h4>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="card p-4">
-              <h5 class="font-medium text-accent-primary mb-2">Today</h5>
-              <p class="text-sm text-text-secondary">${analysis.focus_suggestions.today}</p>
+            <div class="p-4 bg-accent-warning/10 rounded-lg">
+              <h5 class="font-medium text-text-primary">Today</h5>
+              <p class="text-text-secondary text-sm mt-1">${analysis.focus_suggestions.today}</p>
             </div>
-            <div class="card p-4">
-              <h5 class="font-medium text-accent-warning mb-2">This Week</h5>
-              <p class="text-sm text-text-secondary">${analysis.focus_suggestions.this_week}</p>
+            <div class="p-4 bg-accent-warning/10 rounded-lg">
+              <h5 class="font-medium text-text-primary">This Week</h5>
+              <p class="text-text-secondary text-sm mt-1">${analysis.focus_suggestions.this_week}</p>
             </div>
-            <div class="card p-4">
-              <h5 class="font-medium text-accent-success mb-2">Energy Optimization</h5>
-              <p class="text-sm text-text-secondary">${analysis.focus_suggestions.energy_optimization}</p>
+            <div class="p-4 bg-accent-purple/10 rounded-lg">
+              <h5 class="font-medium text-text-primary">Energy</h5>
+              <p class="text-text-secondary text-sm mt-1">${analysis.focus_suggestions.energy_optimization}</p>
             </div>
           </div>
         </div>
       `;
     }
 
-    html += `</div></div>`;
-    content.innerHTML = html;
-
-    // Add tab switching functionality
-    document.querySelectorAll('.ai-tab-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const type = e.target.dataset.type;
-        
-        // Update tab styles
-        document.querySelectorAll('.ai-tab-btn').forEach(b => {
-          b.className = 'ai-tab-btn px-4 py-2 bg-surface text-text-secondary rounded';
-        });
-        e.target.className = 'ai-tab-btn px-4 py-2 bg-accent-primary text-white rounded';
-        
-        // Load new analysis
-        document.getElementById('ai-analysis-content').innerHTML = `
-          <div class="text-center py-8">
-            <div class="animate-spin w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p class="text-text-secondary">Loading ${type.replace('_', ' ')} analysis...</p>
-          </div>
-        `;
-        
-        try {
-          const response = await fetch('/api/tasks/ai-assistant', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type })
-          });
-          
-          const result = await response.json();
-          if (result.success) {
-            displaySpecificAnalysis(result.analysis, type);
-          }
-        } catch (error) {
-          document.getElementById('ai-analysis-content').innerHTML = `
-            <p class="text-accent-error text-center">Failed to load analysis</p>
-          `;
-        }
-      });
-    });
-  }
-
-  function displaySpecificAnalysis(analysis, type) {
-    const content = document.getElementById('ai-analysis-content');
-    let html = '';
-
-    if (type === 'task_prioritization' && analysis.prioritized_tasks) {
-      html = `
-        <div class="space-y-4">
-          <h4 class="text-lg font-semibold text-text-primary">🎯 Prioritized Tasks</h4>
-          <div class="space-y-3">
-      `;
-      
-      analysis.prioritized_tasks.forEach((task, index) => {
-        html += `
-          <div class="card p-4 flex items-center justify-between">
-            <div class="flex-1">
-              <div class="flex items-center space-x-3">
-                <span class="w-8 h-8 bg-accent-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
-                  ${index + 1}
-                </span>
-                <div>
-                  <p class="font-medium text-text-primary">Priority Score: ${task.priority_score}/100</p>
-                  <p class="text-sm text-text-secondary">${task.reasoning}</p>
-                  <p class="text-xs text-accent-primary mt-1">⏰ ${task.optimal_time} • 🎯 ${task.estimated_focus_time}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-      
-      html += `</div></div>`;
-    } else if (type === 'time_blocking' && analysis.schedule) {
-      html = `
-        <div class="space-y-4">
-          <h4 class="text-lg font-semibold text-text-primary">⏰ Today's Schedule</h4>
-          <div class="space-y-2">
-      `;
-      
-      analysis.schedule.forEach(item => {
-        html += `
-          <div class="card p-3 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-              <span class="font-mono text-accent-primary font-bold">${item.time}</span>
-              <div>
-                <p class="font-medium text-text-primary">${item.task_title}</p>
-                <p class="text-xs text-text-muted">${item.duration} min • ${item.energy_match} energy</p>
-              </div>
-            </div>
-            <p class="text-xs text-text-secondary max-w-xs">${item.reasoning}</p>
-          </div>
-        `;
-      });
-      
-      html += `</div>`;
-      
-      if (analysis.daily_focus) {
-        html += `
-          <div class="card p-4 bg-accent-primary/5 border border-accent-primary/20">
-            <h5 class="font-medium text-accent-primary mb-2">🎯 Daily Focus Theme</h5>
-            <p class="text-sm text-text-secondary">${analysis.daily_focus}</p>
-          </div>
-        `;
-      }
-      
-      html += `</div>`;
-    }
-
+    html += '</div>';
     content.innerHTML = html;
   }
 
-  closeAiAssistant?.addEventListener('click', () => closeModal(aiAssistantModal));
-
-  // Event Listeners for Task Actions
-  document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('start-timer-btn')) {
-      const taskId = e.target.dataset.taskId;
-      const taskTitle = e.target.dataset.taskTitle;
-      startTimer(taskId, taskTitle);
-    }
+  function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 text-white ${
+      type === 'success' ? 'bg-green-600' :
+      type === 'error' ? 'bg-red-600' : 'bg-yellow-600'
+    }`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
     
-    if (e.target.classList.contains('complete-task-btn')) {
-      const taskId = e.target.dataset.taskId;
-      updateTaskStatus(taskId, 'completed');
-    }
-    
-    if (e.target.classList.contains('pause-task-btn')) {
-      const taskId = e.target.dataset.taskId;
-      updateTaskStatus(taskId, 'on_hold');
-    }
-    
-    if (e.target.classList.contains('resume-task-btn')) {
-      const taskId = e.target.dataset.taskId;
-      updateTaskStatus(taskId, 'todo');
-    }
-  });
-
-  // Stop Timer Button
-  stopTimerBtn?.addEventListener('click', () => {
-    const activeTimerElement = document.querySelector('[data-active-task-id]');
-    if (activeTimerElement) {
-      const taskId = activeTimerElement.dataset.activeTaskId;
-      stopTimer(taskId);
-    }
-  });
-
-  // Active Timer Updates
-  if (document.getElementById('active-timer')) {
-    const startTime = new Date(document.querySelector('[data-started-at]')?.dataset.startedAt);
-    if (startTime) {
-      timerInterval = setInterval(() => {
-        const now = new Date();
-        const elapsed = Math.floor((now - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        
-        const timerElement = document.getElementById('active-timer');
-        if (timerElement) {
-          timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')} elapsed`;
-        }
-      }, 1000);
-    }
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
   }
 
-  // Cleanup
-  window.addEventListener('beforeunload', () => {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-    }
-  });
+  // Make functions global for onclick handlers
+  window.loadAIAnalysis = loadAIAnalysis;
 </script>
 </DashboardLayout>
