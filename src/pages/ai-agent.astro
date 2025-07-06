@@ -1,0 +1,262 @@
+---
+// src/pages/ai-agent.astro
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { createServerClient } from '../lib/supabase/server';
+
+const supabase = createServerClient(Astro.cookies);
+
+// Get the user from session
+const { data: { user } } = await supabase.auth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+---
+
+<DashboardLayout title="AI Life Agent - MeshOS">
+  <div class="space-y-8">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-semibold text-text-primary mb-2">
+          🤖 AI Life Agent
+        </h1>
+        <p class="text-text-secondary">
+          Your personal AI assistant for life optimization and insights
+        </p>
+      </div>
+      
+      <div class="flex items-center space-x-3">
+        <button 
+          id="daily-checkin-btn"
+          class="px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
+        >
+          ☀️ Daily Check-in
+        </button>
+        
+        <button 
+          id="deep-analysis-btn"
+          class="px-4 py-2 bg-gradient-to-r from-accent-primary to-accent-purple text-white rounded-lg hover:opacity-90 transition-opacity"
+        >
+          🔍 Deep Analysis
+        </button>
+      </div>
+    </div>
+
+    <!-- Agent Status -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="card p-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-3 h-3 bg-accent-success rounded-full animate-pulse"></div>
+          <div>
+            <p class="text-sm font-medium text-text-primary">Agent Status</p>
+            <p class="text-xs text-accent-success">Online & Learning</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card p-4">
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl">🧠</span>
+          <div>
+            <p class="text-sm font-medium text-text-primary">AI Model</p>
+            <p class="text-xs text-text-secondary">Gemini 1.5 Pro + LangChain</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card p-4">
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl">💰</span>
+          <div>
+            <p class="text-sm font-medium text-text-primary">Credits</p>
+            <p class="text-xs text-accent-success">₹25,000 Available</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent Capabilities -->
+    <div class="card p-6">
+      <h2 class="text-xl font-semibold text-text-primary mb-4">🚀 Agent Capabilities</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-4 bg-surface-hover rounded-lg">
+          <div class="flex items-center space-x-2 mb-2">
+            <span class="text-lg">🔄</span>
+            <h3 class="font-medium text-text-primary">Habit Analysis</h3>
+          </div>
+          <p class="text-sm text-text-secondary">
+            Analyzes patterns, predicts failures, suggests optimal timing
+          </p>
+        </div>
+        
+        <div class="p-4 bg-surface-hover rounded-lg">
+          <div class="flex items-center space-x-2 mb-2">
+            <span class="text-lg">❤️</span>
+            <h3 class="font-medium text-text-primary">Health Monitoring</h3>
+          </div>
+          <p class="text-sm text-text-secondary">
+            Tracks trends, detects anomalies, suggests interventions
+          </p>
+        </div>
+        
+        <div class="p-4 bg-surface-hover rounded-lg">
+          <div class="flex items-center space-x-2 mb-2">
+            <span class="text-lg">💰</span>
+            <h3 class="font-medium text-text-primary">Finance Intelligence</h3>
+          </div>
+          <p class="text-sm text-text-secondary">
+            Spending patterns, budget optimization, risk alerts
+          </p>
+        </div>
+        
+        <div class="p-4 bg-surface-hover rounded-lg">
+          <div class="flex items-center space-x-2 mb-2">
+            <span class="text-lg">🔗</span>
+            <h3 class="font-medium text-text-primary">Cross-Correlations</h3>
+          </div>
+          <p class="text-sm text-text-secondary">
+            Finds hidden connections across all life domains
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main AI Insights Container -->
+    <div id="ai-insights-container">
+      <!-- AgenticInsights component will be rendered here -->
+    </div>
+
+    <!-- Agent Workflow Visualization -->
+    <div class="card p-6">
+      <h2 class="text-xl font-semibold text-text-primary mb-4">🔄 Agent Workflow</h2>
+      
+      <div class="flex items-center justify-between space-x-4 overflow-x-auto pb-4">
+        <div class="flex flex-col items-center min-w-0 flex-1">
+          <div class="w-12 h-12 bg-accent-primary/20 rounded-full flex items-center justify-center mb-2">
+            <span class="text-lg">📊</span>
+          </div>
+          <p class="text-sm font-medium text-text-primary text-center">Gather Data</p>
+          <p class="text-xs text-text-muted text-center">Habits, Health, Finance</p>
+        </div>
+        
+        <div class="text-text-muted">→</div>
+        
+        <div class="flex flex-col items-center min-w-0 flex-1">
+          <div class="w-12 h-12 bg-accent-success/20 rounded-full flex items-center justify-center mb-2">
+            <span class="text-lg">🧠</span>
+          </div>
+          <p class="text-sm font-medium text-text-primary text-center">Analyze Patterns</p>
+          <p class="text-xs text-text-muted text-center">AI Pattern Recognition</p>
+        </div>
+        
+        <div class="text-text-muted">→</div>
+        
+        <div class="flex flex-col items-center min-w-0 flex-1">
+          <div class="w-12 h-12 bg-accent-warning/20 rounded-full flex items-center justify-center mb-2">
+            <span class="text-lg">🔗</span>
+          </div>
+          <p class="text-sm font-medium text-text-primary text-center">Find Correlations</p>
+          <p class="text-xs text-text-muted text-center">Cross-Domain Links</p>
+        </div>
+        
+        <div class="text-text-muted">→</div>
+        
+        <div class="flex flex-col items-center min-w-0 flex-1">
+          <div class="w-12 h-12 bg-accent-purple/20 rounded-full flex items-center justify-center mb-2">
+            <span class="text-lg">⚡</span>
+          </div>
+          <p class="text-sm font-medium text-text-primary text-center">Generate Actions</p>
+          <p class="text-xs text-text-muted text-center">Personalized Recommendations</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Agent Activity -->
+    <div class="card p-6">
+      <h2 class="text-xl font-semibold text-text-primary mb-4">📝 Recent Agent Activity</h2>
+      
+      <div class="space-y-3" id="agent-activity">
+        <div class="flex items-center space-x-3 p-3 bg-surface-hover rounded-lg">
+          <span class="text-lg">🤖</span>
+          <div>
+            <p class="text-sm text-text-primary">Agent initialized and ready</p>
+            <p class="text-xs text-text-muted">{new Date().toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</DashboardLayout>
+
+<script>
+  import AgenticInsights from '../components/ai/AgenticInsights';
+  import { createRoot } from 'react-dom/client';
+  import React from 'react';
+
+  // Initialize the AI insights component
+  const container = document.getElementById('ai-insights-container');
+  if (container) {
+    const root = createRoot(container);
+    root.render(React.createElement(AgenticInsights, { type: 'daily' }));
+  }
+
+  // Daily check-in button
+  document.getElementById('daily-checkin-btn')?.addEventListener('click', () => {
+    if (container) {
+      const root = createRoot(container);
+      root.render(React.createElement(AgenticInsights, { type: 'daily' }));
+    }
+  });
+
+  // Deep analysis button
+  document.getElementById('deep-analysis-btn')?.addEventListener('click', () => {
+    if (container) {
+      const root = createRoot(container);
+      root.render(React.createElement(AgenticInsights, { type: 'full' }));
+    }
+  });
+
+  // Add activity log function
+  function addAgentActivity(message: string, type: string = 'info') {
+    const activityContainer = document.getElementById('agent-activity');
+    if (!activityContainer) return;
+
+    const activityItem = document.createElement('div');
+    activityItem.className = 'flex items-center space-x-3 p-3 bg-surface-hover rounded-lg';
+    
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : '🤖';
+    
+    activityItem.innerHTML = `
+      <span class="text-lg">${icon}</span>
+      <div>
+        <p class="text-sm text-text-primary">${message}</p>
+        <p class="text-xs text-text-muted">${new Date().toLocaleString()}</p>
+      </div>
+    `;
+    
+    activityContainer.insertBefore(activityItem, activityContainer.firstChild);
+    
+    // Keep only last 5 activities
+    while (activityContainer.children.length > 5) {
+      activityContainer.removeChild(activityContainer.lastChild);
+    }
+  }
+
+  // Listen for AI analysis events
+  window.addEventListener('ai-analysis-start', () => {
+    addAgentActivity('Starting AI analysis...', 'info');
+  });
+
+  window.addEventListener('ai-analysis-complete', (event) => {
+    const detail = (event as CustomEvent).detail;
+    addAgentActivity(`Analysis complete: ${detail.insights} insights, ${detail.actions} actions`, 'success');
+  });
+
+  window.addEventListener('ai-analysis-error', (event) => {
+    const detail = (event as CustomEvent).detail;
+    addAgentActivity(`Analysis failed: ${detail.error}`, 'error');
+  });
+</script>
+</DashboardLayout>

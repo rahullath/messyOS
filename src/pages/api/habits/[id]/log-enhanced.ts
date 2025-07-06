@@ -1,25 +1,21 @@
-// src/pages/api/habits/[id]/log-enhanced.ts
+// src/pages/api/habits/[id]/log-enhanced.ts - Enhanced with future dating
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../../lib/supabase/server';
 
 export const POST: APIRoute = async ({ request, params, cookies }) => {
   const supabase = createServerClient(cookies);
-  
   const habitId = params.id as string;
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
   if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
   try {
     const body = await request.json();
     const { 
-      value = 1, 
+      value = 1,     // 0=missed, 1=completed, 2=skipped, 3=partial
+      date,          // ✅ Allow custom date
       notes,
       effort,
       duration,
@@ -31,30 +27,51 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
       context = []
     } = body;
 
-    // Check if already logged today
-    const todayIso = new Date().toISOString().split('T')[0];
+    // Use provided date or default to today
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    
+    // Check if already logged for this date
     const { data: existingEntry } = await supabase
       .from('habit_entries')
       .select('id')
       .eq('habit_id', habitId)
       .eq('user_id', user.id)
-      .eq('date', todayIso)
+      .eq('date', targetDate)
       .single();
 
     if (existingEntry) {
-      return new Response(JSON.stringify({ error: 'Already logged today' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
+      // Update existing entry instead of failing
+      const { data: updatedEntry, error: updateError } = await supabase
+        .from('habit_entries')
+        .update({
+          value,
+          notes,
+          effort,
+          duration,
+          completion_time,
+          energy_level,
+          mood,
+          location,
+          weather,
+          context: Array.isArray(context) ? context : context.split(',').filter(c => c.trim()),
+          logged_at: new Date().toISOString()
+        })
+        .eq('id', existingEntry.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      
+      // Recalculate streak
+      await updateHabitStreak(supabase, habitId, user.id);
+      
+      return new Response(JSON.stringify({
+        ...updatedEntry,
+        message: 'Entry updated successfully'
+      }));
     }
 
-    // Parse context array if it's a string
-    let contextArray = context;
-    if (typeof context === 'string') {
-      contextArray = context.split(',').filter(c => c.trim().length > 0);
-    }
-
-    // Log the enhanced habit entry
+    // Create new entry
     const { data: entry, error } = await supabase
       .from('habit_entries')
       .insert([{
@@ -69,68 +86,80 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
         mood,
         location,
         weather,
-        context: contextArray,
+        context: Array.isArray(context) ? context : context.split(',').filter(c => c.trim()),
         logged_at: new Date().toISOString(),
-        date: todayIso
+        date: targetDate
       }])
       .select()
       .single();
 
     if (error) throw error;
 
-    // Update streak count (simplified for now)
+    // Update streak count with skip logic
     await updateHabitStreak(supabase, habitId, user.id);
 
     return new Response(JSON.stringify({
       ...entry,
       message: 'Enhanced habit entry logged successfully'
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    }));
 
   } catch (error: unknown) {
     console.error('Enhanced logging error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ error: errorMessage }), { status: 500 });
   }
 };
 
+// ✅ Enhanced streak calculation that handles skips properly
 async function updateHabitStreak(supabase: any, habitId: string, userId: string) {
-  // Simple streak update - count consecutive success days
   const { data: entries } = await supabase
     .from('habit_entries')
     .select('date, value')
     .eq('habit_id', habitId)
     .eq('user_id', userId)
     .order('date', { ascending: false })
-    .limit(30);
+    .limit(100);
 
   if (!entries) return;
 
   let currentStreak = 0;
+  let bestStreak = 0;
+  let tempStreak = 0;
   const today = new Date();
   
-  for (let i = 0; i < 30; i++) {
+  // Calculate current streak (from today backwards)
+  for (let i = 0; i < 100; i++) {
     const checkDate = new Date(today);
     checkDate.setDate(today.getDate() - i);
     const dateStr = checkDate.toISOString().split('T')[0];
     
     const entry = entries.find((e: any) => e.date === dateStr);
     
-    if (entry && entry.value === 1) {
-      currentStreak++;
-    } else if (entry && entry.value === 0) {
-      break; // Failure breaks streak
-    } else if (!entry) {
-      if (currentStreak > 0) break; // No entry breaks active streak
+    if (entry) {
+      if (entry.value === 1 || entry.value === 3) { // Completed or partial
+        if (i === 0 || currentStreak > 0) currentStreak++;
+        tempStreak++;
+      } else if (entry.value === 2) { // Skipped - doesn't break streak
+        tempStreak++;
+        continue;
+      } else { // Failed (value = 0)
+        if (currentStreak === 0) currentStreak = tempStreak;
+        break;
+      }
+    } else {
+      // No entry - only breaks streak if we have an active one
+      if (currentStreak > 0) break;
     }
+    
+    bestStreak = Math.max(bestStreak, tempStreak);
   }
 
+  // Update habit with new streaks
   await supabase
     .from('habits')
-    .update({ streak_count: currentStreak })
+    .update({ 
+      streak_count: currentStreak,
+      best_streak: Math.max(bestStreak, currentStreak)
+    })
     .eq('id', habitId);
 }
