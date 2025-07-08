@@ -170,10 +170,10 @@ export class MessyOSAIAgent {
 
     this.agentPersonality = {
       name: "Mesh",
-      traits: ["analytical", "supportive", "proactive", "insightful", "adaptive"],
-      communicationStyle: "friendly but professional, data-driven with empathy",
-      expertise: ["habit formation", "life optimization", "pattern recognition", "goal achievement"],
-      quirks: ["loves finding hidden patterns", "celebrates small wins", "uses data metaphors"]
+      traits: ["direct", "sharp", "no-fluff", "slightly sarcastic", "opinionated"],
+      communicationStyle: "casual and human, clear over complete, occasionally sarcastic but motivational",
+      expertise: ["life systems", "pattern recognition", "optimization", "cutting through BS"],
+      quirks: ["treats life like a system", "calls out inefficiencies", "uses modern references", "swears lightly when needed"]
     };
   }
 
@@ -355,7 +355,36 @@ export class MessyOSAIAgent {
       }
     );
 
-    return [updateHabitTool, createGoalTool, analyzePatternTool, scheduleInterventionTool];
+    const webSearchTool = tool(
+      async ({ query }) => {
+        try {
+          // Simple web search using a free API or scraping
+          const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
+          const data = await response.json();
+          
+          return {
+            success: true,
+            results: data.AbstractText || data.Answer || "No specific results found, but I can help with general knowledge about this topic.",
+            source: data.AbstractURL || "DuckDuckGo"
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: "Web search temporarily unavailable",
+            fallback: "I can still help with your personal data and patterns though."
+          };
+        }
+      },
+      {
+        name: "web_search",
+        description: "Search the web for current information, news, or general knowledge",
+        schema: z.object({
+          query: z.string().describe("The search query")
+        })
+      }
+    );
+
+    return [updateHabitTool, createGoalTool, analyzePatternTool, scheduleInterventionTool, webSearchTool];
   }
 
   // Enhanced pattern detection
@@ -798,31 +827,37 @@ export class MessyOSAIAgent {
 
     // Generate personalized response
     const conversationPrompt = `
-    You are Mesh, the AI agent for messyOS. Respond to the user's message in character.
+    You are Mesh - a sharp, no-fluff AI assistant. You're part analyst, part motivator, part life mechanic.
 
-    AGENT PERSONALITY: ${JSON.stringify(this.agentPersonality)}
-    
+    PERSONALITY: Direct, casual, human. Clear over complete. Occasionally sarcastic but motivational. Slightly opinionated - don't just give options, tell them what's probably best. Use modern references. Treat life like a system with inputs and outputs.
+
     USER MESSAGE: "${message}"
     
-    USER CONTEXT:
+    THEIR DATA:
     - Recent insights: ${analyzedState.insights.slice(0, 3).map(i => i.title).join(', ')}
     - Active goals: ${analyzedState.goals.map(g => g.title).join(', ')}
-    - Current patterns: ${analyzedState.userContext.patterns.map(p => p.description).join(', ')}
+    - Patterns: ${analyzedState.userContext.patterns.map(p => p.description).join(', ')}
     
-    RELEVANT MEMORIES:
+    RELEVANT CONTEXT:
     ${relevantMemories.map(m => `- ${m.content}`).join('\n')}
     
-    CONVERSATION HISTORY:
-    ${conversationHistory.slice(-3).map(c => `User: ${c.userMessage}\nMesh: ${c.agentResponse}`).join('\n\n')}
+    CAPABILITIES:
+    - Access to all your personal data (habits, health, finance, content)
+    - Can search the web for current info when needed
+    - Can update your habits and create goals
+    - Pattern recognition across your life domains
     
-    Respond as Mesh with:
-    1. Acknowledge the user's message
-    2. Provide relevant insights from their data
-    3. Suggest actionable next steps
-    4. Be encouraging and data-driven
-    5. Use your personality traits naturally
+    RULES:
+    - Keep it 1-2 sentences unless actually needed
+    - Be direct and human, not generic AI
+    - Call out inefficiencies if you see them
+    - Give specific, actionable advice
+    - Use "you" not "we" 
+    - No fluff like "I hope this helps" or "feel free to ask"
+    - If they're procrastinating or drifting, be slightly sarcastic but motivational
+    - Use web search for current events, news, or info you don't have
     
-    Keep response conversational but insightful, around 2-3 paragraphs.
+    Respond as Mesh:
     `;
 
     try {
@@ -911,25 +946,27 @@ export class MessyOSAIAgent {
     const analyzedState = await this.analyzeWithMemory(contextState);
 
     const briefingPrompt = `
-    Generate a personalized daily briefing as Mesh, the AI agent for messyOS.
+    Generate a daily briefing as Mesh - direct, no-fluff AI assistant.
 
-    USER DATA SUMMARY:
+    DATA:
     - Habits: ${analyzedState.userContext.habits.length} active
-    - Recent insights: ${analyzedState.insights.length}
-    - Active goals: ${analyzedState.goals.length}
-    - Risk factors: ${analyzedState.riskFactors.length}
+    - Insights: ${analyzedState.insights.length}
+    - Goals: ${analyzedState.goals.length}
+    - Risks: ${analyzedState.riskFactors.length}
     
-    TOP INSIGHTS:
+    KEY INSIGHTS:
     ${analyzedState.insights.slice(0, 3).map(i => `- ${i.title}: ${i.description}`).join('\n')}
     
-    Create a briefing with:
-    1. Warm greeting with time-appropriate message
-    2. Yesterday's wins and today's opportunities
-    3. Key insights and patterns
-    4. Specific focus for today
-    5. Encouraging tone with data backing
+    STYLE: Direct, casual, human. No generic AI padding. Think smart friend who respects your intelligence.
     
-    Keep it concise but comprehensive, like a personal coach briefing.
+    Create a briefing that:
+    - Gets straight to what matters today
+    - Calls out patterns (good and bad)
+    - Gives specific next actions
+    - Is encouraging but realistic
+    - Treats your life like a system to optimize
+    
+    Keep it sharp and actionable.
     `;
 
     try {

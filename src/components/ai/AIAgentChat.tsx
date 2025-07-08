@@ -21,7 +21,7 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
     {
       id: '1',
       type: 'agent',
-      content: "Hi! I'm Mesh, your AI life optimization agent. I've been analyzing your habits, health, and patterns. What would you like to know about your data or how can I help optimize your life today?",
+      content: "I'm Mesh. I've been analyzing your patterns - habits, health, the works. What's up?",
       timestamp: new Date().toISOString(),
     }
   ]);
@@ -294,7 +294,7 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ask Mesh about your habits, patterns, or get optimization suggestions..."
-            className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
             rows={1}
             disabled={isLoading}
           />
@@ -314,10 +314,10 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
         {/* Quick suggestions */}
         <div className="flex flex-wrap gap-2 mt-2">
           {[
-            "What patterns do you see in my habits?",
-            "How can I optimize my morning routine?",
-            "Show me my health trends",
-            "What should I focus on this week?"
+            "What patterns do you see?",
+            "Fix my morning routine",
+            "What should I focus on?",
+            "I'm stuck - help"
           ].map((suggestion) => (
             <button
               key={suggestion}
