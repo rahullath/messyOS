@@ -118,7 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_user_due_date ON tasks(user_id, due_date);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_category ON tasks(user_id, category);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_priority ON tasks(user_id, priority);
 CREATE INDEX IF NOT EXISTS idx_task_sessions_task_id ON task_sessions(task_id);
-CREATE INDEX IF NOT EXISTS idx_task_sessions_user_date ON task_sessions(user_id, DATE(started_at));
+CREATE INDEX IF NOT EXISTS idx_task_sessions_user_started ON task_sessions(user_id, started_at);
 
 -- RLS Policies
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
