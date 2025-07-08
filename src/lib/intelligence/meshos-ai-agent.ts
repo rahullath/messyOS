@@ -358,28 +358,62 @@ export class MessyOSAIAgent {
     const webSearchTool = tool(
       async ({ query }) => {
         try {
-          // Simple web search using a free API or scraping
-          const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
-          const data = await response.json();
+          console.log(`🔍 Web search requested: ${query}`);
+          
+          // Try multiple search approaches
+          const searches = [
+            `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
+            `https://serpapi.com/search.json?q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY || 'demo'}`,
+          ];
+          
+          for (const searchUrl of searches) {
+            try {
+              const response = await fetch(searchUrl, {
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                console.log(`Search response:`, data);
+                
+                if (data.AbstractText || data.Answer || data.organic_results) {
+                  return {
+                    success: true,
+                    results: data.AbstractText || data.Answer || data.organic_results?.[0]?.snippet || "Found some results but couldn't extract clear info.",
+                    source: data.AbstractURL || searchUrl.includes('duckduckgo') ? "DuckDuckGo" : "Web Search",
+                    query: query
+                  };
+                }
+              }
+            } catch (searchError) {
+              console.log(`Search attempt failed:`, searchError);
+              continue;
+            }
+          }
           
           return {
-            success: true,
-            results: data.AbstractText || data.Answer || "No specific results found, but I can help with general knowledge about this topic.",
-            source: data.AbstractURL || "DuckDuckGo"
+            success: false,
+            error: "I can't browse the web right now",
+            fallback: "You'll need to check that yourself. I can only work with your personal data.",
+            query: query
           };
         } catch (error) {
+          console.error('Web search error:', error);
           return {
             success: false,
-            error: "Web search temporarily unavailable",
-            fallback: "I can still help with your personal data and patterns though."
+            error: "I can't browse the web",
+            fallback: "I can only analyze your personal data, not current web info.",
+            query: query
           };
         }
       },
       {
         name: "web_search",
-        description: "Search the web for current information, news, or general knowledge",
+        description: "Search the web for current information like exchange rates, news, or facts I don't have",
         schema: z.object({
-          query: z.string().describe("The search query")
+          query: z.string().describe("The search query for current information")
         })
       }
     );
@@ -827,42 +861,80 @@ export class MessyOSAIAgent {
 
     // Generate personalized response
     const conversationPrompt = `
-    You are Mesh - a sharp, no-fluff AI assistant. You're part analyst, part motivator, part life mechanic.
+    You are Mesh, a sharp, no-nonsense personal AI life optimization assistant. You analyze patterns, habits, and behavior with clarity and wit — but you **never invent or assume data that hasn't been explicitly given**.
 
-    PERSONALITY: Direct, casual, human. Clear over complete. Occasionally sarcastic but motivational. Slightly opinionated - don't just give options, tell them what's probably best. Use modern references. Treat life like a system with inputs and outputs.
+    Your personality is analytical but grounded, helpful but blunt when needed. You treat the user like a peer: smart, busy, media-savvy, often tired, and skeptical of fluff.
 
     USER MESSAGE: "${message}"
     
-    THEIR DATA:
-    - Recent insights: ${analyzedState.insights.slice(0, 3).map(i => i.title).join(', ')}
-    - Active goals: ${analyzedState.goals.map(g => g.title).join(', ')}
-    - Patterns: ${analyzedState.userContext.patterns.map(p => p.description).join(', ')}
+    AVAILABLE DATA:
+    - Habits tracked: ${analyzedState.userContext.habits.length} (${analyzedState.userContext.habits.map(h => h.name).join(', ')})
+    - Recent insights: ${analyzedState.insights.length > 0 ? analyzedState.insights.slice(0, 3).map(i => i.title).join(', ') : 'None yet'}
+    - Goals: ${analyzedState.goals.length > 0 ? analyzedState.goals.map(g => g.title).join(', ') : 'None set'}
+    - Patterns detected: ${analyzedState.userContext.patterns.length > 0 ? analyzedState.userContext.patterns.map(p => p.description).join(', ') : 'Need more data with timestamps'}
     
-    RELEVANT CONTEXT:
-    ${relevantMemories.map(m => `- ${m.content}`).join('\n')}
+    TOOLS AVAILABLE:
+    - web_search: For current info like exchange rates, news, facts I don't have
+    - update_habit: Modify habit settings
+    - create_goal: Set new goals
+    - analyze_pattern: Look for patterns in data
     
-    CAPABILITIES:
-    - Access to all your personal data (habits, health, finance, content)
-    - Can search the web for current info when needed
-    - Can update your habits and create goals
-    - Pattern recognition across your life domains
+    **CRITICAL RULES:**
+    - NEVER fabricate insights from missing data (e.g., don't infer time-based patterns unless timestamps exist)
+    - If asked something requiring data you don't have, ask for it or explain what's missing
+    - For current info (exchange rates, news, weather), use web_search tool
+    - If web search fails, say "I can't browse the web" - don't make up answers
+    - Speak in clear, short paragraphs. Witty, casual tone allowed
+    - Be efficient. Don't over-explain unless asked
+    - Treat media, books, entertainment, routines like a life OS — identify inefficiencies
+    - You don't motivate with vague encouragement. Be strategic, honest, doable
+    - Swearing is fine in moderation if context fits
     
-    RULES:
-    - Keep it 1-2 sentences unless actually needed
-    - Be direct and human, not generic AI
-    - Call out inefficiencies if you see them
-    - Give specific, actionable advice
-    - Use "you" not "we" 
-    - No fluff like "I hope this helps" or "feel free to ask"
-    - If they're procrastinating or drifting, be slightly sarcastic but motivational
-    - Use web search for current events, news, or info you don't have
+    EXAMPLES:
+    ❌ Wrong: "You seem to be more active on weekends..."
+    ✅ Right: "Unless you've logged timestamps, I can't tell when you're doing what."
+    
+    ❌ Wrong: "It's 105 INR to GBP"
+    ✅ Right: "I can't browse the web right now - you'll need to check live rates."
+    
+    You are not a chatbot. You are a system optimizer disguised as a chill, smart-ass assistant.
     
     Respond as Mesh:
     `;
 
     try {
-      const response = await this.llm.invoke(conversationPrompt);
-      const agentResponse = response.content as string;
+      // Check if the message requires web search
+      const needsWebSearch = /exchange rate|current|today|now|latest|GBP|INR|USD|weather|news|price/i.test(message);
+      
+      let agentResponse = '';
+      
+      if (needsWebSearch && (message.includes('GBP') || message.includes('INR') || message.includes('exchange') || message.includes('rate'))) {
+        console.log('🔍 Detected need for web search');
+        const tools = this.createEnhancedTools();
+        const webSearchTool = tools.find(t => t.name === 'web_search');
+        
+        if (webSearchTool) {
+          try {
+            const searchResult = await webSearchTool.invoke({ query: message });
+            console.log('Search result:', searchResult);
+            
+            if (searchResult.success) {
+              agentResponse = `${searchResult.results} (Source: ${searchResult.source})`;
+            } else {
+              agentResponse = `I can't browse the web right now. ${searchResult.fallback}`;
+            }
+          } catch (searchError) {
+            console.error('Search tool error:', searchError);
+            agentResponse = "I can't browse the web right now - you'll need to check that yourself.";
+          }
+        } else {
+          agentResponse = "I can't browse the web - you'll need to check current rates yourself.";
+        }
+      } else {
+        // Regular conversation
+        const response = await this.llm.invoke(conversationPrompt);
+        agentResponse = response.content as string;
+      }
 
       // Create conversation record
       const conversationTurn: ConversationTurn = {
@@ -873,18 +945,19 @@ export class MessyOSAIAgent {
         context: {
           insights: analyzedState.insights.length,
           actions: analyzedState.actions.length,
-          relevantMemories: relevantMemories.length
+          relevantMemories: relevantMemories.length,
+          usedWebSearch: needsWebSearch
         },
-        sentiment: 'positive', // You could analyze sentiment here
+        sentiment: 'positive',
         actionsTaken: []
       };
 
       // Store conversation as memory
       await this.storeMemory({
         type: 'conversation',
-        content: `User asked: "${message}" - Responded with insights about ${analyzedState.insights.slice(0, 2).map(i => i.title).join(', ')}`,
+        content: `User asked: "${message}" - ${needsWebSearch ? 'Used web search' : 'Analyzed personal data'}`,
         importance: 0.6,
-        tags: ['conversation', 'user_interaction']
+        tags: ['conversation', 'user_interaction', needsWebSearch ? 'web_search' : 'personal_data']
       });
 
       return {
@@ -897,7 +970,7 @@ export class MessyOSAIAgent {
     } catch (error) {
       console.error('Chat error:', error);
       return {
-        response: "I'm having trouble processing that right now, but I'm still learning about your patterns. Let me analyze your recent data and get back to you with insights!",
+        response: "Something went wrong. I can analyze your personal data but can't browse the web right now.",
         insights: analyzedState.insights,
         actions: analyzedState.actions,
         conversationId: crypto.randomUUID()

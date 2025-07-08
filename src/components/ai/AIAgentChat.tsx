@@ -21,7 +21,7 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
     {
       id: '1',
       type: 'agent',
-      content: "I'm Mesh. I've been analyzing your patterns - habits, health, the works. What's up?",
+      content: "I'm Mesh. I can analyze your personal data patterns, but I can't browse the web. What do you need?",
       timestamp: new Date().toISOString(),
     }
   ]);
