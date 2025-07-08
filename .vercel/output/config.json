@@ -1,0 +1,211 @@
+{
+	"version": 3,
+	"routes": [
+		{
+			"handle": "filesystem"
+		},
+		{
+			"src": "^/_astro/(.*)$",
+			"headers": {
+				"cache-control": "public, max-age=31536000, immutable"
+			},
+			"continue": true
+		},
+		{
+			"src": "^/_server-islands/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/_image/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/ai-agent/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/analytics/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/ai/chat/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/ai/daily-briefing/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/ai/life-optimization/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/ai/test/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/ai/weekly-report/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/content/add/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/content/dashboard/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/content/import/serializd/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/content/insights/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/content/poster/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/content/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/debug-session/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/finance/clean/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/finance/cleanup/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/finance/complete-fix/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/finance/fix-data/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/finance/unified-data/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/habits/recalculate-streaks/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/habits/([^/]+?)/log/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/habits/([^/]+?)/log-enhanced/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/habits/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/health/dashboard/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/health/medication/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/import/content/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/import/finance/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/import/health/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/import/loop-habits/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/tasks/ai-assistant/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/tasks/stop-session/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/tasks/test/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/tasks/([^/]+?)/start/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/tasks/([^/]+?)/timer/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/tasks/([^/]+?)/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/api/tasks/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/auth/callback/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/auth/exchange/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/content/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/finance/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/habits/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/health/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/import/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/login/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/tasks/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/tasks-fixed/?$",
+			"dest": "_render"
+		},
+		{
+			"src": "^/$",
+			"dest": "_render"
+		}
+	]
+}

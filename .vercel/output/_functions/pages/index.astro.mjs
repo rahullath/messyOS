@@ -1,0 +1,195 @@
+import { c as createComponent, a as createAstro, r as renderComponent, g as renderScript, b as renderTemplate, m as maybeRenderHead, e as addAttribute } from '../chunks/astro/server_BxgriC_5.mjs';
+import 'kleur/colors';
+import { $ as $$DashboardLayout } from '../chunks/DashboardLayout_BPLTWs40.mjs';
+import { createServerClient } from '../chunks/server_CMU3AJFs.mjs';
+export { renderers } from '../renderers.mjs';
+
+const $$Astro = createAstro();
+const $$Index = createComponent(async ($$result, $$props, $$slots) => {
+  const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
+  Astro2.self = $$Index;
+  const supabase = createServerClient(Astro2.cookies);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return Astro2.redirect("/login");
+  }
+  const { data: habits, error: habitsError } = await supabase.from("habits").select(`
+    *,
+    habit_entries(
+      id,
+      value,
+      date,
+      logged_at,
+      effort,
+      duration,
+      completion_time,
+      energy_level,
+      mood,
+      location,
+      weather,
+      context,
+      notes
+    )
+  `).eq("user_id", user.id).eq("is_active", true).order("streak_count", { ascending: false });
+  const { data: recentMetrics } = await supabase.from("metrics").select("*").eq("user_id", user.id).gte("recorded_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3).toISOString()).order("recorded_at", { ascending: false }).limit(20);
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  const habitsWithStatus = (habits || []).map((habit) => {
+    const entries = habit.habit_entries || [];
+    const todayEntry = entries.find((e) => e.date === today);
+    const completedToday2 = todayEntry ? todayEntry.value === 1 : false;
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = /* @__PURE__ */ new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      const dayEntry = entries.find((e) => e.date === dateStr);
+      last7Days.push({
+        date: dateStr,
+        completed: dayEntry ? dayEntry.value === 1 : false,
+        entry: dayEntry
+      });
+    }
+    return {
+      ...habit,
+      completedToday: completedToday2,
+      todayEntry,
+      last7Days,
+      weeklyCompletion: last7Days.filter((d) => d.completed).length
+    };
+  });
+  const totalHabits = habitsWithStatus.length;
+  const completedToday = habitsWithStatus.filter((h) => h.completedToday).length;
+  const completionRate = totalHabits > 0 ? Math.round(completedToday / totalHabits * 100) : 0;
+  const perfectStreaks = habitsWithStatus.filter((h) => h.streak_count >= 90).length;
+  const totalStreakDays = habitsWithStatus.reduce((sum, h) => sum + (h.streak_count || 0), 0);
+  const healthMetrics = {
+    avgSleep: 0,
+    avgStress: 0,
+    avgHeartRate: 0,
+    lastUpdate: null
+  };
+  if (recentMetrics) {
+    const sleepMetrics = recentMetrics.filter((m) => m.type === "sleep_duration");
+    const stressMetrics = recentMetrics.filter((m) => m.type === "stress_level");
+    const heartRateMetrics = recentMetrics.filter((m) => m.type === "heart_rate_avg");
+    healthMetrics.avgSleep = sleepMetrics.length > 0 ? Math.round(sleepMetrics.reduce((sum, m) => sum + m.value, 0) / sleepMetrics.length / 60 * 10) / 10 : 0;
+    healthMetrics.avgStress = stressMetrics.length > 0 ? Math.round(stressMetrics.reduce((sum, m) => sum + m.value, 0) / stressMetrics.length) : 0;
+    healthMetrics.avgHeartRate = heartRateMetrics.length > 0 ? Math.round(heartRateMetrics.reduce((sum, m) => sum + m.value, 0) / heartRateMetrics.length) : 0;
+    healthMetrics.lastUpdate = recentMetrics[0]?.recorded_at;
+  }
+  const recentActivity = [];
+  habitsWithStatus.forEach((habit) => {
+    if (habit.completedToday && habit.todayEntry) {
+      const entry = habit.todayEntry;
+      recentActivity.push({
+        type: "habit",
+        icon: "\u2705",
+        title: `Completed ${habit.name}`,
+        time: entry.logged_at,
+        details: entry.effort ? `Effort: ${entry.effort}/5` : null,
+        context: entry.context ? entry.context.join(", ") : null
+      });
+    }
+  });
+  if (recentMetrics) {
+    recentMetrics.slice(0, 5).forEach((metric) => {
+      recentActivity.push({
+        type: "metric",
+        icon: getMetricIcon(metric.type),
+        title: `Logged ${metric.type.replace("_", " ")}`,
+        time: metric.recorded_at,
+        details: `${metric.value} ${metric.unit || ""}`,
+        context: null
+      });
+    });
+  }
+  recentActivity.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  const displayActivity = recentActivity.slice(0, 8);
+  function getMetricIcon(type) {
+    switch (type) {
+      case "sleep_duration":
+        return "\u{1F634}";
+      case "heart_rate_avg":
+        return "\u2764\uFE0F";
+      case "stress_level":
+        return "\u{1F630}";
+      case "weight":
+        return "\u2696\uFE0F";
+      case "expense":
+        return "\u{1F4B0}";
+      case "crypto_value":
+        return "\u20BF";
+      default:
+        return "\u{1F4CA}";
+    }
+  }
+  const categoryStats = habitsWithStatus.reduce((acc, habit) => {
+    const cat = habit.category || "Other";
+    if (!acc[cat]) {
+      acc[cat] = { count: 0, totalStreak: 0, completed: 0 };
+    }
+    acc[cat].count++;
+    acc[cat].totalStreak += habit.streak_count || 0;
+    if (habit.completedToday) acc[cat].completed++;
+    return acc;
+  }, {});
+  Object.entries(categoryStats).map(([name, stats]) => ({
+    name,
+    avgStreak: Math.round(stats.totalStreak / stats.count),
+    completion: Math.round(stats.completed / stats.count * 100),
+    count: stats.count
+  })).sort((a, b) => b.avgStreak - a.avgStreak);
+  return renderTemplate`${renderComponent($$result, "DashboardLayout", $$DashboardLayout, { "title": "MeshOS - Dashboard" }, { "default": async ($$result2) => renderTemplate` ${maybeRenderHead()}<div class="space-y-8"> <!-- Welcome Header --> <div class="flex items-center justify-between"> <div> <h1 class="text-3xl font-semibold text-text-primary mb-2">
+Good ${(/* @__PURE__ */ new Date()).getHours() < 12 ? "morning" : (/* @__PURE__ */ new Date()).getHours() < 18 ? "afternoon" : "evening"}, Rahul
+</h1> <p class="text-text-secondary"> ${(/* @__PURE__ */ new Date()).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })} </p> </div> <div class="flex items-center space-x-4"> <!-- AI Insights Button --> <button id="ai-insights-btn" class="flex items-center px-4 py-2 bg-gradient-to-r from-accent-primary to-accent-purple text-white rounded-lg hover:opacity-90 transition-opacity"> <span class="text-lg mr-2">🤖</span>
+AI Agent
+</button> <!-- Quick Add Button --> <button class="flex items-center px-3 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"> <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path> </svg>
+Quick Add
+</button> </div> </div> <!-- Key Metrics Grid --> <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"> <!-- Today's Progress --> <div class="card-hover"> <div class="flex items-center justify-between"> <div> <p class="text-sm font-medium text-text-muted">Today's Progress</p> <p class="text-2xl font-semibold text-text-primary mt-1"> ${completedToday}/${totalHabits} </p> <p class="text-sm text-accent-success mt-1">${completionRate}% complete</p> </div> <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center"> <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path> </svg> </div> </div> </div> <!-- Perfect Streaks --> <div class="card-hover"> <div class="flex items-center justify-between"> <div> <p class="text-sm font-medium text-text-muted">Perfect Streaks</p> <p class="text-2xl font-semibold text-text-primary mt-1">${perfectStreaks}</p> <p class="text-sm text-text-muted mt-1">90+ days</p> </div> <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center"> <span class="text-2xl">🏆</span> </div> </div> </div> <!-- Health Score --> <div class="card-hover"> <div class="flex items-center justify-between"> <div> <p class="text-sm font-medium text-text-muted">Health Score</p> <p class="text-2xl font-semibold text-text-primary mt-1"> ${healthMetrics.avgSleep > 0 ? Math.round((healthMetrics.avgSleep / 8 + (100 - healthMetrics.avgStress) / 100) * 50) : "--"} </p> <p class="text-sm text-text-muted mt-1"> ${healthMetrics.avgSleep > 0 ? "Based on sleep & stress" : "No data yet"} </p> </div> <div class="w-12 h-12 bg-accent-error/10 rounded-lg flex items-center justify-center"> <svg class="w-6 h-6 text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path> </svg> </div> </div> </div> <!-- Total Streak Days --> <div class="card-hover"> <div class="flex items-center justify-between"> <div> <p class="text-sm font-medium text-text-muted">Total Streak Days</p> <p class="text-2xl font-semibold text-text-primary mt-1">${totalStreakDays.toLocaleString()}</p> <p class="text-sm text-text-muted mt-1">across all habits</p> </div> <div class="w-12 h-12 bg-accent-purple/10 rounded-lg flex items-center justify-center"> <span class="text-2xl">🔥</span> </div> </div> </div> </div> <!-- Main Content Grid --> <div class="grid grid-cols-1 lg:grid-cols-3 gap-8"> <!-- Today's Habits Progress --> <div class="lg:col-span-2"> <div class="card"> <div class="flex items-center justify-between mb-6"> <h2 class="text-xl font-semibold text-text-primary">Today's Habits</h2> <a href="/habits" class="text-accent-primary hover:text-accent-primary/80 text-sm font-medium">
+View All →
+</a> </div> <div class="space-y-4"> ${habitsWithStatus.slice(0, 6).map((habit) => renderTemplate`<div${addAttribute(habit.id, "key")} class="flex items-center justify-between p-4 bg-surface-hover rounded-lg"> <div class="flex items-center space-x-3"> <div class="w-3 h-3 rounded-full"${addAttribute(`background-color: ${habit.color}`, "style")}></div> <div> <h3 class="font-medium text-text-primary">${habit.name}</h3> <p class="text-sm text-text-muted">${habit.streak_count} day streak</p> </div> </div> <div class="flex items-center space-x-4"> <!-- Weekly Progress Dots --> <div class="flex space-x-1"> ${habit.last7Days.map((day, index) => renderTemplate`<div${addAttribute(index, "key")}${addAttribute(`w-2 h-2 rounded-full ${day.completed ? "bg-accent-success" : "bg-surface border border-border"}`, "class")}${addAttribute(day.date, "title")}></div>`)} </div> <!-- Status --> <div class="flex items-center"> ${habit.completedToday ? renderTemplate`<div class="flex items-center text-accent-success"> <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path> </svg> <span class="text-sm">Done</span> </div>` : renderTemplate`<button${addAttribute(`logHabit('${habit.id}', '${habit.name}', '${habit.measurement_type}', ${habit.allows_skips})`, "onclick")} class="px-3 py-1 bg-accent-primary text-white text-sm rounded-lg hover:bg-accent-primary/90 transition-colors">
+Log
+</button>`} </div> </div> </div>`)} </div> </div> </div> <!-- Sidebar Content --> <div class="space-y-6"> <!-- Quick Actions --> <div class="card"> <h2 class="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2> <div class="space-y-3"> <a href="/habits" class="w-full flex items-center justify-start px-4 py-3 bg-accent-success/10 hover:bg-accent-success/20 border border-accent-success/20 text-accent-success rounded-lg transition-colors"> <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path> </svg>
+Log Habits
+</a> <a href="/analytics" class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors"> <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path> </svg>
+View Analytics
+</a> <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors"> <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path> </svg>
+Log Health Data
+</button> <a href="/import" class="w-full flex items-center justify-start px-4 py-3 bg-accent-purple/10 hover:bg-accent-purple/20 border border-accent-purple/20 text-accent-purple rounded-lg transition-colors"> <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path> </svg>
+Import Data
+</a> </div> </div> <!-- Recent Activity --> <div class="card"> <h3 class="text-lg font-medium text-text-primary mb-4">Recent Activity</h3> <div class="space-y-3"> ${displayActivity.length > 0 ? displayActivity.map((activity, index) => renderTemplate`<div${addAttribute(index, "key")} class="flex items-start space-x-3"> <span class="text-lg mt-0.5">${activity.icon}</span> <div class="flex-1 min-w-0"> <p class="text-sm text-text-primary font-medium">${activity.title}</p> ${activity.details && renderTemplate`<p class="text-xs text-text-muted">${activity.details}</p>`} ${activity.context && renderTemplate`<p class="text-xs text-accent-primary">${activity.context}</p>`} <p class="text-xs text-text-muted"> ${new Date(activity.time).toLocaleTimeString()} </p> </div> </div>`) : renderTemplate`<p class="text-text-muted text-sm">No recent activity</p>`} </div> </div> <!-- Categories Overview */
+        <div class="card">
+          <h3 class="text-lg font-medium text-text-primary mb-4">Categories</h3>
+          
+          <div class="space-y-3">
+            {topCategories.slice(0, 4).map((category) => (
+              <div key={category.name} class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-text-primary">{category.name}</p>
+                  <p class="text-xs text-text-muted">{category.count} habits</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-sm font-medium text-text-primary">{category.avgStreak}d</p>
+                  <p class="text-xs text-accent-success">{category.completion}% today</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <!-- System Status --> <div class="card"> <h3 class="text-lg font-medium text-text-primary mb-4">System Status</h3> <div class="space-y-3"> <div class="flex items-center justify-between"> <div class="flex items-center space-x-2"> <div class="w-2 h-2 bg-accent-success rounded-full"></div> <span class="text-sm text-text-secondary">Database</span> </div> <span class="text-sm text-accent-success">Online</span> </div> <div class="flex items-center justify-between"> <div class="flex items-center space-x-2"> <div class="w-2 h-2 bg-accent-success rounded-full"></div> <span class="text-sm text-text-secondary">AI Analysis</span> </div> <span class="text-sm text-accent-success">Active</span> </div> <div class="flex items-center justify-between"> <div class="flex items-center space-x-2"> <div class="w-2 h-2 bg-accent-success rounded-full"></div> <span class="text-sm text-text-secondary">Enhanced Logging</span> </div> <span class="text-sm text-accent-success">Ready</span> </div> ${healthMetrics.lastUpdate && renderTemplate`<div class="flex items-center justify-between"> <div class="flex items-center space-x-2"> <div class="w-2 h-2 bg-accent-warning rounded-full"></div> <span class="text-sm text-text-secondary">Health Data</span> </div> <span class="text-sm text-text-secondary"> ${new Date(healthMetrics.lastUpdate).toLocaleDateString()} </span> </div>`} </div> </div> </div> </div> </div> ` })} ${renderScript($$result, "C:/Users/rahul/meshos-v3/src/pages/index.astro?astro&type=script&index=0&lang.ts")} `;
+}, "C:/Users/rahul/meshos-v3/src/pages/index.astro", void 0);
+
+const $$file = "C:/Users/rahul/meshos-v3/src/pages/index.astro";
+const $$url = "";
+
+const _page = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: $$Index,
+  file: $$file,
+  url: $$url
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const page = () => _page;
+
+export { page };
