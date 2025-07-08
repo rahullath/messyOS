@@ -14,6 +14,11 @@ export const GET: APIRoute = async ({ params, cookies }) => {
     }
 
     const taskId = params.id;
+    if (!taskId) {
+      return new Response(JSON.stringify({
+        error: 'Task ID is required'
+      }), { status: 400 });
+    }
 
     const { data: task, error } = await supabase
       .from('tasks')
@@ -49,7 +54,7 @@ export const GET: APIRoute = async ({ params, cookies }) => {
   }
 };
 
-export const PUT: APIRoute = async ({ params, request, cookies }) => {
+export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   try {
     const supabase = createServerClient(cookies);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -61,33 +66,39 @@ export const PUT: APIRoute = async ({ params, request, cookies }) => {
     }
 
     const taskId = params.id;
-    const body = await request.json();
+    if (!taskId) {
+      return new Response(JSON.stringify({
+        error: 'Task ID is required'
+      }), { status: 400 });
+    }
 
-    // Extract allowed fields for update
+    const body = await request.json();
     const allowedFields = [
       'title', 'description', 'category', 'priority', 'status',
-      'estimated_duration', 'due_date', 'scheduled_for',
-      'energy_required', 'complexity', 'location', 'context',
-      'tags', 'notes', 'completion_notes', 'satisfaction_score',
-      'email_reminders'
+      'estimated_duration', 'due_date', 'scheduled_for', 'energy_required',
+      'complexity', 'location', 'context', 'tags', 'email_reminders'
     ];
 
-    const updateData: any = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
+    // Filter only allowed fields
+    const updateData = Object.keys(body)
+      .filter(key => allowedFields.includes(key))
+      .reduce((obj, key) => {
+        obj[key] = body[key];
+        return obj;
+      }, {} as any);
+
+    if (Object.keys(updateData).length === 0) {
+      return new Response(JSON.stringify({
+        error: 'No valid fields to update'
+      }), { status: 400 });
     }
 
-    // Set completion timestamp if status is being changed to completed
-    if (body.status === 'completed' && !updateData.completed_at) {
+    // Add updated timestamp
+    updateData.updated_at = new Date().toISOString();
+
+    // If completing a task, set completed_at
+    if (updateData.status === 'completed') {
       updateData.completed_at = new Date().toISOString();
-    }
-
-    // Clear completion timestamp if status is being changed from completed
-    if (body.status && body.status !== 'completed') {
-      updateData.completed_at = null;
-      updateData.completion_notes = null;
     }
 
     const { data: task, error } = await supabase
@@ -132,6 +143,11 @@ export const DELETE: APIRoute = async ({ params, cookies }) => {
     }
 
     const taskId = params.id;
+    if (!taskId) {
+      return new Response(JSON.stringify({
+        error: 'Task ID is required'
+      }), { status: 400 });
+    }
 
     const { error } = await supabase
       .from('tasks')

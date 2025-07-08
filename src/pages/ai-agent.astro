@@ -1,262 +1,232 @@
 ---
 // src/pages/ai-agent.astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { createServerClient } from '../lib/supabase/server';
-
-const supabase = createServerClient(Astro.cookies);
-
-// Get the user from session
-const { data: { user } } = await supabase.auth.getUser();
-
-if (!user) {
-  return Astro.redirect('/login');
-}
 ---
 
-<DashboardLayout title="AI Life Agent - MeshOS">
-  <div class="space-y-8">
-    <!-- Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-semibold text-text-primary mb-2">
-          🤖 AI Life Agent
-        </h1>
-        <p class="text-text-secondary">
-          Your personal AI assistant for life optimization and insights
-        </p>
-      </div>
-      
-      <div class="flex items-center space-x-3">
-        <button 
-          id="daily-checkin-btn"
-          class="px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
-        >
-          ☀️ Daily Check-in
-        </button>
-        
-        <button 
-          id="deep-analysis-btn"
-          class="px-4 py-2 bg-gradient-to-r from-accent-primary to-accent-purple text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          🔍 Deep Analysis
-        </button>
-      </div>
-    </div>
-
-    <!-- Agent Status -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="card p-4">
-        <div class="flex items-center space-x-3">
-          <div class="w-3 h-3 bg-accent-success rounded-full animate-pulse"></div>
-          <div>
-            <p class="text-sm font-medium text-text-primary">Agent Status</p>
-            <p class="text-xs text-accent-success">Online & Learning</p>
-          </div>
+<DashboardLayout title="AI Agent - Mesh">
+  <div class="space-y-6">
+    <!-- Page Header -->
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white">
+      <div class="flex items-center gap-4">
+        <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+          <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
         </div>
-      </div>
-      
-      <div class="card p-4">
-        <div class="flex items-center space-x-3">
-          <span class="text-2xl">🧠</span>
-          <div>
-            <p class="text-sm font-medium text-text-primary">AI Model</p>
-            <p class="text-xs text-text-secondary">Gemini 1.5 Pro + LangChain</p>
-          </div>
-        </div>
-      </div>
-      
-      <div class="card p-4">
-        <div class="flex items-center space-x-3">
-          <span class="text-2xl">💰</span>
-          <div>
-            <p class="text-sm font-medium text-text-primary">Credits</p>
-            <p class="text-xs text-accent-success">₹25,000 Available</p>
-          </div>
+        <div>
+          <h1 class="text-3xl font-bold">Meet Mesh</h1>
+          <p class="text-blue-100 mt-1">Your AI-powered life optimization agent</p>
         </div>
       </div>
     </div>
 
-    <!-- Agent Capabilities -->
-    <div class="card p-6">
-      <h2 class="text-xl font-semibold text-text-primary mb-4">🚀 Agent Capabilities</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="p-4 bg-surface-hover rounded-lg">
-          <div class="flex items-center space-x-2 mb-2">
-            <span class="text-lg">🔄</span>
-            <h3 class="font-medium text-text-primary">Habit Analysis</h3>
+    <!-- Daily Briefing -->
+    <div id="daily-briefing-container">
+      <!-- Daily briefing will be loaded here -->
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- AI Chat Interface -->
+      <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-lg">
+          <div class="p-4 border-b border-gray-200">
+            <h2 class="text-xl font-semibold text-gray-900">Chat with Mesh</h2>
+            <p class="text-gray-600 text-sm mt-1">Ask about your patterns, get optimization suggestions, or just chat about your goals</p>
           </div>
-          <p class="text-sm text-text-secondary">
-            Analyzes patterns, predicts failures, suggests optimal timing
-          </p>
-        </div>
-        
-        <div class="p-4 bg-surface-hover rounded-lg">
-          <div class="flex items-center space-x-2 mb-2">
-            <span class="text-lg">❤️</span>
-            <h3 class="font-medium text-text-primary">Health Monitoring</h3>
+          <div id="ai-chat-container" style="height: 600px;">
+            <!-- AI chat will be loaded here -->
           </div>
-          <p class="text-sm text-text-secondary">
-            Tracks trends, detects anomalies, suggests interventions
-          </p>
-        </div>
-        
-        <div class="p-4 bg-surface-hover rounded-lg">
-          <div class="flex items-center space-x-2 mb-2">
-            <span class="text-lg">💰</span>
-            <h3 class="font-medium text-text-primary">Finance Intelligence</h3>
-          </div>
-          <p class="text-sm text-text-secondary">
-            Spending patterns, budget optimization, risk alerts
-          </p>
-        </div>
-        
-        <div class="p-4 bg-surface-hover rounded-lg">
-          <div class="flex items-center space-x-2 mb-2">
-            <span class="text-lg">🔗</span>
-            <h3 class="font-medium text-text-primary">Cross-Correlations</h3>
-          </div>
-          <p class="text-sm text-text-secondary">
-            Finds hidden connections across all life domains
-          </p>
         </div>
       </div>
-    </div>
 
-    <!-- Main AI Insights Container -->
-    <div id="ai-insights-container">
-      <!-- AgenticInsights component will be rendered here -->
-    </div>
+      <!-- Side Panel -->
+      <div class="space-y-6">
+        <!-- Agent Status -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Agent Status</h3>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-gray-600">Status</span>
+              <span class="flex items-center gap-2 text-green-600">
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                Active
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-600">Data Sources</span>
+              <span class="text-gray-900 font-medium">4 Connected</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-600">Last Analysis</span>
+              <span class="text-gray-900 font-medium" id="last-analysis">Just now</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-gray-600">Confidence</span>
+              <span class="text-gray-900 font-medium">85%</span>
+            </div>
+          </div>
+        </div>
 
-    <!-- Agent Workflow Visualization -->
-    <div class="card p-6">
-      <h2 class="text-xl font-semibold text-text-primary mb-4">🔄 Agent Workflow</h2>
-      
-      <div class="flex items-center justify-between space-x-4 overflow-x-auto pb-4">
-        <div class="flex flex-col items-center min-w-0 flex-1">
-          <div class="w-12 h-12 bg-accent-primary/20 rounded-full flex items-center justify-center mb-2">
-            <span class="text-lg">📊</span>
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <div class="space-y-3">
+            <button 
+              id="generate-briefing"
+              class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              Generate New Briefing
+            </button>
+            <button 
+              id="weekly-report"
+              class="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              Weekly Report
+            </button>
+            <button 
+              id="optimize-habits"
+              class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              Optimize Habits
+            </button>
+            <button 
+              id="analyze-patterns"
+              class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              Analyze Patterns
+            </button>
           </div>
-          <p class="text-sm font-medium text-text-primary text-center">Gather Data</p>
-          <p class="text-xs text-text-muted text-center">Habits, Health, Finance</p>
         </div>
-        
-        <div class="text-text-muted">→</div>
-        
-        <div class="flex flex-col items-center min-w-0 flex-1">
-          <div class="w-12 h-12 bg-accent-success/20 rounded-full flex items-center justify-center mb-2">
-            <span class="text-lg">🧠</span>
-          </div>
-          <p class="text-sm font-medium text-text-primary text-center">Analyze Patterns</p>
-          <p class="text-xs text-text-muted text-center">AI Pattern Recognition</p>
-        </div>
-        
-        <div class="text-text-muted">→</div>
-        
-        <div class="flex flex-col items-center min-w-0 flex-1">
-          <div class="w-12 h-12 bg-accent-warning/20 rounded-full flex items-center justify-center mb-2">
-            <span class="text-lg">🔗</span>
-          </div>
-          <p class="text-sm font-medium text-text-primary text-center">Find Correlations</p>
-          <p class="text-xs text-text-muted text-center">Cross-Domain Links</p>
-        </div>
-        
-        <div class="text-text-muted">→</div>
-        
-        <div class="flex flex-col items-center min-w-0 flex-1">
-          <div class="w-12 h-12 bg-accent-purple/20 rounded-full flex items-center justify-center mb-2">
-            <span class="text-lg">⚡</span>
-          </div>
-          <p class="text-sm font-medium text-text-primary text-center">Generate Actions</p>
-          <p class="text-xs text-text-muted text-center">Personalized Recommendations</p>
-        </div>
-      </div>
-    </div>
 
-    <!-- Recent Agent Activity -->
-    <div class="card p-6">
-      <h2 class="text-xl font-semibold text-text-primary mb-4">📝 Recent Agent Activity</h2>
-      
-      <div class="space-y-3" id="agent-activity">
-        <div class="flex items-center space-x-3 p-3 bg-surface-hover rounded-lg">
-          <span class="text-lg">🤖</span>
-          <div>
-            <p class="text-sm text-text-primary">Agent initialized and ready</p>
-            <p class="text-xs text-text-muted">{new Date().toLocaleString()}</p>
+        <!-- Agent Capabilities -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">What Mesh Can Do</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-start gap-3">
+              <div class="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              <div>
+                <div class="font-medium text-gray-900">Pattern Recognition</div>
+                <div class="text-gray-600">Identifies hidden patterns in your habits, health, and lifestyle data</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <div>
+                <div class="font-medium text-gray-900">Proactive Optimization</div>
+                <div class="text-gray-600">Suggests improvements before problems occur</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+              <div>
+                <div class="font-medium text-gray-900">Cross-Domain Insights</div>
+                <div class="text-gray-600">Connects habits, health, finance, and productivity data</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
+              <div>
+                <div class="font-medium text-gray-900">Personalized Coaching</div>
+                <div class="text-gray-600">Adapts recommendations to your unique patterns</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Insights -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Insights</h3>
+          <div id="recent-insights" class="space-y-3 text-sm">
+            <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div class="font-medium text-blue-900">Habit Correlation Found</div>
+              <div class="text-blue-700 mt-1">Your gym sessions correlate with better sleep quality</div>
+            </div>
+            <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+              <div class="font-medium text-green-900">Optimization Opportunity</div>
+              <div class="text-green-700 mt-1">Morning routine timing can be improved by 15 minutes</div>
+            </div>
+            <div class="p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <div class="font-medium text-purple-900">Pattern Detected</div>
+              <div class="text-purple-700 mt-1">Weekend productivity follows a predictable pattern</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</DashboardLayout>
 
-<script>
-  import AgenticInsights from '../components/ai/AgenticInsights';
-  import { createRoot } from 'react-dom/client';
-  import React from 'react';
+  <script>
+    import AIAgentChat from '../components/ai/AIAgentChat.tsx';
+    import DailyBriefing from '../components/ai/DailyBriefing.tsx';
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
 
-  // Initialize the AI insights component
-  const container = document.getElementById('ai-insights-container');
-  if (container) {
-    const root = createRoot(container);
-    root.render(React.createElement(AgenticInsights, { type: 'daily' }));
-  }
+    // Mount React components
+    document.addEventListener('DOMContentLoaded', () => {
+      // Mount Daily Briefing
+      const briefingContainer = document.getElementById('daily-briefing-container');
+      if (briefingContainer) {
+        const briefingRoot = createRoot(briefingContainer);
+        briefingRoot.render(React.createElement(DailyBriefing, { className: '' }));
+      }
 
-  // Daily check-in button
-  document.getElementById('daily-checkin-btn')?.addEventListener('click', () => {
-    if (container) {
-      const root = createRoot(container);
-      root.render(React.createElement(AgenticInsights, { type: 'daily' }));
-    }
-  });
+      // Mount AI Chat
+      const chatContainer = document.getElementById('ai-chat-container');
+      if (chatContainer) {
+        const chatRoot = createRoot(chatContainer);
+        chatRoot.render(React.createElement(AIAgentChat, { className: 'h-full' }));
+      }
 
-  // Deep analysis button
-  document.getElementById('deep-analysis-btn')?.addEventListener('click', () => {
-    if (container) {
-      const root = createRoot(container);
-      root.render(React.createElement(AgenticInsights, { type: 'full' }));
-    }
-  });
+      // Quick action handlers
+      document.getElementById('generate-briefing')?.addEventListener('click', async () => {
+        // Refresh the daily briefing
+        window.location.reload();
+      });
 
-  // Add activity log function
-  function addAgentActivity(message: string, type: string = 'info') {
-    const activityContainer = document.getElementById('agent-activity');
-    if (!activityContainer) return;
+      document.getElementById('weekly-report')?.addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/ai/weekly-report');
+          const data = await response.json();
+          
+          if (data.success) {
+            // Show weekly report in a modal or new page
+            alert('Weekly report generated! Check your insights.');
+          }
+        } catch (error) {
+          console.error('Weekly report error:', error);
+          alert('Failed to generate weekly report');
+        }
+      });
 
-    const activityItem = document.createElement('div');
-    activityItem.className = 'flex items-center space-x-3 p-3 bg-surface-hover rounded-lg';
-    
-    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : type === 'warning' ? '⚠️' : '🤖';
-    
-    activityItem.innerHTML = `
-      <span class="text-lg">${icon}</span>
-      <div>
-        <p class="text-sm text-text-primary">${message}</p>
-        <p class="text-xs text-text-muted">${new Date().toLocaleString()}</p>
-      </div>
-    `;
-    
-    activityContainer.insertBefore(activityItem, activityContainer.firstChild);
-    
-    // Keep only last 5 activities
-    while (activityContainer.children.length > 5) {
-      activityContainer.removeChild(activityContainer.lastChild);
-    }
-  }
+      document.getElementById('optimize-habits')?.addEventListener('click', () => {
+        // Add a pre-filled message to the chat
+        const chatInput = document.querySelector('#ai-chat-container textarea');
+        if (chatInput) {
+          chatInput.value = "Can you analyze my habits and suggest optimizations?";
+          chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
 
-  // Listen for AI analysis events
-  window.addEventListener('ai-analysis-start', () => {
-    addAgentActivity('Starting AI analysis...', 'info');
-  });
+      document.getElementById('analyze-patterns')?.addEventListener('click', () => {
+        // Add a pre-filled message to the chat
+        const chatInput = document.querySelector('#ai-chat-container textarea');
+        if (chatInput) {
+          chatInput.value = "What patterns do you see in my data across all domains?";
+          chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      });
 
-  window.addEventListener('ai-analysis-complete', (event) => {
-    const detail = (event as CustomEvent).detail;
-    addAgentActivity(`Analysis complete: ${detail.insights} insights, ${detail.actions} actions`, 'success');
-  });
+      // Update last analysis time
+      const updateLastAnalysis = () => {
+        const lastAnalysisElement = document.getElementById('last-analysis');
+        if (lastAnalysisElement) {
+          lastAnalysisElement.textContent = new Date().toLocaleTimeString();
+        }
+      };
 
-  window.addEventListener('ai-analysis-error', (event) => {
-    const detail = (event as CustomEvent).detail;
-    addAgentActivity(`Analysis failed: ${detail.error}`, 'error');
-  });
-</script>
+      // Update every minute
+      setInterval(updateLastAnalysis, 60000);
+    });
+  </script>
 </DashboardLayout>

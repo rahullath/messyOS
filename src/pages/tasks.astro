@@ -35,724 +35,448 @@ const { data: activeSession } = await supabase
 // Process tasks for display
 const processedTasks = (tasks || []).map(task => {
   const sessions = task.task_sessions || [];
-  const totalTime = sessions.reduce((sum, session) => sum + (session.duration || 0), 0);
-  const avgProductivity = sessions.length > 0 
-    ? sessions.reduce((sum, s) => sum + (s.productivity_score || 0), 0) / sessions.length 
+  const totalDuration = sessions.reduce((sum: number, s: any) => sum + (s.duration || 0), 0);
+  const avgProductivity = sessions.length > 0
+    ? sessions.reduce((sum: number, s: any) => sum + (s.productivity_score || 0), 0) / sessions.length
     : 0;
-
+  
   return {
     ...task,
-    totalTimeSpent: totalTime,
+    totalTimeSpent: totalDuration,
     avgProductivity: Math.round(avgProductivity * 10) / 10,
     isOverdue: task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed',
-    isDueToday: task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString(),
+    isDueToday: task.due_date && new Date(task.due_date).toLocaleDateString() === new Date().toLocaleDateString(),
     sessionCount: sessions.length
   };
 });
-
-// Task statistics
-const stats = {
-  total: processedTasks.length,
-  completed: processedTasks.filter(t => t.status === 'completed').length,
-  inProgress: processedTasks.filter(t => t.status === 'in_progress').length,
-  overdue: processedTasks.filter(t => t.isOverdue).length,
-  dueToday: processedTasks.filter(t => t.isDueToday).length,
-  totalTimeToday: processedTasks
-    .flatMap(t => t.task_sessions || [])
-    .filter(s => s.started_at && new Date(s.started_at).toDateString() === new Date().toDateString())
-    .reduce((sum, s) => sum + (s.duration || 0), 0)
-};
 
 // Group tasks by status
 const tasksByStatus = {
   todo: processedTasks.filter(t => t.status === 'todo'),
   in_progress: processedTasks.filter(t => t.status === 'in_progress'),
-  completed: processedTasks.filter(t => t.status === 'completed').slice(0, 5), // Show recent 5
+  completed: processedTasks.filter(t => t.status === 'completed').slice(0, 5), // Show only 5 recent completed tasks
   on_hold: processedTasks.filter(t => t.status === 'on_hold')
 };
 
-// Categories for the new task form
+// Helper functions
+const calculateAvgTaskTime = (tasks: any[], status: string) => {
+  const relevantTasks = tasks.filter(t => t.status === status);
+  if (relevantTasks.length === 0) return 0;
+  const totalTime = relevantTasks.reduce((sum, t) => sum + (t.totalTimeSpent || 0), 0);
+  return Math.round(totalTime / relevantTasks.length / 60); // Convert to minutes
+};
+
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'high': return 'red';
+    case 'medium': return 'yellow';
+    case 'low': return 'green';
+    default: return 'gray';
+  }
+};
+
+// Categories and priority dropdown options
 const categories = [
   'Work', 'Personal', 'Learning', 'Health', 'Finance', 'Creative', 'Social', 'Maintenance', 'Planning', 'Other'
 ];
 
-const priorities = [
-  { value: 'low', label: 'Low', color: 'text-accent-success' },
-  { value: 'medium', label: 'Medium', color: 'text-accent-warning' },
-  { value: 'high', label: 'High', color: 'text-accent-error' },
-  { value: 'urgent', label: 'Urgent', color: 'text-red-600' }
+const priorityLevels = [
+  { value: 'low', label: 'Low', color: 'green' },
+  { value: 'medium', label: 'Medium', color: 'yellow' },
+  { value: 'high', label: 'High', color: 'red' }
 ];
-
-function formatDuration(seconds) {
-  if (!seconds) return '0m';
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
-}
-
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  return new Date(timestamp).toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  });
-}
-
-function formatDate(timestamp) {
-  if (!timestamp) return '';
-  return new Date(timestamp).toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric' 
-  });
-}
 ---
 
 <DashboardLayout title="Tasks - MeshOS">
-  <div class="space-y-8">
-    <!-- Header with Active Timer -->
+  <div class="space-y-6">
+    <!-- Header Section -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-semibold text-text-primary mb-2">Tasks</h1>
-        <p class="text-text-secondary">
-          Comprehensive task management with AI insights and time tracking
-        </p>
+        <h1 class="text-3xl font-bold text-gray-900">Task Management</h1>
+        <p class="text-gray-600 mt-1">Organize and track your tasks efficiently</p>
       </div>
-      
-      <div class="flex items-center space-x-4">
-        <!-- Active Timer Display -->
-        {activeSession && (
-          <div class="flex items-center space-x-3 px-4 py-2 bg-accent-success/10 border border-accent-success/20 rounded-lg">
-            <div class="w-3 h-3 bg-accent-success rounded-full animate-pulse"></div>
-            <div>
-              <p class="text-sm font-medium text-accent-success">Active: {activeSession.tasks.title}</p>
-              <p class="text-xs text-text-muted" id="active-timer">
-                Started at {formatTime(activeSession.started_at)}
-              </p>
-            </div>
-            <button 
-              id="stop-timer-btn"
-              class="px-3 py-1 bg-accent-error text-white text-sm rounded hover:bg-accent-error/90"
-            >
-              Stop
-            </button>
-          </div>
-        )}
-        
-        <!-- AI Task Assistant -->
-        <button 
-          id="ai-assistant-btn"
-          class="flex items-center px-4 py-2 bg-gradient-to-r from-accent-primary to-accent-purple text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <span class="text-lg mr-2">🤖</span>
-          AI Assistant
-        </button>
-        
-        <!-- New Task Button -->
-        <button 
-          id="new-task-btn"
-          class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-        >
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex items-center space-x-3">
+        <button id="new-task-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
           </svg>
-          New Task
+          Add Task
         </button>
+        <a href="/ai-agent" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          AI Insights
+        </a>
       </div>
     </div>
 
-    <!-- Task Statistics -->
-    <div class="grid grid-cols-1 md:grid-cols-6 gap-6">
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Total Tasks</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">{stats.total}</p>
-          </div>
-          <span class="text-2xl">📋</span>
-        </div>
-      </div>
-
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Completed</p>
-            <p class="text-2xl font-semibold text-accent-success mt-1">{stats.completed}</p>
-          </div>
-          <span class="text-2xl">✅</span>
-        </div>
-      </div>
-
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">In Progress</p>
-            <p class="text-2xl font-semibold text-accent-warning mt-1">{stats.inProgress}</p>
-          </div>
-          <span class="text-2xl">⚡</span>
-        </div>
-      </div>
-
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Overdue</p>
-            <p class="text-2xl font-semibold text-accent-error mt-1">{stats.overdue}</p>
-          </div>
-          <span class="text-2xl">⚠️</span>
-        </div>
-      </div>
-
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Due Today</p>
-            <p class="text-2xl font-semibold text-accent-purple mt-1">{stats.dueToday}</p>
-          </div>
-          <span class="text-2xl">📅</span>
-        </div>
-      </div>
-
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Time Today</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">{formatDuration(stats.totalTimeToday)}</p>
-          </div>
-          <span class="text-2xl">⏱️</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Task Board -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <!-- To Do Column -->
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-text-primary">To Do</h2>
-          <span class="px-2 py-1 bg-surface text-xs rounded">{tasksByStatus.todo.length}</span>
-        </div>
-        
-        <div class="space-y-3 max-h-96 overflow-y-auto">
-          {tasksByStatus.todo.map((task) => (
-            <div key={task.id} class="task-card card p-4 hover:bg-surface-hover transition-colors cursor-pointer" data-task-id={task.id}>
-              <div class="flex items-start justify-between mb-2">
-                <h3 class="font-medium text-text-primary text-sm">{task.title}</h3>
-                <div class="flex items-center space-x-1">
-                  <span class={`w-2 h-2 rounded-full ${
-                    task.priority === 'urgent' ? 'bg-red-600' :
-                    task.priority === 'high' ? 'bg-accent-error' :
-                    task.priority === 'medium' ? 'bg-accent-warning' : 'bg-accent-success'
-                  }`}></div>
-                  {task.isOverdue && <span class="text-xs text-accent-error">⚠️</span>}
-                  {task.isDueToday && <span class="text-xs text-accent-warning">📅</span>}
-                </div>
-              </div>
-              
-              {task.description && (
-                <p class="text-xs text-text-muted mb-2 line-clamp-2">{task.description}</p>
-              )}
-              
-              <div class="flex items-center justify-between text-xs text-text-muted">
-                <span class="px-2 py-1 bg-surface rounded">{task.category}</span>
-                <div class="flex items-center space-x-2">
-                  {task.estimated_duration && (
-                    <span>⏱️ {formatDuration(task.estimated_duration * 60)}</span>
-                  )}
-                  {task.due_date && (
-                    <span>📅 {formatDate(task.due_date)}</span>
-                  )}
-                </div>
-              </div>
-              
-              <div class="flex items-center justify-between mt-3">
-                <button 
-                  class="start-timer-btn px-3 py-1 bg-accent-success text-white text-xs rounded hover:bg-accent-success/90"
-                  data-task-id={task.id}
-                  data-task-title={task.title}
-                >
-                  ▶️ Start
-                </button>
-                <button 
-                  class="edit-task-btn text-text-muted hover:text-text-primary"
-                  data-task-id={task.id}
-                >
-                  ✏️
-                </button>
-              </div>
+    <!-- Task Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {Object.entries(tasksByStatus).map(([status, statusTasks]) => (
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+              </h3>
+              <p class="text-2xl font-bold text-gray-900 mt-2">
+                {statusTasks.length}
+              </p>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <!-- In Progress Column -->
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-text-primary">In Progress</h2>
-          <span class="px-2 py-1 bg-surface text-xs rounded">{tasksByStatus.in_progress.length}</span>
-        </div>
-        
-        <div class="space-y-3 max-h-96 overflow-y-auto">
-          {tasksByStatus.in_progress.map((task) => (
-            <div key={task.id} class="task-card card p-4 bg-accent-warning/5 border border-accent-warning/20 hover:bg-accent-warning/10 transition-colors cursor-pointer" data-task-id={task.id}>
-              <div class="flex items-start justify-between mb-2">
-                <h3 class="font-medium text-text-primary text-sm">{task.title}</h3>
-                <div class="flex items-center space-x-1">
-                  <div class="w-2 h-2 bg-accent-warning rounded-full animate-pulse"></div>
-                </div>
-              </div>
-              
-              {task.description && (
-                <p class="text-xs text-text-muted mb-2 line-clamp-2">{task.description}</p>
+            <div class={`w-12 h-12 rounded-full flex items-center justify-center ${
+              status === 'todo' ? 'bg-blue-100' :
+              status === 'in_progress' ? 'bg-yellow-100' :
+              status === 'completed' ? 'bg-green-100' :
+              'bg-gray-100'
+            }`}>
+              {status === 'todo' && (
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
               )}
-              
-              <div class="flex items-center justify-between text-xs text-text-muted mb-2">
-                <span class="px-2 py-1 bg-surface rounded">{task.category}</span>
-                <span>⏱️ {formatDuration(task.totalTimeSpent)}</span>
+              {status === 'in_progress' && (
+                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              )}
+              {status === 'completed' && (
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              )}
+              {status === 'on_hold' && (
+                <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              )}
+            </div>
+          </div>
+          <div class="mt-4 text-sm text-gray-500">
+            Avg time: {calculateAvgTaskTime(processedTasks, status)} mins
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Task Boards -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+      {Object.entries(tasksByStatus).map(([status, statusTasks]) => (
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div class="p-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">
+              {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+            </h3>
+            <p class="text-sm text-gray-500">{statusTasks.length} tasks</p>
+          </div>
+          <div class="p-4 space-y-3 max-h-96 overflow-y-auto">
+            {statusTasks.length === 0 ? (
+              <div class="text-center py-8 text-gray-500">
+                <svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                <p class="text-sm">No tasks yet</p>
               </div>
-              
-              {task.avgProductivity > 0 && (
-                <div class="mb-2">
-                  <div class="flex items-center justify-between text-xs">
-                    <span class="text-text-muted">Productivity</span>
-                    <span class="text-text-primary">{task.avgProductivity}/10</span>
-                  </div>
-                  <div class="w-full bg-surface rounded-full h-1 mt-1">
-                    <div 
-                      class="bg-accent-success h-1 rounded-full" 
-                      style={`width: ${task.avgProductivity * 10}%`}
-                    ></div>
+            ) : (
+              statusTasks.map(task => (
+                <div class="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <h4 class="font-medium text-gray-900 text-sm">{task.title}</h4>
+                      {task.description && (
+                        <p class="text-xs text-gray-600 mt-1 line-clamp-2">{task.description}</p>
+                      )}
+                      <div class="flex items-center gap-2 mt-2">
+                        <span class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {task.priority}
+                        </span>
+                        {task.due_date && (
+                          <span class={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            task.isOverdue ? 'bg-red-100 text-red-800' :
+                            task.isDueToday ? 'bg-orange-100 text-orange-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {task.isOverdue ? 'Overdue' : 
+                             task.isDueToday ? 'Due today' :
+                             new Date(task.due_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-1 ml-2">
+                      {status !== 'completed' && (
+                        <button 
+                          class="p-1 text-green-600 hover:bg-green-50 rounded transition-colors start-btn" 
+                          data-task-id={task.id}
+                          title="Start task"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m6-10V7a3 3 0 11-6 0V4h6zM4 20h16"></path>
+                          </svg>
+                        </button>
+                      )}
+                      <button 
+                        class="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors edit-btn" 
+                        data-task-id={task.id}
+                        title="Edit task"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                      </button>
+                      {status !== 'completed' && (
+                        <button 
+                          class="p-1 text-green-600 hover:bg-green-50 rounded transition-colors complete-btn" 
+                          data-task-id={task.id}
+                          title="Mark complete"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              )}
-              
-              <div class="flex items-center justify-between">
-                <button 
-                  class="complete-task-btn px-3 py-1 bg-accent-success text-white text-xs rounded hover:bg-accent-success/90"
-                  data-task-id={task.id}
-                >
-                  ✅ Complete
-                </button>
-                <button 
-                  class="pause-task-btn px-3 py-1 bg-accent-warning text-white text-xs rounded hover:bg-accent-warning/90"
-                  data-task-id={task.id}
-                >
-                  ⏸️ Pause
-                </button>
-              </div>
-            </div>
-          ))}
+              ))
+            )}
+          </div>
         </div>
-      </div>
-
-      <!-- On Hold Column -->
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-text-primary">On Hold</h2>
-          <span class="px-2 py-1 bg-surface text-xs rounded">{tasksByStatus.on_hold.length}</span>
-        </div>
-        
-        <div class="space-y-3 max-h-96 overflow-y-auto">
-          {tasksByStatus.on_hold.map((task) => (
-            <div key={task.id} class="task-card card p-4 bg-surface-hover opacity-75 hover:opacity-100 transition-opacity cursor-pointer" data-task-id={task.id}>
-              <div class="flex items-start justify-between mb-2">
-                <h3 class="font-medium text-text-primary text-sm">{task.title}</h3>
-                <span class="text-xs text-text-muted">⏸️</span>
-              </div>
-              
-              {task.description && (
-                <p class="text-xs text-text-muted mb-2 line-clamp-2">{task.description}</p>
-              )}
-              
-              <div class="flex items-center justify-between text-xs text-text-muted">
-                <span class="px-2 py-1 bg-surface rounded">{task.category}</span>
-                <button 
-                  class="resume-task-btn text-accent-primary hover:text-accent-primary/80"
-                  data-task-id={task.id}
-                >
-                  ▶️ Resume
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <!-- Completed Column -->
-      <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-text-primary">Completed</h2>
-          <span class="px-2 py-1 bg-surface text-xs rounded">{tasksByStatus.completed.length}</span>
-        </div>
-        
-        <div class="space-y-3 max-h-96 overflow-y-auto">
-          {tasksByStatus.completed.map((task) => (
-            <div key={task.id} class="task-card card p-4 bg-accent-success/5 border border-accent-success/20 opacity-75 hover:opacity-100 transition-opacity cursor-pointer" data-task-id={task.id}>
-              <div class="flex items-start justify-between mb-2">
-                <h3 class="font-medium text-text-primary text-sm line-through">{task.title}</h3>
-                <span class="text-xs text-accent-success">✅</span>
-              </div>
-              
-              <div class="flex items-center justify-between text-xs text-text-muted">
-                <span class="px-2 py-1 bg-surface rounded">{task.category}</span>
-                <span>⏱️ {formatDuration(task.totalTimeSpent)}</span>
-              </div>
-              
-              {task.completed_at && (
-                <p class="text-xs text-text-muted mt-2">
-                  Completed {formatDate(task.completed_at)}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      ))}
     </div>
 
-    <!-- New Task Modal -->
-    <div id="new-task-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-      <div class="bg-surface rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div class="p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-2xl font-semibold text-text-primary">Create New Task</h3>
-            <button id="close-task-modal" class="text-text-muted hover:text-text-primary">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
+    <!-- Active Task Timer -->
+    {activeSession && (
+      <div id="active-timer" class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-64">
+        <div class="flex items-center justify-between mb-2">
+          <h4 class="font-medium text-gray-900">Active Task</h4>
+          <button id="stop-timer-btn" class="text-red-600 hover:bg-red-50 p-1 rounded">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"></path>
+            </svg>
+          </button>
+        </div>
+        <p class="text-sm text-gray-600 mb-2">{activeSession.tasks.title}</p>
+        <div class="text-2xl font-bold text-blue-600" id="timer-display">00:00</div>
+      </div>
+    )}
+  </div>
+
+  <!-- New Task Modal -->
+  <div id="new-task-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Add New Task</h3>
+          <button id="close-new-task-modal" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <form id="new-task-form" class="space-y-4">
+          <div>
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+            <input 
+              id="title" 
+              name="title"
+              type="text" 
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+              required
+              placeholder="Enter task title"
+            />
           </div>
           
-          <form id="new-task-form" class="space-y-6">
-            <!-- Essential Fields -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-text-primary mb-2">
-                  Task Title <span class="text-accent-error">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  name="title" 
-                  required
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                  placeholder="What needs to be done?"
-                />
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">
-                  Category <span class="text-accent-error">*</span>
-                </label>
-                <select 
-                  name="category" 
-                  required
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                >
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">
-                  Priority <span class="text-accent-error">*</span>
-                </label>
-                <select 
-                  name="priority" 
-                  required
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                >
-                  {priorities.map(p => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
-              </div>
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea 
+              id="description" 
+              name="description"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter task description"
+            ></textarea>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+              <select 
+                id="category" 
+                name="category"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                <option value="">Select category</option>
+                {categories.map(cat => (
+                  <option value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-text-primary mb-2">Description</label>
-              <textarea 
-                name="description" 
-                rows="3"
-                class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                placeholder="Describe the task in detail..."
-              ></textarea>
-            </div>
-
-            <!-- Time & Scheduling -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">Estimated Duration</label>
-                <select 
-                  name="estimated_duration"
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                >
-                  <option value="">Select duration</option>
-                  <option value="15">15 minutes</option>
-                  <option value="30">30 minutes</option>
-                  <option value="60">1 hour</option>
-                  <option value="120">2 hours</option>
-                  <option value="240">4 hours</option>
-                  <option value="480">8 hours</option>
-                </select>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">Due Date</label>
-                <input 
-                  type="datetime-local" 
-                  name="due_date"
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                />
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">Schedule For</label>
-                <input 
-                  type="datetime-local" 
-                  name="scheduled_for"
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <!-- Context & Energy -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">Energy Required</label>
-                <select 
-                  name="energy_required"
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                >
-                  <option value="low">Low Energy</option>
-                  <option value="medium" selected>Medium Energy</option>
-                  <option value="high">High Energy</option>
-                </select>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-text-primary mb-2">Complexity</label>
-                <select 
-                  name="complexity"
-                  class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                >
-                  <option value="simple">Simple</option>
-                  <option value="moderate" selected>Moderate</option>
-                  <option value="complex">Complex</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Optional Context -->
-            <div class="border-t border-border pt-4">
-              <button 
-                type="button" 
-                id="toggle-advanced"
-                class="text-accent-primary hover:text-accent-primary/80 text-sm mb-4"
+              <label for="priority" class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select 
+                id="priority" 
+                name="priority"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                ▼ Advanced Options (Optional)
-              </button>
-              
-              <div id="advanced-options" class="hidden space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-text-primary mb-2">Location</label>
-                    <input 
-                      type="text" 
-                      name="location"
-                      class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                      placeholder="Home, Office, Cafe..."
-                    />
-                  </div>
-                  
-                  <div>
-                    <label class="block text-sm font-medium text-text-primary mb-2">Tags</label>
-                    <input 
-                      type="text" 
-                      name="tags"
-                      class="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
-                      placeholder="urgent, creative, meeting (comma separated)"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label class="block text-sm font-medium text-text-primary mb-2">Context</label>
-                  <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {['focused', 'collaborative', 'creative', 'routine', 'learning', 'communication', 'planning', 'review'].map(ctx => (
-                      <label key={ctx} class="flex items-center space-x-2">
-                        <input type="checkbox" name="context" value={ctx} class="rounded border-border" />
-                        <span class="text-sm text-text-secondary capitalize">{ctx}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                
-                <div class="flex items-center space-x-4">
-                  <label class="flex items-center space-x-2">
-                    <input type="checkbox" name="email_reminders" class="rounded border-border" />
-                    <span class="text-sm text-text-secondary">Email reminders</span>
-                  </label>
-                </div>
-              </div>
+                {priorityLevels.map(level => (
+                  <option value={level.value} selected={level.value === 'medium'}>{level.label}</option>
+                ))}
+              </select>
             </div>
-
-            <!-- Submit Buttons -->
-            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-border">
-              <button 
-                type="button" 
-                id="cancel-task"
-                class="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit"
-                class="px-6 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
-              >
-                Create Task
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- AI Assistant Modal -->
-    <div id="ai-assistant-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
-      <div class="bg-surface rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div class="p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h3 class="text-2xl font-semibold text-text-primary">🤖 AI Task Assistant</h3>
-            <button id="close-ai-assistant" class="text-text-muted hover:text-text-primary">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
           </div>
           
-          <div id="ai-assistant-content">
-            <div class="text-center py-8">
-              <div class="animate-spin w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p class="text-text-secondary">AI is analyzing your tasks and productivity patterns...</p>
-            </div>
+          <div>
+            <label for="due_date" class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+            <input 
+              id="due_date" 
+              name="due_date"
+              type="date" 
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
-        </div>
+          
+          <div class="flex justify-end space-x-3 pt-4">
+            <button 
+              type="button" 
+              id="cancel-new-task" 
+              class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit" 
+              class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            >
+              Add Task
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </DashboardLayout>
 
 <script>
-  // Comprehensive Task Management System
-  console.log('Tasks page loaded with', processedTasks.length, 'tasks');
+// Utility functions
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const secondsLeft = seconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${secondsLeft.toString().padStart(2, '0')}`;
+}
 
-  // Global state
-  let activeTimer = null;
-  let timerInterval = null;
+// Timer functionality
+let timerInterval = null;
+let startTime = null;
 
-  // DOM Elements
+function startTimer() {
+  startTime = Date.now();
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    startTime = null;
+  }
+}
+
+function updateTimer() {
+  if (startTime) {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const timerDisplay = document.getElementById('timer-display');
+    if (timerDisplay) {
+      timerDisplay.textContent = formatTime(elapsed);
+    }
+  }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
   const newTaskBtn = document.getElementById('new-task-btn');
   const newTaskModal = document.getElementById('new-task-modal');
-  const closeTaskModal = document.getElementById('close-task-modal');
-  const cancelTask = document.getElementById('cancel-task');
+  const closeModalBtn = document.getElementById('close-new-task-modal');
+  const cancelBtn = document.getElementById('cancel-new-task');
   const newTaskForm = document.getElementById('new-task-form');
-  const toggleAdvanced = document.getElementById('toggle-advanced');
-  const advancedOptions = document.getElementById('advanced-options');
-  const aiAssistantBtn = document.getElementById('ai-assistant-btn');
-  const aiAssistantModal = document.getElementById('ai-assistant-modal');
-  const closeAiAssistant = document.getElementById('close-ai-assistant');
-  const stopTimerBtn = document.getElementById('stop-timer-btn');
 
-  // Utility Functions
-  function formatDuration(seconds) {
-    if (!seconds) return '0m';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+  // Modal controls
+  if (newTaskBtn && newTaskModal) {
+    newTaskBtn.addEventListener('click', () => {
+      newTaskModal.classList.remove('hidden');
+      newTaskModal.classList.add('flex');
+    });
   }
 
-  function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `fixed top-4 right-4 px-6 py-3 rounded-lg text-white z-50 ${
-      type === 'success' ? 'bg-accent-success' : 
-      type === 'error' ? 'bg-accent-error' : 'bg-accent-warning'
-    }`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
-  }
-
-  function showLoading(element, show = true) {
-    if (show) {
-      element.disabled = true;
-      element.innerHTML = '<div class="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mx-auto"></div>';
-    } else {
-      element.disabled = false;
+  function closeModal() {
+    if (newTaskModal) {
+      newTaskModal.classList.add('hidden');
+      newTaskModal.classList.remove('flex');
+      newTaskForm?.reset();
     }
   }
 
-  // Modal Management
-  function openModal(modal) {
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-  }
+  closeModalBtn?.addEventListener('click', closeModal);
+  cancelBtn?.addEventListener('click', closeModal);
 
-  function closeModal(modal) {
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-  }
-
-  // New Task Modal
-  newTaskBtn?.addEventListener('click', () => openModal(newTaskModal));
-  closeTaskModal?.addEventListener('click', () => closeModal(newTaskModal));
-  cancelTask?.addEventListener('click', () => closeModal(newTaskModal));
-
-  // Advanced Options Toggle
-  toggleAdvanced?.addEventListener('click', () => {
-    const isHidden = advancedOptions.classList.contains('hidden');
-    if (isHidden) {
-      advancedOptions.classList.remove('hidden');
-      toggleAdvanced.textContent = '▲ Advanced Options (Optional)';
-    } else {
-      advancedOptions.classList.add('hidden');
-      toggleAdvanced.textContent = '▼ Advanced Options (Optional)';
+  // Close modal when clicking outside
+  newTaskModal?.addEventListener('click', (e) => {
+    if (e.target === newTaskModal) {
+      closeModal();
     }
   });
 
-  // Task Creation
+  // Task action buttons
+  document.querySelectorAll('.start-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const taskId = button.getAttribute('data-task-id');
+      console.log('Starting timer for task:', taskId);
+      await startTaskSession(taskId);
+    });
+  });
+
+  document.querySelectorAll('.complete-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const taskId = button.getAttribute('data-task-id');
+      console.log('Completing task:', taskId);
+      await completeTask(taskId);
+    });
+  });
+
+  document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', () => {
+      const taskId = button.getAttribute('data-task-id');
+      console.log('Editing task:', taskId);
+      // TODO: Implement edit functionality
+    });
+  });
+
+  // Stop timer button
+  document.getElementById('stop-timer-btn')?.addEventListener('click', async () => {
+    await stopTaskSession();
+  });
+
+  // Form submission
   newTaskForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const formData = new FormData(e.target);
-    const contextCheckboxes = document.querySelectorAll('input[name="context"]:checked');
-    const context = Array.from(contextCheckboxes).map(cb => cb.value);
-    
-    const taskData = {
-      title: formData.get('title'),
-      description: formData.get('description'),
-      category: formData.get('category'),
-      priority: formData.get('priority'),
-      estimated_duration: formData.get('estimated_duration'),
-      due_date: formData.get('due_date'),
-      scheduled_for: formData.get('scheduled_for'),
-      energy_required: formData.get('energy_required'),
-      complexity: formData.get('complexity'),
-      location: formData.get('location'),
-      tags: formData.get('tags'),
-      context: context,
-      email_reminders: formData.get('email_reminders') === 'on'
-    };
-
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
-    showLoading(submitBtn);
+    submitBtn.textContent = 'Adding...';
+    submitBtn.disabled = true;
 
     try {
+      const formData = new FormData(newTaskForm);
+      const taskData = Object.fromEntries(formData);
+
       const response = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -761,425 +485,116 @@ function formatDate(timestamp) {
 
       const result = await response.json();
 
-      if (result.success) {
-        showNotification('Task created successfully!');
-        closeModal(newTaskModal);
-        newTaskForm.reset();
-        // Reload page to show new task
-        window.location.reload();
+      if (response.ok && result.success) {
+        closeModal();
+        // Show success message
+        showNotification('Task created successfully!', 'success');
+        // Refresh the page to show new task
+        setTimeout(() => location.reload(), 1000);
       } else {
-        showNotification(result.error || 'Failed to create task', 'error');
+        throw new Error(result.error || 'Failed to create task');
       }
     } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
+      console.error('Error creating task:', error);
+      showNotification(error.message || 'Failed to create task', 'error');
     } finally {
-      submitBtn.disabled = false;
       submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
     }
   });
 
-  // Timer Management
-  async function startTimer(taskId, taskTitle) {
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/timer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'start' })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        showNotification(`Timer started for: ${taskTitle}`);
-        // Reload to show active timer
-        window.location.reload();
-      } else {
-        if (result.activeTaskId) {
-          showNotification('Please stop the current timer first', 'warning');
-        } else {
-          showNotification(result.error || 'Failed to start timer', 'error');
-        }
-      }
-    } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
-    }
+  // Initialize timer if there's an active session
+  const activeTimer = document.getElementById('active-timer');
+  if (activeTimer) {
+    startTimer();
   }
+});
 
-  async function stopTimer(taskId) {
-    // Show productivity scoring modal
-    const productivityScore = prompt('Rate your productivity (1-10):');
-    const energyLevel = prompt('Rate your energy level (1-10):');
-    const interruptions = prompt('Number of interruptions:') || '0';
-    const notes = prompt('Session notes (optional):') || '';
-    const taskCompleted = confirm('Did you complete this task?');
-    
-    let completionNotes = '';
-    let satisfactionScore = null;
-    
-    if (taskCompleted) {
-      completionNotes = prompt('Completion notes (optional):') || '';
-      satisfactionScore = prompt('Satisfaction with completion (1-10):');
-    }
-
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/timer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'stop',
-          productivity_score: parseInt(productivityScore) || null,
-          energy_level: parseInt(energyLevel) || null,
-          interruptions: parseInt(interruptions) || 0,
-          notes,
-          task_completed: taskCompleted,
-          completion_notes: completionNotes,
-          satisfaction_score: parseInt(satisfactionScore) || null
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        showNotification(`Timer stopped. Session: ${result.duration} minutes`);
-        window.location.reload();
-      } else {
-        showNotification(result.error || 'Failed to stop timer', 'error');
-      }
-    } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
-    }
-  }
-
-  // Task Status Updates
-  async function updateTaskStatus(taskId, status) {
-    try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        showNotification(`Task ${status.replace('_', ' ')}`);
-        window.location.reload();
-      } else {
-        showNotification(result.error || 'Failed to update task', 'error');
-      }
-    } catch (error) {
-      showNotification('Network error. Please try again.', 'error');
-    }
-  }
-
-  // AI Assistant
-  aiAssistantBtn?.addEventListener('click', async () => {
-    openModal(aiAssistantModal);
-    
-    const content = document.getElementById('ai-assistant-content');
-    content.innerHTML = `
-      <div class="text-center py-8">
-        <div class="animate-spin w-8 h-8 border-2 border-accent-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p class="text-text-secondary">AI is analyzing your tasks and productivity patterns...</p>
-      </div>
-    `;
-
-    try {
-      const response = await fetch('/api/tasks/ai-assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'productivity_analysis' })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        displayAIAnalysis(result.analysis);
-      } else {
-        content.innerHTML = `
-          <div class="text-center py-8">
-            <p class="text-accent-error mb-4">Failed to get AI analysis</p>
-            <button onclick="location.reload()" class="px-4 py-2 bg-accent-primary text-white rounded">Try Again</button>
-          </div>
-        `;
-      }
-    } catch (error) {
-      content.innerHTML = `
-        <div class="text-center py-8">
-          <p class="text-accent-error mb-4">Network error occurred</p>
-          <button onclick="location.reload()" class="px-4 py-2 bg-accent-primary text-white rounded">Try Again</button>
-        </div>
-      `;
-    }
-  });
-
-  function displayAIAnalysis(analysis) {
-    const content = document.getElementById('ai-assistant-content');
-    
-    let html = `
-      <div class="space-y-6">
-        <div class="flex space-x-4 mb-6">
-          <button class="ai-tab-btn px-4 py-2 bg-accent-primary text-white rounded" data-type="productivity_analysis">
-            📊 Productivity
-          </button>
-          <button class="ai-tab-btn px-4 py-2 bg-surface text-text-secondary rounded" data-type="task_prioritization">
-            🎯 Prioritization
-          </button>
-          <button class="ai-tab-btn px-4 py-2 bg-surface text-text-secondary rounded" data-type="time_blocking">
-            ⏰ Time Blocking
-          </button>
-        </div>
-        
-        <div id="ai-analysis-content">
-    `;
-
-    if (analysis.insights) {
-      html += `
-        <div class="mb-6">
-          <h4 class="text-lg font-semibold text-text-primary mb-4">🔍 Productivity Insights</h4>
-          <div class="space-y-3">
-      `;
-      
-      analysis.insights.forEach(insight => {
-        html += `
-          <div class="card p-4">
-            <div class="flex items-start justify-between mb-2">
-              <h5 class="font-medium text-text-primary">${insight.title}</h5>
-              <span class="text-xs px-2 py-1 bg-accent-success/20 text-accent-success rounded">
-                ${Math.round(insight.confidence * 100)}% confidence
-              </span>
-            </div>
-            <p class="text-sm text-text-secondary mb-2">${insight.description}</p>
-            <p class="text-sm text-accent-primary font-medium">💡 ${insight.recommendation}</p>
-          </div>
-        `;
-      });
-      
-      html += `</div></div>`;
-    }
-
-    if (analysis.optimizations) {
-      html += `
-        <div class="mb-6">
-          <h4 class="text-lg font-semibold text-text-primary mb-4">⚡ Optimization Opportunities</h4>
-          <div class="space-y-3">
-      `;
-      
-      analysis.optimizations.forEach(opt => {
-        html += `
-          <div class="card p-4">
-            <div class="flex items-start justify-between mb-2">
-              <h5 class="font-medium text-text-primary capitalize">${opt.area.replace('_', ' ')}</h5>
-              <span class="text-xs px-2 py-1 ${
-                opt.difficulty === 'easy' ? 'bg-accent-success/20 text-accent-success' :
-                opt.difficulty === 'medium' ? 'bg-accent-warning/20 text-accent-warning' :
-                'bg-accent-error/20 text-accent-error'
-              } rounded">
-                ${opt.difficulty}
-              </span>
-            </div>
-            <p class="text-sm text-text-muted mb-2"><strong>Issue:</strong> ${opt.current_issue}</p>
-            <p class="text-sm text-text-secondary mb-2"><strong>Solution:</strong> ${opt.solution}</p>
-            <p class="text-sm text-accent-success"><strong>Expected Impact:</strong> ${opt.expected_impact}</p>
-          </div>
-        `;
-      });
-      
-      html += `</div></div>`;
-    }
-
-    if (analysis.focus_suggestions) {
-      html += `
-        <div>
-          <h4 class="text-lg font-semibold text-text-primary mb-4">🎯 Focus Suggestions</h4>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="card p-4">
-              <h5 class="font-medium text-accent-primary mb-2">Today</h5>
-              <p class="text-sm text-text-secondary">${analysis.focus_suggestions.today}</p>
-            </div>
-            <div class="card p-4">
-              <h5 class="font-medium text-accent-warning mb-2">This Week</h5>
-              <p class="text-sm text-text-secondary">${analysis.focus_suggestions.this_week}</p>
-            </div>
-            <div class="card p-4">
-              <h5 class="font-medium text-accent-success mb-2">Energy Optimization</h5>
-              <p class="text-sm text-text-secondary">${analysis.focus_suggestions.energy_optimization}</p>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    html += `</div></div>`;
-    content.innerHTML = html;
-
-    // Add tab switching functionality
-    document.querySelectorAll('.ai-tab-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const type = e.target.dataset.type;
-        
-        // Update tab styles
-        document.querySelectorAll('.ai-tab-btn').forEach(b => {
-          b.className = 'ai-tab-btn px-4 py-2 bg-surface text-text-secondary rounded';
-        });
-        e.target.className = 'ai-tab-btn px-4 py-2 bg-accent-primary text-white rounded';
-        
-        // Load new analysis
-        document.getElementById('ai-analysis-content').innerHTML = `
-          <div class="text-center py-8">
-            <div class="animate-spin w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p class="text-text-secondary">Loading ${type.replace('_', ' ')} analysis...</p>
-          </div>
-        `;
-        
-        try {
-          const response = await fetch('/api/tasks/ai-assistant', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type })
-          });
-          
-          const result = await response.json();
-          if (result.success) {
-            displaySpecificAnalysis(result.analysis, type);
-          }
-        } catch (error) {
-          document.getElementById('ai-analysis-content').innerHTML = `
-            <p class="text-accent-error text-center">Failed to load analysis</p>
-          `;
-        }
-      });
+// API functions
+async function startTaskSession(taskId) {
+  try {
+    const response = await fetch(`/api/tasks/${taskId}/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
     });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      showNotification('Task session started!', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      throw new Error(result.error || 'Failed to start task session');
+    }
+  } catch (error) {
+    console.error('Error starting task session:', error);
+    showNotification(error.message || 'Failed to start task session', 'error');
   }
+}
 
-  function displaySpecificAnalysis(analysis, type) {
-    const content = document.getElementById('ai-analysis-content');
-    let html = '';
+async function stopTaskSession() {
+  try {
+    const response = await fetch('/api/tasks/stop-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
 
-    if (type === 'task_prioritization' && analysis.prioritized_tasks) {
-      html = `
-        <div class="space-y-4">
-          <h4 class="text-lg font-semibold text-text-primary">🎯 Prioritized Tasks</h4>
-          <div class="space-y-3">
-      `;
-      
-      analysis.prioritized_tasks.forEach((task, index) => {
-        html += `
-          <div class="card p-4 flex items-center justify-between">
-            <div class="flex-1">
-              <div class="flex items-center space-x-3">
-                <span class="w-8 h-8 bg-accent-primary text-white rounded-full flex items-center justify-center text-sm font-bold">
-                  ${index + 1}
-                </span>
-                <div>
-                  <p class="font-medium text-text-primary">Priority Score: ${task.priority_score}/100</p>
-                  <p class="text-sm text-text-secondary">${task.reasoning}</p>
-                  <p class="text-xs text-accent-primary mt-1">⏰ ${task.optimal_time} • 🎯 ${task.estimated_focus_time}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-      
-      html += `</div></div>`;
-    } else if (type === 'time_blocking' && analysis.schedule) {
-      html = `
-        <div class="space-y-4">
-          <h4 class="text-lg font-semibold text-text-primary">⏰ Today's Schedule</h4>
-          <div class="space-y-2">
-      `;
-      
-      analysis.schedule.forEach(item => {
-        html += `
-          <div class="card p-3 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-              <span class="font-mono text-accent-primary font-bold">${item.time}</span>
-              <div>
-                <p class="font-medium text-text-primary">${item.task_title}</p>
-                <p class="text-xs text-text-muted">${item.duration} min • ${item.energy_match} energy</p>
-              </div>
-            </div>
-            <p class="text-xs text-text-secondary max-w-xs">${item.reasoning}</p>
-          </div>
-        `;
-      });
-      
-      html += `</div>`;
-      
-      if (analysis.daily_focus) {
-        html += `
-          <div class="card p-4 bg-accent-primary/5 border border-accent-primary/20">
-            <h5 class="font-medium text-accent-primary mb-2">🎯 Daily Focus Theme</h5>
-            <p class="text-sm text-text-secondary">${analysis.daily_focus}</p>
-          </div>
-        `;
-      }
-      
-      html += `</div>`;
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      showNotification('Task session stopped!', 'success');
+      stopTimer();
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      throw new Error(result.error || 'Failed to stop task session');
     }
-
-    content.innerHTML = html;
+  } catch (error) {
+    console.error('Error stopping task session:', error);
+    showNotification(error.message || 'Failed to stop task session', 'error');
   }
+}
 
-  closeAiAssistant?.addEventListener('click', () => closeModal(aiAssistantModal));
+async function completeTask(taskId) {
+  try {
+    const response = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed' })
+    });
 
-  // Event Listeners for Task Actions
-  document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('start-timer-btn')) {
-      const taskId = e.target.dataset.taskId;
-      const taskTitle = e.target.dataset.taskTitle;
-      startTimer(taskId, taskTitle);
-    }
-    
-    if (e.target.classList.contains('complete-task-btn')) {
-      const taskId = e.target.dataset.taskId;
-      updateTaskStatus(taskId, 'completed');
-    }
-    
-    if (e.target.classList.contains('pause-task-btn')) {
-      const taskId = e.target.dataset.taskId;
-      updateTaskStatus(taskId, 'on_hold');
-    }
-    
-    if (e.target.classList.contains('resume-task-btn')) {
-      const taskId = e.target.dataset.taskId;
-      updateTaskStatus(taskId, 'todo');
-    }
-  });
+    const result = await response.json();
 
-  // Stop Timer Button
-  stopTimerBtn?.addEventListener('click', () => {
-    const activeTimerElement = document.querySelector('[data-active-task-id]');
-    if (activeTimerElement) {
-      const taskId = activeTimerElement.dataset.activeTaskId;
-      stopTimer(taskId);
+    if (response.ok && result.success) {
+      showNotification('Task completed!', 'success');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      throw new Error(result.error || 'Failed to complete task');
     }
-  });
-
-  // Active Timer Updates
-  if (document.getElementById('active-timer')) {
-    const startTime = new Date(document.querySelector('[data-started-at]')?.dataset.startedAt);
-    if (startTime) {
-      timerInterval = setInterval(() => {
-        const now = new Date();
-        const elapsed = Math.floor((now - startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        
-        const timerElement = document.getElementById('active-timer');
-        if (timerElement) {
-          timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')} elapsed`;
-        }
-      }, 1000);
-    }
+  } catch (error) {
+    console.error('Error completing task:', error);
+    showNotification(error.message || 'Failed to complete task', 'error');
   }
+}
 
-  // Cleanup
-  window.addEventListener('beforeunload', () => {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-    }
-  });
+// Notification system
+function showNotification(message, type = 'info') {
+  // Remove existing notifications
+  const existingNotifications = document.querySelectorAll('.notification');
+  existingNotifications.forEach(n => n.remove());
+
+  const notification = document.createElement('div');
+  notification.className = `notification fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+    type === 'success' ? 'bg-green-500 text-white' :
+    type === 'error' ? 'bg-red-500 text-white' :
+    'bg-blue-500 text-white'
+  }`;
+  notification.textContent = message;
+
+  document.body.appendChild(notification);
+
+  // Auto remove after 3 seconds
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
 </script>
-</DashboardLayout>
