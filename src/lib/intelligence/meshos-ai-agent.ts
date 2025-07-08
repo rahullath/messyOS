@@ -418,7 +418,331 @@ export class MessyOSAIAgent {
       }
     );
 
-    return [updateHabitTool, createGoalTool, analyzePatternTool, scheduleInterventionTool, webSearchTool];
+    const createTaskTool = tool(
+      async ({ userId, title, description, category, priority, dueDate, estimatedDuration }) => {
+        console.log(`🎯 Creating task: ${title}`);
+        
+        const taskData = {
+          user_id: userId,
+          title: title.trim(),
+          category: category || 'Work',
+          priority: priority || 'medium',
+          status: 'todo'
+        };
+
+        if (description && description.trim()) {
+          taskData.description = description.trim();
+        }
+
+        if (dueDate) {
+          taskData.due_date = dueDate;
+        }
+
+        if (estimatedDuration && !isNaN(parseInt(estimatedDuration))) {
+          taskData.estimated_duration = parseInt(estimatedDuration);
+        }
+
+        const { data: task, error } = await this.supabase
+          .from('tasks')
+          .insert(taskData)
+          .select()
+          .single();
+
+        if (!error) {
+          await this.storeMemory({
+            type: 'insight',
+            content: `Created task: ${title} (${category}, ${priority} priority)`,
+            importance: 0.7,
+            tags: ['task_creation', category, priority]
+          });
+        }
+
+        return { 
+          success: !error, 
+          task, 
+          error: error?.message,
+          message: !error ? `✅ Created task: "${title}"` : `❌ Failed to create task: ${error?.message}`
+        };
+      },
+      {
+        name: "create_task",
+        description: "Create a new task when user mentions something they need to do",
+        schema: z.object({
+          userId: z.string(),
+          title: z.string().describe("The task title/description"),
+          description: z.string().optional().describe("Additional details about the task"),
+          category: z.enum(['Work', 'Personal', 'Learning', 'Health', 'Finance', 'Creative', 'Social', 'Maintenance', 'Planning', 'Other']).optional(),
+          priority: z.enum(['low', 'medium', 'high']).optional(),
+          dueDate: z.string().optional().describe("Due date in YYYY-MM-DD format"),
+          estimatedDuration: z.string().optional().describe("Estimated duration in minutes")
+        })
+      }
+    );
+
+    const logHabitTool = tool(
+      async ({ userId, habitName, value, date, notes }) => {
+        console.log(`✅ Logging habit: ${habitName} = ${value}`);
+        
+        // First, find the habit by name
+        const { data: habits, error: habitError } = await this.supabase
+          .from('habits')
+          .select('id, name, measurement_type')
+          .eq('user_id', userId)
+          .eq('is_active', true)
+          .ilike('name', `%${habitName}%`);
+
+        if (habitError || !habits || habits.length === 0) {
+          return {
+            success: false,
+            error: `Habit "${habitName}" not found. Available habits need to be set up first.`,
+            message: `❌ Couldn't find habit: "${habitName}"`
+          };
+        }
+
+        const habit = habits[0];
+        const logDate = date || new Date().toISOString().split('T')[0];
+
+        // Check if already logged today
+        const { data: existingEntry } = await this.supabase
+          .from('habit_entries')
+          .select('id')
+          .eq('habit_id', habit.id)
+          .eq('user_id', userId)
+          .eq('date', logDate)
+          .single();
+
+        if (existingEntry) {
+          // Update existing entry
+          const { error: updateError } = await this.supabase
+            .from('habit_entries')
+            .update({
+              value: value,
+              notes: notes || null,
+              logged_at: new Date().toISOString()
+            })
+            .eq('id', existingEntry.id);
+
+          return {
+            success: !updateError,
+            error: updateError?.message,
+            message: !updateError ? `✅ Updated ${habit.name}: ${value}` : `❌ Failed to update ${habit.name}`
+          };
+        } else {
+          // Create new entry
+          const { error: insertError } = await this.supabase
+            .from('habit_entries')
+            .insert({
+              habit_id: habit.id,
+              user_id: userId,
+              date: logDate,
+              value: value,
+              notes: notes || null,
+              logged_at: new Date().toISOString()
+            });
+
+          if (!insertError) {
+            await this.storeMemory({
+              type: 'insight',
+              content: `Logged habit: ${habit.name} = ${value}`,
+              importance: 0.6,
+              tags: ['habit_logging', habit.name]
+            });
+          }
+
+          return {
+            success: !insertError,
+            error: insertError?.message,
+            message: !insertError ? `✅ Logged ${habit.name}: ${value}` : `❌ Failed to log ${habit.name}`
+          };
+        }
+      },
+      {
+        name: "log_habit",
+        description: "Log a habit completion when user mentions doing a habit",
+        schema: z.object({
+          userId: z.string(),
+          habitName: z.string().describe("Name of the habit to log"),
+          value: z.number().describe("Value to log (1 for completed, 0 for missed, or actual value for measurable habits)"),
+          date: z.string().optional().describe("Date in YYYY-MM-DD format, defaults to today"),
+          notes: z.string().optional().describe("Optional notes about the habit")
+        })
+      }
+    );
+
+    const logAllHabitsTool = tool(
+      async ({ userId, date, value }) => {
+        console.log(`✅ Logging all habits for ${date || 'today'}`);
+        
+        const logDate = date || new Date().toISOString().split('T')[0];
+        
+        // Get all active habits
+        const { data: habits, error: habitsError } = await this.supabase
+          .from('habits')
+          .select('id, name')
+          .eq('user_id', userId)
+          .eq('is_active', true);
+
+        if (habitsError || !habits || habits.length === 0) {
+          return {
+            success: false,
+            error: "No active habits found",
+            message: "❌ No active habits to log"
+          };
+        }
+
+        let successCount = 0;
+        let errors = [];
+
+        for (const habit of habits) {
+          try {
+            // Check if already logged
+            const { data: existingEntry } = await this.supabase
+              .from('habit_entries')
+              .select('id')
+              .eq('habit_id', habit.id)
+              .eq('user_id', userId)
+              .eq('date', logDate)
+              .single();
+
+            if (existingEntry) {
+              // Update existing
+              const { error: updateError } = await this.supabase
+                .from('habit_entries')
+                .update({
+                  value: value,
+                  logged_at: new Date().toISOString()
+                })
+                .eq('id', existingEntry.id);
+
+              if (!updateError) successCount++;
+              else errors.push(`${habit.name}: ${updateError.message}`);
+            } else {
+              // Create new
+              const { error: insertError } = await this.supabase
+                .from('habit_entries')
+                .insert({
+                  habit_id: habit.id,
+                  user_id: userId,
+                  date: logDate,
+                  value: value,
+                  logged_at: new Date().toISOString()
+                });
+
+              if (!insertError) successCount++;
+              else errors.push(`${habit.name}: ${insertError.message}`);
+            }
+          } catch (error) {
+            errors.push(`${habit.name}: ${error.message}`);
+          }
+        }
+
+        if (successCount > 0) {
+          await this.storeMemory({
+            type: 'insight',
+            content: `Bulk logged ${successCount} habits for ${logDate}`,
+            importance: 0.8,
+            tags: ['bulk_habit_logging', 'productivity']
+          });
+        }
+
+        return {
+          success: successCount > 0,
+          message: `✅ Logged ${successCount}/${habits.length} habits${errors.length > 0 ? `. Errors: ${errors.length}` : ''}`,
+          successCount,
+          totalHabits: habits.length,
+          errors: errors.length > 0 ? errors : undefined
+        };
+      },
+      {
+        name: "log_all_habits",
+        description: "Log all active habits at once when user says they did everything",
+        schema: z.object({
+          userId: z.string(),
+          date: z.string().optional().describe("Date in YYYY-MM-DD format, defaults to today"),
+          value: z.number().describe("Value to log for all habits (1 for completed, 0 for missed)").default(1)
+        })
+      }
+    );
+
+    return [updateHabitTool, createGoalTool, analyzePatternTool, scheduleInterventionTool, webSearchTool, createTaskTool, logHabitTool, logAllHabitsTool];
+  }
+
+  // Helper functions for extracting details from user messages
+  private extractTaskDetails(message: string) {
+    const title = message.replace(/need to|have to|should|must|task|do/gi, '').trim();
+    
+    // Extract priority
+    let priority = 'medium';
+    if (/urgent|asap|immediately|critical/i.test(message)) priority = 'high';
+    if (/low priority|when.*time|eventually/i.test(message)) priority = 'low';
+    
+    // Extract due date
+    let dueDate = null;
+    const dateMatch = message.match(/by (\d{4}-\d{2}-\d{2})|by (\w+ \d{1,2})|today|tomorrow|this week/i);
+    if (dateMatch) {
+      if (message.includes('today')) {
+        dueDate = new Date().toISOString().split('T')[0];
+      } else if (message.includes('tomorrow')) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        dueDate = tomorrow.toISOString().split('T')[0];
+      }
+    }
+    
+    // Extract category
+    let category = 'Work';
+    if (/health|gym|exercise|doctor|medical/i.test(message)) category = 'Health';
+    if (/personal|home|family/i.test(message)) category = 'Personal';
+    if (/learn|study|course|read/i.test(message)) category = 'Learning';
+    if (/money|finance|bank|pay|bill/i.test(message)) category = 'Finance';
+    
+    return {
+      title: title || message,
+      priority,
+      dueDate,
+      category
+    };
+  }
+
+  private extractHabitDetails(message: string) {
+    // Common habit names and their variations
+    const habitMappings = {
+      'gym': ['gym', 'workout', 'exercise', 'fitness'],
+      'walk': ['walk', 'walking', 'steps'],
+      'meditation': ['meditat', 'mindful', 'breathe'],
+      'reading': ['read', 'book'],
+      'shower': ['shower', 'bath'],
+      'water': ['water', 'hydrat'],
+      'sleep': ['sleep', 'bed'],
+      'journal': ['journal', 'write', 'diary']
+    };
+    
+    let habitName = '';
+    let value = 1; // Default to completed
+    
+    // Find matching habit
+    for (const [key, variations] of Object.entries(habitMappings)) {
+      if (variations.some(variation => new RegExp(variation, 'i').test(message))) {
+        habitName = key;
+        break;
+      }
+    }
+    
+    // If no specific habit found, try to extract from message
+    if (!habitName) {
+      const words = message.toLowerCase().split(' ');
+      habitName = words.find(word => word.length > 3) || 'habit';
+    }
+    
+    // Check if they missed it
+    if (/didn't|missed|skipped|forgot/i.test(message)) {
+      value = 0;
+    }
+    
+    return {
+      habitName,
+      value
+    };
   }
 
   // Enhanced pattern detection
@@ -875,6 +1199,9 @@ export class MessyOSAIAgent {
     
     TOOLS AVAILABLE:
     - web_search: For current info like exchange rates, news, facts I don't have
+    - create_task: Create tasks when user mentions something they need to do
+    - log_habit: Log a specific habit when user mentions doing it
+    - log_all_habits: Log all habits when user says they did everything today
     - update_habit: Modify habit settings
     - create_goal: Set new goals
     - analyze_pattern: Look for patterns in data
@@ -903,35 +1230,102 @@ export class MessyOSAIAgent {
     `;
 
     try {
-      // Check if the message requires web search
-      const needsWebSearch = /exchange rate|current|today|now|latest|GBP|INR|USD|weather|news|price/i.test(message);
-      
+      const tools = this.createEnhancedTools();
       let agentResponse = '';
+      let toolsUsed = [];
       
-      if (needsWebSearch && (message.includes('GBP') || message.includes('INR') || message.includes('exchange') || message.includes('rate'))) {
-        console.log('🔍 Detected need for web search');
-        const tools = this.createEnhancedTools();
+      // Detect what the user wants to do
+      const needsTaskCreation = /need to|have to|should|must|task|do.*by|deadline|due/i.test(message) && 
+                               !/log|did|completed|finished/i.test(message);
+      
+      const needsHabitLogging = /did|completed|finished|logged/i.test(message) &&
+                               /habit|gym|walk|shower|meditat|read|water|exercise/i.test(message) &&
+                               !/all.*today|everything.*today/i.test(message);
+      
+      const needsAllHabitsLogging = /all.*today|everything.*today|did.*all|completed.*all/i.test(message) &&
+                                   /habit/i.test(message);
+      
+      const needsWebSearch = /exchange rate|current|today|now|latest|GBP|INR|USD|weather|news|price/i.test(message);
+
+      // Execute tools based on intent
+      if (needsTaskCreation) {
+        console.log('🎯 Detected task creation intent');
+        const createTaskTool = tools.find(t => t.name === 'create_task');
+        
+        if (createTaskTool) {
+          try {
+            // Extract task details from message
+            const taskDetails = this.extractTaskDetails(message);
+            const result = await createTaskTool.invoke({
+              userId: userId,
+              ...taskDetails
+            });
+            
+            toolsUsed.push('create_task');
+            agentResponse = result.message || `✅ Created task: "${taskDetails.title}"`;
+          } catch (error) {
+            console.error('Task creation error:', error);
+            agentResponse = "Couldn't create the task. Try being more specific about what you need to do.";
+          }
+        }
+      } else if (needsAllHabitsLogging) {
+        console.log('✅ Detected bulk habit logging intent');
+        const logAllTool = tools.find(t => t.name === 'log_all_habits');
+        
+        if (logAllTool) {
+          try {
+            const result = await logAllTool.invoke({
+              userId: userId,
+              value: 1 // Assume completed
+            });
+            
+            toolsUsed.push('log_all_habits');
+            agentResponse = result.message || `✅ Logged all habits for today`;
+          } catch (error) {
+            console.error('Bulk habit logging error:', error);
+            agentResponse = "Couldn't log all habits. Make sure you have active habits set up.";
+          }
+        }
+      } else if (needsHabitLogging) {
+        console.log('✅ Detected habit logging intent');
+        const logHabitTool = tools.find(t => t.name === 'log_habit');
+        
+        if (logHabitTool) {
+          try {
+            const habitDetails = this.extractHabitDetails(message);
+            const result = await logHabitTool.invoke({
+              userId: userId,
+              ...habitDetails
+            });
+            
+            toolsUsed.push('log_habit');
+            agentResponse = result.message || `✅ Logged habit: ${habitDetails.habitName}`;
+          } catch (error) {
+            console.error('Habit logging error:', error);
+            agentResponse = "Couldn't log that habit. Make sure the habit name matches what you have set up.";
+          }
+        }
+      } else if (needsWebSearch) {
+        console.log('🔍 Detected web search intent');
         const webSearchTool = tools.find(t => t.name === 'web_search');
         
         if (webSearchTool) {
           try {
-            const searchResult = await webSearchTool.invoke({ query: message });
-            console.log('Search result:', searchResult);
+            const result = await webSearchTool.invoke({ query: message });
+            toolsUsed.push('web_search');
             
-            if (searchResult.success) {
-              agentResponse = `${searchResult.results} (Source: ${searchResult.source})`;
+            if (result.success) {
+              agentResponse = `${result.results} (Source: ${result.source})`;
             } else {
-              agentResponse = `I can't browse the web right now. ${searchResult.fallback}`;
+              agentResponse = `I can't browse the web right now. ${result.fallback}`;
             }
-          } catch (searchError) {
-            console.error('Search tool error:', searchError);
+          } catch (error) {
+            console.error('Web search error:', error);
             agentResponse = "I can't browse the web right now - you'll need to check that yourself.";
           }
-        } else {
-          agentResponse = "I can't browse the web - you'll need to check current rates yourself.";
         }
       } else {
-        // Regular conversation
+        // Regular conversation - use LLM
         const response = await this.llm.invoke(conversationPrompt);
         agentResponse = response.content as string;
       }
@@ -946,18 +1340,18 @@ export class MessyOSAIAgent {
           insights: analyzedState.insights.length,
           actions: analyzedState.actions.length,
           relevantMemories: relevantMemories.length,
-          usedWebSearch: needsWebSearch
+          toolsUsed: toolsUsed
         },
         sentiment: 'positive',
-        actionsTaken: []
+        actionsTaken: toolsUsed
       };
 
       // Store conversation as memory
       await this.storeMemory({
         type: 'conversation',
-        content: `User asked: "${message}" - ${needsWebSearch ? 'Used web search' : 'Analyzed personal data'}`,
-        importance: 0.6,
-        tags: ['conversation', 'user_interaction', needsWebSearch ? 'web_search' : 'personal_data']
+        content: `User: "${message}" - ${toolsUsed.length > 0 ? `Used tools: ${toolsUsed.join(', ')}` : 'Regular conversation'}`,
+        importance: toolsUsed.length > 0 ? 0.8 : 0.6,
+        tags: ['conversation', 'user_interaction', ...toolsUsed]
       });
 
       return {

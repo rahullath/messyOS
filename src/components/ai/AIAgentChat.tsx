@@ -21,7 +21,7 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
     {
       id: '1',
       type: 'agent',
-      content: "I'm Mesh. I can analyze your personal data patterns, but I can't browse the web. What do you need?",
+      content: "I'm Mesh. I can create tasks, log habits, and analyze your patterns. Just tell me what you need to do or what you've done.",
       timestamp: new Date().toISOString(),
     }
   ]);
@@ -314,10 +314,10 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
         {/* Quick suggestions */}
         <div className="flex flex-wrap gap-2 mt-2">
           {[
-            "What patterns do you see?",
-            "Fix my morning routine",
-            "What should I focus on?",
-            "I'm stuck - help"
+            "I need to finish the project by Friday",
+            "I did all my habits today",
+            "I went to the gym this morning",
+            "What patterns do you see?"
           ].map((suggestion) => (
             <button
               key={suggestion}
