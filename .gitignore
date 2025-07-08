@@ -1,5 +1,6 @@
 # build output
 dist/
+.vercel/
 
 # generated types
 .astro/
@@ -16,9 +17,53 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.env.local
 
 # macOS-specific files
 .DS_Store
 
+# Windows-specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
 # jetbrains setting folder
 .idea/
+
+# VS Code settings (optional - you might want to keep these)
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Vercel deployment files
+.vercel
+
+# Local development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
