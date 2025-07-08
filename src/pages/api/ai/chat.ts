@@ -14,23 +14,25 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Get user from session
+    // Get authenticated user
     const supabase = createServerClient(cookies);
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (!session?.user) {
+    if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
+    console.log(`💬 Chat initiated with user ${user.id}`);
+
     // Initialize AI agent
     const agent = new MessyOSAIAgent(cookies);
     
     // Get chat response
     const result = await agent.chat(
-      session.user.id,
+      user.id,
       message,
       conversationHistory || []
     );

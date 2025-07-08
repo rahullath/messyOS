@@ -471,7 +471,7 @@ export class MessyOSAIAgent {
           userId: z.string(),
           title: z.string().describe("The task title/description"),
           description: z.string().optional().describe("Additional details about the task"),
-          category: z.enum(['Work', 'Personal', 'Learning', 'Health', 'Finance', 'Creative', 'Social', 'Maintenance', 'Planning', 'Other']).optional(),
+          category: z.enum(['Work', 'Personal', 'Learning', 'Health', 'Finance', 'Creative', 'Social', 'Maintenance', 'Planning', 'Shopping', 'Other']).optional(),
           priority: z.enum(['low', 'medium', 'high']).optional(),
           dueDate: z.string().optional().describe("Due date in YYYY-MM-DD format"),
           estimatedDuration: z.string().optional().describe("Estimated duration in minutes")
@@ -669,39 +669,90 @@ export class MessyOSAIAgent {
 
   // Helper functions for extracting details from user messages
   private extractTaskDetails(message: string) {
-    const title = message.replace(/need to|have to|should|must|task|do/gi, '').trim();
+    // Extract the core task by removing trigger words and metadata
+    let title = message
+      .replace(/^(I\s+)?(need to|have to|should|must|task|do)\s+/gi, '')
+      .replace(/\s*-\s*(by|due)\s+[^-]*$/gi, '') // Remove "by date" from end
+      .replace(/\s*-\s*(high|medium|low)\s+priority.*$/gi, '') // Remove priority from end
+      .replace(/\s*-\s*for\s+.*$/gi, '') // Remove "for xyz" from end
+      .trim();
+
+    // If title is still too long or contains metadata, extract the main action
+    if (title.length > 100 || title.includes(' - ')) {
+      const actionMatch = title.match(/^([^-,]+)/);
+      if (actionMatch) {
+        title = actionMatch[1].trim();
+      }
+    }
     
     // Extract priority
     let priority = 'medium';
-    if (/urgent|asap|immediately|critical/i.test(message)) priority = 'high';
+    if (/urgent|asap|immediately|critical|high priority/i.test(message)) priority = 'high';
     if (/low priority|when.*time|eventually/i.test(message)) priority = 'low';
+    if (/medium priority/i.test(message)) priority = 'medium';
     
-    // Extract due date
+    // Extract due date with better parsing
     let dueDate = null;
-    const dateMatch = message.match(/by (\d{4}-\d{2}-\d{2})|by (\w+ \d{1,2})|today|tomorrow|this week/i);
-    if (dateMatch) {
-      if (message.includes('today')) {
-        dueDate = new Date().toISOString().split('T')[0];
-      } else if (message.includes('tomorrow')) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        dueDate = tomorrow.toISOString().split('T')[0];
+    
+    // Try different date formats
+    const datePatterns = [
+      /by\s+(\d{1,2})(st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/i,
+      /by\s+(\d{4}-\d{2}-\d{2})/i,
+      /by\s+(today|tomorrow|this week|next week)/i,
+      /due\s+(\d{1,2})(st|nd|rd|th)?\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})/i
+    ];
+    
+    for (const pattern of datePatterns) {
+      const match = message.match(pattern);
+      if (match) {
+        if (match[1] === 'today') {
+          dueDate = new Date().toISOString().split('T')[0];
+        } else if (match[1] === 'tomorrow') {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          dueDate = tomorrow.toISOString().split('T')[0];
+        } else if (match[3] && match[4]) {
+          // Handle "14th July 2025" format
+          const day = parseInt(match[1]);
+          const month = this.getMonthNumber(match[3]);
+          const year = parseInt(match[4]);
+          
+          if (month !== -1) {
+            const date = new Date(year, month - 1, day);
+            dueDate = date.toISOString().split('T')[0];
+          }
+        } else if (match[1] && match[1].includes('-')) {
+          // Handle YYYY-MM-DD format
+          dueDate = match[1];
+        }
+        break;
       }
     }
     
     // Extract category
-    let category = 'Work';
+    let category = 'Personal'; // Default to Personal instead of Work
     if (/health|gym|exercise|doctor|medical/i.test(message)) category = 'Health';
-    if (/personal|home|family/i.test(message)) category = 'Personal';
-    if (/learn|study|course|read/i.test(message)) category = 'Learning';
+    if (/work|project|meeting|presentation|office/i.test(message)) category = 'Work';
+    if (/learn|study|course|read|research/i.test(message)) category = 'Learning';
     if (/money|finance|bank|pay|bill/i.test(message)) category = 'Finance';
+    if (/travel|trip|vacation|move|relocat|suitcase|flight/i.test(message)) category = 'Planning';
+    if (/shop|buy|purchase|find.*buy/i.test(message)) category = 'Shopping';
     
     return {
-      title: title || message,
+      title: title || 'New task',
       priority,
       dueDate,
       category
     };
+  }
+
+  private getMonthNumber(monthName: string): number {
+    const months = {
+      'january': 1, 'february': 2, 'march': 3, 'april': 4,
+      'may': 5, 'june': 6, 'july': 7, 'august': 8,
+      'september': 9, 'october': 10, 'november': 11, 'december': 12
+    };
+    return months[monthName.toLowerCase()] || -1;
   }
 
   private extractHabitDetails(message: string) {
@@ -1056,7 +1107,18 @@ export class MessyOSAIAgent {
 
     try {
       const response = await this.llm.invoke(analysisPrompt);
-      const analysis = JSON.parse(response.content as string);
+      let content = response.content as string;
+      
+      // Clean up the response to extract valid JSON
+      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // If it starts with text before JSON, try to extract just the JSON part
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        content = jsonMatch[0];
+      }
+      
+      const analysis = JSON.parse(content);
       
       // Store significant insights as memories
       for (const insight of analysis.insights) {
