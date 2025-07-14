@@ -1,0 +1,467 @@
+---
+// Comprehensive Life Dashboard - The main interface for Rahul's life optimization
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { createServerClient } from '../lib/supabase/server';
+
+// Check authentication
+const supabase = createServerClient(Astro.cookies);
+const { data: { user }, error } = await supabase.auth.getUser();
+
+if (error || !user) {
+  return Astro.redirect('/auth');
+}
+
+// Get recent data for dashboard
+const [
+  { data: recentTasks },
+  { data: recentHabits },
+  { data: recentHealth },
+  { data: recentFinance },
+  { data: recentContent }
+] = await Promise.all([
+  supabase.from('tasks').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+  supabase.from('habits').select('*').eq('user_id', user.id).eq('is_active', true).limit(5),
+  supabase.from('metrics').select('*').eq('user_id', user.id).eq('category', 'Health').order('recorded_at', { ascending: false }).limit(5),
+  supabase.from('metrics').select('*').eq('user_id', user.id).in('type', ['expense', 'income']).order('recorded_at', { ascending: false }).limit(5),
+  supabase.from('content_entries').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
+]);
+---
+
+<DashboardLayout title="Life Dashboard - MeshOS">
+  <div class="min-h-screen bg-surface-primary p-6">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-4xl font-bold text-text-primary mb-2">
+        🧠 Life Optimization Dashboard
+      </h1>
+      <p class="text-text-secondary">
+        Your comprehensive life management system - dump data, get insights, optimize everything
+      </p>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <a href="/data-dump" class="card p-4 hover:shadow-lg transition-shadow">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-accent-primary/10 rounded-lg flex items-center justify-center mr-3">
+            🗣️
+          </div>
+          <div>
+            <h3 class="font-semibold text-text-primary">Data Dump</h3>
+            <p class="text-sm text-text-secondary">Yap your data</p>
+          </div>
+        </div>
+      </a>
+
+      <button id="run-optimizer" class="card p-4 hover:shadow-lg transition-shadow text-left">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center mr-3">
+            🚀
+          </div>
+          <div>
+            <h3 class="font-semibold text-text-primary">Run Optimizer</h3>
+            <p class="text-sm text-text-secondary">Get AI insights</p>
+          </div>
+        </div>
+      </button>
+
+      <button id="check-data-quality" class="card p-4 hover:shadow-lg transition-shadow text-left">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center mr-3">
+            📊
+          </div>
+          <div>
+            <h3 class="font-semibold text-text-primary">Data Quality</h3>
+            <p class="text-sm text-text-secondary">Check & improve</p>
+          </div>
+        </div>
+      </button>
+
+      <a href="/crypto" class="card p-4 hover:shadow-lg transition-shadow">
+        <div class="flex items-center">
+          <div class="w-12 h-12 bg-accent-error/10 rounded-lg flex items-center justify-center mr-3">
+            ₿
+          </div>
+          <div>
+            <h3 class="font-semibold text-text-primary">Crypto Portfolio</h3>
+            <p class="text-sm text-text-secondary">Track & invest</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Main Dashboard Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left Column - Data Overview -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Recent Activity -->
+        <div class="card p-6">
+          <h2 class="text-xl font-semibold text-text-primary mb-4">📈 Recent Activity</h2>
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Tasks -->
+              <div>
+                <h3 class="font-medium text-text-primary mb-2">Recent Tasks</h3>
+                <div class="space-y-2">
+                  {recentTasks?.slice(0, 3).map(task => (
+                    <div class="flex items-center justify-between p-2 bg-surface-secondary rounded">
+                      <span class="text-sm text-text-primary">{task.title}</span>
+                      <span class={`text-xs px-2 py-1 rounded ${
+                        task.status === 'completed' ? 'bg-accent-success/20 text-accent-success' :
+                        task.status === 'in_progress' ? 'bg-accent-warning/20 text-accent-warning' :
+                        'bg-surface-primary text-text-secondary'
+                      }`}>
+                        {task.status}
+                      </span>
+                    </div>
+                  )) || <p class="text-sm text-text-muted">No recent tasks</p>}
+                </div>
+              </div>
+
+              <!-- Health -->
+              <div>
+                <h3 class="font-medium text-text-primary mb-2">Health Metrics</h3>
+                <div class="space-y-2">
+                  {recentHealth?.slice(0, 3).map(metric => (
+                    <div class="flex items-center justify-between p-2 bg-surface-secondary rounded">
+                      <span class="text-sm text-text-primary">{metric.type}</span>
+                      <span class="text-sm font-medium text-text-primary">
+                        {metric.value} {metric.unit}
+                      </span>
+                    </div>
+                  )) || <p class="text-sm text-text-muted">No health data</p>}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Insights -->
+        <div class="card p-6">
+          <h2 class="text-xl font-semibold text-text-primary mb-4">🤖 AI Insights</h2>
+          <div id="ai-insights" class="space-y-3">
+            <div class="flex items-center justify-center py-8">
+              <div class="text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary mx-auto mb-2"></div>
+                <p class="text-text-muted">Loading insights...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Quality Report -->
+        <div class="card p-6">
+          <h2 class="text-xl font-semibold text-text-primary mb-4">📊 Data Quality</h2>
+          <div id="data-quality-report" class="space-y-3">
+            <div class="flex items-center justify-center py-8">
+              <div class="text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary mx-auto mb-2"></div>
+                <p class="text-text-muted">Analyzing data quality...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column - Quick Stats & Actions -->
+      <div class="space-y-6">
+        <!-- Life Score -->
+        <div class="card p-6 text-center">
+          <h2 class="text-lg font-semibold text-text-primary mb-2">🎯 Life Optimization Score</h2>
+          <div class="text-4xl font-bold text-accent-primary mb-2" id="life-score">--</div>
+          <p class="text-sm text-text-secondary">Based on all your data</p>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card p-6">
+          <h2 class="text-lg font-semibold text-text-primary mb-4">📋 Quick Stats</h2>
+          <div class="space-y-3">
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Active Habits</span>
+              <span class="font-medium text-text-primary">{recentHabits?.length || 0}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Pending Tasks</span>
+              <span class="font-medium text-text-primary">
+                {recentTasks?.filter(t => t.status !== 'completed').length || 0}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Health Entries (7d)</span>
+              <span class="font-medium text-text-primary">{recentHealth?.length || 0}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Finance Entries (7d)</span>
+              <span class="font-medium text-text-primary">{recentFinance?.length || 0}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Health OCR -->
+        <div class="card p-6">
+          <h2 class="text-lg font-semibold text-text-primary mb-4">❤️ Health Data Entry</h2>
+          <div class="space-y-3">
+            <textarea
+              id="health-text-input"
+              placeholder="Paste your Huawei Health data here... e.g., 'Sleep: 7h 30min, Heart rate avg: 72 bpm, Stress: 25 Low'"
+              rows="3"
+              class="w-full px-3 py-2 border border-border-primary rounded-lg bg-surface-primary text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary resize-none text-sm"
+            ></textarea>
+            <button
+              id="process-health-data"
+              class="w-full px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors text-sm"
+            >
+              📊 Process Health Data
+            </button>
+          </div>
+        </div>
+
+        <!-- Content Analysis -->
+        <div class="card p-6">
+          <h2 class="text-lg font-semibold text-text-primary mb-4">🎬 Content Analysis</h2>
+          <div class="space-y-3">
+            <textarea
+              id="serializd-input"
+              placeholder="Paste your Serializd export data here..."
+              rows="3"
+              class="w-full px-3 py-2 border border-border-primary rounded-lg bg-surface-primary text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary resize-none text-sm"
+            ></textarea>
+            <button
+              id="analyze-content"
+              class="w-full px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors text-sm"
+            >
+              🧠 Analyze Taste Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notifications" class="fixed top-4 right-4 space-y-2 z-50"></div>
+  </div>
+
+  <script>
+    // Dashboard functionality
+    let isLoading = false;
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+      const notifications = document.getElementById('notifications');
+      const notification = document.createElement('div');
+      notification.className = `px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+        type === 'success' ? 'bg-accent-success text-white' :
+        type === 'error' ? 'bg-accent-error text-white' :
+        type === 'warning' ? 'bg-accent-warning text-white' :
+        'bg-accent-primary text-white'
+      }`;
+      notification.textContent = message;
+      
+      notifications.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+
+    // Run life optimizer
+    document.getElementById('run-optimizer')?.addEventListener('click', async () => {
+      if (isLoading) return;
+      isLoading = true;
+      
+      const button = document.getElementById('run-optimizer');
+      const originalText = button.innerHTML;
+      button.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>';
+      
+      try {
+        const response = await fetch('/api/ai/life-optimization');
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification('Life optimization completed!', 'success');
+          updateAIInsights(data.result);
+        } else {
+          showNotification('Optimization failed: ' + data.error, 'error');
+        }
+      } catch (error) {
+        showNotification('Failed to run optimizer', 'error');
+      } finally {
+        button.innerHTML = originalText;
+        isLoading = false;
+      }
+    });
+
+    // Check data quality
+    document.getElementById('check-data-quality')?.addEventListener('click', async () => {
+      if (isLoading) return;
+      
+      try {
+        const response = await fetch('/api/ai/data-understanding?action=quality_check');
+        const data = await response.json();
+        
+        if (data.success) {
+          updateDataQualityReport(data.result);
+          showNotification('Data quality analysis completed', 'success');
+        } else {
+          showNotification('Quality check failed: ' + data.error, 'error');
+        }
+      } catch (error) {
+        showNotification('Failed to check data quality', 'error');
+      }
+    });
+
+    // Process health data
+    document.getElementById('process-health-data')?.addEventListener('click', async () => {
+      const textInput = document.getElementById('health-text-input');
+      const text = textInput.value.trim();
+      
+      if (!text) {
+        showNotification('Please enter health data', 'warning');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/health/ocr-processor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text_data: text,
+            data_type: 'general'
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification(`Health data processed: ${Object.values(data.storage_results).reduce((a, b) => a + b, 0)} entries`, 'success');
+          textInput.value = '';
+        } else {
+          showNotification('Health data processing failed', 'error');
+        }
+      } catch (error) {
+        showNotification('Failed to process health data', 'error');
+      }
+    });
+
+    // Analyze content
+    document.getElementById('analyze-content')?.addEventListener('click', async () => {
+      const textInput = document.getElementById('serializd-input');
+      const text = textInput.value.trim();
+      
+      if (!text) {
+        showNotification('Please enter Serializd data', 'warning');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/content/serializd-analyzer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serializd_data: text,
+            analysis_type: 'full_analysis'
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showNotification('Content analysis completed!', 'success');
+          textInput.value = '';
+        } else {
+          showNotification('Content analysis failed', 'error');
+        }
+      } catch (error) {
+        showNotification('Failed to analyze content', 'error');
+      }
+    });
+
+    // Update AI insights display
+    function updateAIInsights(result) {
+      const container = document.getElementById('ai-insights');
+      if (!result || !result.insights) {
+        container.innerHTML = '<p class="text-text-muted">No insights available</p>';
+        return;
+      }
+      
+      const insights = result.insights.slice(0, 5);
+      container.innerHTML = insights.map(insight => `
+        <div class="p-3 bg-surface-secondary rounded-lg">
+          <div class="flex items-start">
+            <div class="w-2 h-2 bg-accent-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+            <div>
+              <h4 class="font-medium text-text-primary text-sm">${insight.title}</h4>
+              <p class="text-text-secondary text-sm mt-1">${insight.description}</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Update data quality report
+    function updateDataQualityReport(report) {
+      const container = document.getElementById('data-quality-report');
+      
+      container.innerHTML = `
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-text-secondary">Overall Score</span>
+            <span class="font-bold text-2xl ${
+              report.quality_score > 0.8 ? 'text-accent-success' :
+              report.quality_score > 0.6 ? 'text-accent-warning' :
+              'text-accent-error'
+            }">${(report.quality_score * 100).toFixed(0)}%</span>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Completeness</span>
+              <span class="text-text-primary">${(report.completeness * 100).toFixed(0)}%</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Consistency</span>
+              <span class="text-text-primary">${(report.consistency * 100).toFixed(0)}%</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Accuracy</span>
+              <span class="text-text-primary">${(report.accuracy * 100).toFixed(0)}%</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-text-secondary">Timeliness</span>
+              <span class="text-text-primary">${(report.timeliness * 100).toFixed(0)}%</span>
+            </div>
+          </div>
+          
+          ${report.recommendations.length > 0 ? `
+            <div class="mt-3">
+              <h4 class="font-medium text-text-primary text-sm mb-2">Recommendations:</h4>
+              <ul class="space-y-1">
+                ${report.recommendations.slice(0, 3).map(rec => `
+                  <li class="text-xs text-text-secondary">• ${rec}</li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Calculate and update life score
+    function updateLifeScore() {
+      // This would be calculated based on various metrics
+      // For now, show a placeholder
+      document.getElementById('life-score').textContent = '75';
+    }
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', () => {
+      updateLifeScore();
+      
+      // Auto-load initial insights
+      setTimeout(() => {
+        document.getElementById('check-data-quality')?.click();
+      }, 1000);
+    });
+  </script>
+</DashboardLayout>

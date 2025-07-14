@@ -1,0 +1,31 @@
+---
+// Smart Data Dump Page
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { createServerClient } from '../lib/supabase/server';
+
+// Check authentication
+const supabase = createServerClient(Astro.cookies);
+const { data: { user }, error } = await supabase.auth.getUser();
+
+if (error || !user) {
+  return Astro.redirect('/auth');
+}
+---
+
+<DashboardLayout title="Data Dump - MeshOS">
+  <div class="min-h-screen bg-surface-primary">
+    <div id="data-dump-interface"></div>
+  </div>
+
+  <script>
+    import DataDumpInterface from '../components/DataDumpInterface.tsx';
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
+
+    const container = document.getElementById('data-dump-interface');
+    if (container) {
+      const root = createRoot(container);
+      root.render(React.createElement(DataDumpInterface));
+    }
+  </script>
+</DashboardLayout>

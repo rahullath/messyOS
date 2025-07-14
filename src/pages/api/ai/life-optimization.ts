@@ -1,38 +1,25 @@
-// src/pages/api/ai/life-optimization.ts
 import type { APIRoute } from 'astro';
-import { AgenticLifeOptimizer } from '../../../lib/intelligence/agentic-life-optimizer';
+import { runLifeOptimizer } from '../../../agentic-life-optimizer';
 import { createServerClient } from '../../../lib/supabase/server';
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+// This endpoint can be triggered by a cron job (e.g., on Vercel or Render)
+// to run the proactive life optimization agent periodically.
+export const GET: APIRoute = async ({ request, cookies }) => {
   try {
-    const supabase = createServerClient(cookies);
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required' 
-      }), { status: 401 });
-    }
+    // Although this is a server-to-server call via cron,
+    // we can still check for a user if needed, or run for all users.
+    // For now, we assume a generic run.
+    console.log("Life optimization cron job triggered.");
 
-    const { type = 'full' } = await request.json();
-    const optimizer = new AgenticLifeOptimizer(cookies);
-
-    let result;
-    
-    if (type === 'daily') {
-      // Quick daily check-in
-      result = await optimizer.dailyCheckIn(user.id);
-    } else {
-      // Full life optimization analysis
-      result = await optimizer.optimizeLife(user.id);
-    }
+    const result = await runLifeOptimizer();
 
     return new Response(JSON.stringify({
       success: true,
       timestamp: new Date().toISOString(),
-      type,
-      ...result
+      message: "Life optimization cycle completed successfully.",
+      result,
     }), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
 
@@ -45,52 +32,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       details: error instanceof Error ? error.message : 'Unknown error'
     }), { 
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-};
-
-export const GET: APIRoute = async ({ url, cookies }) => {
-  try {
-    const supabase = createServerClient(cookies);
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required' 
-      }), { status: 401 });
-    }
-
-    const type = url.searchParams.get('type') || 'daily';
-    const optimizer = new AgenticLifeOptimizer(cookies);
-
-    let result;
-    
-    if (type === 'daily') {
-      result = await optimizer.dailyCheckIn(user.id);
-    } else {
-      result = await optimizer.optimizeLife(user.id);
-    }
-
-    return new Response(JSON.stringify({
-      success: true,
-      timestamp: new Date().toISOString(),
-      type,
-      ...result
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-  } catch (error) {
-    console.error('Life optimization API error:', error);
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'AI analysis failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Tipe': 'application/json' }
     });
   }
 };
