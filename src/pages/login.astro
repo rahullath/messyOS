@@ -1,7 +1,7 @@
 ---
 // src/pages/login.astro - Updated Login/Signup Page
 import Layout from '../layouts/Layout.astro';
-import { createServerAuth } from '../lib/auth/multi-user';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
 
 // Check if user is already authenticated
 const serverAuth = createServerAuth(Astro.cookies);
@@ -153,7 +153,7 @@ if (user) {
   </div>
 
   <script>
-    import { auth } from '../lib/auth/multi-user';
+    import { supabase } from '../lib/supabase/client';
 
     // Tab switching
     const signinTab = document.getElementById('signin-tab');
@@ -193,66 +193,83 @@ if (user) {
       messageEl.classList.remove('hidden');
     }
 
-    // Sign In Form
-    signinForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const email = formData.get('email');
-      const password = formData.get('password');
+         // Sign In Form
+     signinForm.addEventListener('submit', async (e) => {
+       e.preventDefault();
+       const formData = new FormData(e.target);
+       const email = formData.get('email');
+       const password = formData.get('password');
 
-      try {
-        await auth.signInWithEmail(email, password);
-        showMessage('Signed in successfully! Redirecting...', 'success');
-        setTimeout(() => {
-          window.location.href = '/onboarding';
-        }, 1000);
-      } catch (error) {
-        showMessage(error.message || 'Sign in failed. Please try again.');
-      }
-    });
+       try {
+         const { error } = await supabase.auth.signInWithPassword({ email, password });
+         if (error) throw error;
+         showMessage('Signed in successfully! Redirecting...', 'success');
+         setTimeout(() => {
+           window.location.href = '/onboarding';
+         }, 1000);
+       } catch (error) {
+         showMessage(error.message || 'Sign in failed. Please try again.');
+       }
+     });
 
-    // Sign Up Form
-    signupForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const email = formData.get('email');
-      const password = formData.get('password');
-      const confirmPassword = formData.get('confirmPassword');
+         // Sign Up Form
+     signupForm.addEventListener('submit', async (e) => {
+       e.preventDefault();
+       const formData = new FormData(e.target);
+       const email = formData.get('email');
+       const password = formData.get('password');
+       const confirmPassword = formData.get('confirmPassword');
 
-      if (password !== confirmPassword) {
-        showMessage('Passwords do not match.');
-        return;
-      }
+       if (password !== confirmPassword) {
+         showMessage('Passwords do not match.');
+         return;
+       }
 
-      try {
-        await auth.signUpWithEmail(email, password);
-        showMessage('Account created! Check your email to verify your account.', 'success');
-      } catch (error) {
-        showMessage(error.message || 'Sign up failed. Please try again.');
-      }
-    });
+       try {
+         const { error } = await supabase.auth.signUp({ 
+           email, 
+           password,
+           options: {
+             emailRedirectTo: `${window.location.origin}/onboarding`
+           }
+         });
+         if (error) throw error;
+         showMessage('Account created! Check your email to verify your account.', 'success');
+       } catch (error) {
+         showMessage(error.message || 'Sign up failed. Please try again.');
+       }
+     });
 
-    // Google Sign In
-    document.getElementById('google-signin').addEventListener('click', async () => {
-      try {
-        await auth.signInWithGoogle();
-      } catch (error) {
-        showMessage(error.message || 'Google sign in failed. Please try again.');
-      }
-    });
+         // Google Sign In
+     document.getElementById('google-signin').addEventListener('click', async () => {
+       try {
+         const { error } = await supabase.auth.signInWithOAuth({
+           provider: 'google',
+           options: {
+             redirectTo: `${window.location.origin}/onboarding`
+           }
+         });
+         if (error) throw error;
+       } catch (error) {
+         showMessage(error.message || 'Google sign in failed. Please try again.');
+       }
+     });
 
-    // Forgot Password
-    document.getElementById('forgot-password').addEventListener('click', async (e) => {
-      e.preventDefault();
-      const email = prompt('Enter your email address:');
-      if (email) {
-        try {
-          await auth.resetPassword(email);
-          showMessage('Password reset email sent! Check your inbox.', 'success');
-        } catch (error) {
-          showMessage(error.message || 'Failed to send reset email.');
-        }
-      }
-    });
+         // Forgot Password
+     document.getElementById('forgot-password').addEventListener('click', async (e) => {
+       e.preventDefault();
+       const email = prompt('Enter your email address:');
+       if (email) {
+         try {
+           const { error } = await supabase.auth.resetPasswordForEmail(email, {
+             redirectTo: `${window.location.origin}/reset-password`
+           });
+           if (error) throw error;
+           showMessage('Password reset email sent! Check your inbox.', 'success');
+         } catch (error) {
+           showMessage(error.message || 'Failed to send reset email.');
+         }
+       }
+     });
   </script>
 </Layout>

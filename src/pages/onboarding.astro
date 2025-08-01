@@ -1,7 +1,7 @@
 ---
 // src/pages/onboarding.astro - User Onboarding Flow
 import Layout from '../layouts/Layout.astro';
-import { createServerAuth } from '../lib/auth/multi-user';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
 
 // Require authentication
 const serverAuth = createServerAuth(Astro.cookies);

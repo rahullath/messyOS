@@ -1,7 +1,7 @@
 ---
 // src/pages/index.astro - ENHANCED DASHBOARD
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { createServerAuth } from '../lib/auth/multi-user';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
 
 // Check authentication
 const serverAuth = createServerAuth(Astro.cookies);

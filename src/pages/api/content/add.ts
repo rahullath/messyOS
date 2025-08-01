@@ -1,6 +1,6 @@
 // src/pages/api/content/add.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
