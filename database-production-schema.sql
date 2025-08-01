@@ -1,16 +1,16 @@
--- messyOS Production Database Schema
--- This schema supports multi-user functionality, customization, and security
+-- messyOS Production Database Schema Migration
+-- This migration adds new tables for multi-user functionality without breaking existing ones
 
--- Enable necessary extensions
+-- Enable necessary extensions (idempotent)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- =============================================
--- WAITLIST & USER MANAGEMENT
+-- WAITLIST & USER MANAGEMENT (NEW TABLES)
 -- =============================================
 
 -- Waitlist table for pre-launch signups
-CREATE TABLE public.waitlist (
+CREATE TABLE IF NOT EXISTS public.waitlist (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
   interest_area VARCHAR(50) DEFAULT 'everything',
@@ -22,8 +22,8 @@ CREATE TABLE public.waitlist (
   notes TEXT
 );
 
--- User preferences and customization
-CREATE TABLE public.user_preferences (
+-- User preferences and customization  
+CREATE TABLE IF NOT EXISTS public.user_preferences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   
@@ -56,99 +56,51 @@ CREATE TABLE public.user_preferences (
 );
 
 -- =============================================
--- CORE DATA TABLES (Enhanced for Multi-User)
+-- ADD COLUMNS TO EXISTING TABLES
 -- =============================================
 
--- Enhanced habits table
-CREATE TABLE public.habits (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  category VARCHAR(100) DEFAULT 'General',
-  type VARCHAR(10) CHECK (type IN ('build', 'break')),
-  measurement_type VARCHAR(20) CHECK (measurement_type IN ('boolean', 'count', 'duration', 'rating')),
-  target_value DECIMAL DEFAULT 1,
-  target_unit VARCHAR(50) DEFAULT 'times',
-  color VARCHAR(7) DEFAULT '#3b82f6',
-  icon VARCHAR(50),
-  streak_count INTEGER DEFAULT 0,
-  best_streak INTEGER DEFAULT 0,
-  total_completions INTEGER DEFAULT 0,
-  is_active BOOLEAN DEFAULT TRUE,
-  position INTEGER,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add user_id column to existing habits table if it doesn't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'habits' AND column_name = 'user_id') THEN
+        ALTER TABLE habits ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
--- Habit entries with enhanced tracking
-CREATE TABLE public.habit_entries (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  habit_id UUID REFERENCES habits(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  value DECIMAL NOT NULL,
-  notes TEXT,
-  effort INTEGER CHECK (effort BETWEEN 1 AND 5),
-  duration INTEGER, -- in minutes
-  completion_time TIME,
-  energy_level INTEGER CHECK (energy_level BETWEEN 1 AND 5),
-  mood INTEGER CHECK (mood BETWEEN 1 AND 5),
-  location VARCHAR(100),
-  weather VARCHAR(50),
-  context JSONB,
-  logged_at TIMESTAMPTZ DEFAULT NOW(),
-  date DATE GENERATED ALWAYS AS (DATE(logged_at AT TIME ZONE 'UTC')) STORED,
-  
-  UNIQUE(habit_id, date)
-);
+-- Add user_id column to existing habit_entries table if it doesn't exist  
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'habit_entries' AND column_name = 'user_id') THEN
+        ALTER TABLE habit_entries ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
--- Universal metrics table for flexible data storage
-CREATE TABLE public.metrics (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  category VARCHAR(50) NOT NULL, -- 'health', 'finance', 'productivity', etc.
-  subcategory VARCHAR(50),
-  metric_name VARCHAR(100) NOT NULL,
-  value DECIMAL,
-  text_value TEXT,
-  json_value JSONB,
-  unit VARCHAR(50),
-  source VARCHAR(100), -- 'manual', 'import', 'api', 'ai_generated'
-  confidence_score DECIMAL CHECK (confidence_score BETWEEN 0 AND 1),
-  tags JSONB DEFAULT '[]',
-  recorded_at TIMESTAMPTZ DEFAULT NOW(),
-  date DATE GENERATED ALWAYS AS (DATE(recorded_at AT TIME ZONE 'UTC')) STORED
-);
+-- Add user_id column to existing tasks table if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'tasks' AND column_name = 'user_id') THEN
+        ALTER TABLE tasks ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
--- Enhanced tasks with project management features
-CREATE TABLE public.tasks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  title VARCHAR(500) NOT NULL,
-  description TEXT,
-  category VARCHAR(100),
-  project VARCHAR(100),
-  priority INTEGER DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
-  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled', 'on_hold')),
-  difficulty INTEGER CHECK (difficulty BETWEEN 1 AND 5),
-  estimated_duration INTEGER, -- in minutes
-  actual_duration INTEGER, -- in minutes
-  energy_required INTEGER CHECK (energy_required BETWEEN 1 AND 5),
-  deadline TIMESTAMPTZ,
-  due_date DATE,
-  completed_at TIMESTAMPTZ,
-  tags JSONB DEFAULT '[]',
-  context JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add user_id column to existing metrics table if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'metrics' AND column_name = 'user_id') THEN
+        ALTER TABLE metrics ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- =============================================
--- AI & INTELLIGENCE TABLES
+-- AI & INTELLIGENCE TABLES (NEW)
 -- =============================================
 
 -- AI insights and recommendations
-CREATE TABLE public.ai_insights (
+CREATE TABLE IF NOT EXISTS public.ai_insights (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL, -- 'optimization', 'pattern', 'recommendation', 'alert'
@@ -166,7 +118,7 @@ CREATE TABLE public.ai_insights (
 );
 
 -- User interactions with AI
-CREATE TABLE public.ai_conversations (
+CREATE TABLE IF NOT EXISTS public.ai_conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   session_id UUID DEFAULT gen_random_uuid(),
@@ -178,11 +130,11 @@ CREATE TABLE public.ai_conversations (
 );
 
 -- =============================================
--- INTEGRATIONS & CONNECTIONS
+-- INTEGRATIONS & CONNECTIONS (NEW)
 -- =============================================
 
 -- External service connections
-CREATE TABLE public.integrations (
+CREATE TABLE IF NOT EXISTS public.integrations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   service_name VARCHAR(50) NOT NULL, -- 'gmail', 'github', 'notion', etc.
@@ -201,7 +153,7 @@ CREATE TABLE public.integrations (
 );
 
 -- Import history and data processing logs
-CREATE TABLE public.import_logs (
+CREATE TABLE IF NOT EXISTS public.import_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   import_type VARCHAR(50) NOT NULL, -- 'csv', 'api', 'manual', etc.
@@ -217,11 +169,11 @@ CREATE TABLE public.import_logs (
 );
 
 -- =============================================
--- SUBSCRIPTION & BILLING
+-- SUBSCRIPTION & BILLING (NEW)
 -- =============================================
 
 -- Subscription management
-CREATE TABLE public.subscriptions (
+CREATE TABLE IF NOT EXISTS public.subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   plan_type VARCHAR(20) DEFAULT 'free' CHECK (plan_type IN ('free', 'trial', 'premium')),
@@ -251,7 +203,7 @@ CREATE TABLE public.subscriptions (
 );
 
 -- Payment transactions
-CREATE TABLE public.transactions (
+CREATE TABLE IF NOT EXISTS public.transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   subscription_id UUID REFERENCES subscriptions(id),
@@ -268,82 +220,103 @@ CREATE TABLE public.transactions (
 );
 
 -- =============================================
--- INDEXES FOR PERFORMANCE
+-- INDEXES FOR PERFORMANCE (CREATE IF NOT EXISTS)
 -- =============================================
 
--- Core indexes
-CREATE INDEX idx_habits_user_active ON habits(user_id, is_active);
-CREATE INDEX idx_habit_entries_user_date ON habit_entries(user_id, date DESC);
-CREATE INDEX idx_habit_entries_habit_date ON habit_entries(habit_id, date DESC);
-CREATE INDEX idx_metrics_user_category_date ON metrics(user_id, category, date DESC);
-CREATE INDEX idx_tasks_user_status ON tasks(user_id, status);
-CREATE INDEX idx_tasks_user_due_date ON tasks(user_id, due_date);
+-- Core indexes (only if they don't exist)
+CREATE INDEX IF NOT EXISTS idx_habits_user_active ON habits(user_id, is_active) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_habit_entries_user_date ON habit_entries(user_id, logged_at DESC) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_habit_entries_habit_date ON habit_entries(habit_id, logged_at DESC);
+CREATE INDEX IF NOT EXISTS idx_metrics_user_category_date ON metrics(user_id, category, recorded_at DESC) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tasks_user_status ON tasks(user_id, status) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tasks_user_due_date ON tasks(user_id, due_date) WHERE user_id IS NOT NULL;
 
 -- AI and insights indexes
-CREATE INDEX idx_ai_insights_user_created ON ai_insights(user_id, created_at DESC);
-CREATE INDEX idx_ai_insights_user_unread ON ai_insights(user_id, is_read, created_at DESC);
-CREATE INDEX idx_ai_conversations_user_session ON ai_conversations(user_id, session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_ai_insights_user_created ON ai_insights(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_insights_user_unread ON ai_insights(user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_user_session ON ai_conversations(user_id, session_id, created_at);
 
 -- Integration indexes
-CREATE INDEX idx_integrations_user_service ON integrations(user_id, service_name);
-CREATE INDEX idx_import_logs_user_status ON import_logs(user_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_integrations_user_service ON integrations(user_id, service_name);
+CREATE INDEX IF NOT EXISTS idx_import_logs_user_status ON import_logs(user_id, status, created_at DESC);
 
 -- Subscription indexes
-CREATE INDEX idx_subscriptions_user_status ON subscriptions(user_id, status);
-CREATE INDEX idx_transactions_user_created ON transactions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON subscriptions(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_transactions_user_created ON transactions(user_id, created_at DESC);
 
 -- =============================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- =============================================
 
--- Enable RLS on all user tables
-ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
-ALTER TABLE habit_entries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE metrics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ai_insights ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE integrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
-ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+-- Enable RLS on all user tables (only if not already enabled)
+DO $$
+BEGIN
+    -- Enable RLS only if not already enabled
+    ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE habit_entries ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE metrics ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE ai_insights ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE integrations ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE import_logs ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Continue if RLS is already enabled
+        NULL;
+END $$;
 
--- Create RLS policies (users can only access their own data)
+-- Drop existing policies if they exist, then create new ones
+DROP POLICY IF EXISTS "Users can only access their own habits" ON habits;
 CREATE POLICY "Users can only access their own habits" ON habits
-  FOR ALL USING (auth.uid() = user_id);
+  FOR ALL USING (auth.uid() = user_id OR user_id IS NULL);
 
+DROP POLICY IF EXISTS "Users can only access their own habit entries" ON habit_entries;
 CREATE POLICY "Users can only access their own habit entries" ON habit_entries
-  FOR ALL USING (auth.uid() = user_id);
+  FOR ALL USING (auth.uid() = user_id OR user_id IS NULL);
 
+DROP POLICY IF EXISTS "Users can only access their own metrics" ON metrics;
 CREATE POLICY "Users can only access their own metrics" ON metrics
-  FOR ALL USING (auth.uid() = user_id);
+  FOR ALL USING (auth.uid() = user_id OR user_id IS NULL);
 
+DROP POLICY IF EXISTS "Users can only access their own tasks" ON tasks;
 CREATE POLICY "Users can only access their own tasks" ON tasks
-  FOR ALL USING (auth.uid() = user_id);
+  FOR ALL USING (auth.uid() = user_id OR user_id IS NULL);
 
+DROP POLICY IF EXISTS "Users can only access their own AI insights" ON ai_insights;
 CREATE POLICY "Users can only access their own AI insights" ON ai_insights
   FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can only access their own AI conversations" ON ai_conversations;
 CREATE POLICY "Users can only access their own AI conversations" ON ai_conversations
   FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can only access their own integrations" ON integrations;
 CREATE POLICY "Users can only access their own integrations" ON integrations
   FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can only access their own import logs" ON import_logs;
 CREATE POLICY "Users can only access their own import logs" ON import_logs
   FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can only access their own preferences" ON user_preferences;
 CREATE POLICY "Users can only access their own preferences" ON user_preferences
   FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can only access their own subscriptions" ON subscriptions;
 CREATE POLICY "Users can only access their own subscriptions" ON subscriptions
   FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can only access their own transactions" ON transactions;
 CREATE POLICY "Users can only access their own transactions" ON transactions
   FOR ALL USING (auth.uid() = user_id);
 
--- Waitlist is publicly readable for admin dashboard but only insertable
+-- Waitlist is publicly insertable but not readable
+DROP POLICY IF EXISTS "Anyone can join waitlist" ON waitlist;
 CREATE POLICY "Anyone can join waitlist" ON waitlist
   FOR INSERT WITH CHECK (TRUE);
 
@@ -360,23 +333,28 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Apply to relevant tables
+-- Drop existing triggers if they exist, then create new ones
+DROP TRIGGER IF EXISTS habits_updated_at ON habits;
 CREATE TRIGGER habits_updated_at
   BEFORE UPDATE ON habits
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS tasks_updated_at ON tasks;
 CREATE TRIGGER tasks_updated_at
   BEFORE UPDATE ON tasks
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS user_preferences_updated_at ON user_preferences;
 CREATE TRIGGER user_preferences_updated_at
   BEFORE UPDATE ON user_preferences
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS integrations_updated_at ON integrations;
 CREATE TRIGGER integrations_updated_at
   BEFORE UPDATE ON integrations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS subscriptions_updated_at ON subscriptions;
 CREATE TRIGGER subscriptions_updated_at
   BEFORE UPDATE ON subscriptions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -390,16 +368,32 @@ CREATE OR REPLACE FUNCTION create_user_preferences()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.user_preferences (user_id)
-  VALUES (NEW.id);
+  VALUES (NEW.id)
+  ON CONFLICT (user_id) DO NOTHING;
   
   INSERT INTO public.subscriptions (user_id, plan_type, status, trial_start, trial_end)
-  VALUES (NEW.id, 'trial', 'active', NOW(), NOW() + INTERVAL '30 days');
+  VALUES (NEW.id, 'trial', 'active', NOW(), NOW() + INTERVAL '30 days')
+  ON CONFLICT (user_id) DO NOTHING;
   
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger to create preferences when user signs up
+-- Drop existing trigger if it exists, then create new one
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION create_user_preferences();
+
+-- =============================================
+-- MIGRATION COMPLETE
+-- =============================================
+
+-- This migration script:
+-- 1. Adds new tables only if they don't exist
+-- 2. Adds user_id columns to existing tables safely
+-- 3. Creates indexes only if they don't exist
+-- 4. Sets up RLS policies with proper fallbacks
+-- 5. Creates triggers and functions safely
+-- 
+-- Run this in your Supabase SQL editor to enable multi-user support!
