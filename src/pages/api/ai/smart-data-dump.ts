@@ -1,6 +1,6 @@
 // Smart Data Dumping API - Let Rahul "yap" his data and AI will structure it
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { z } from 'zod';
 
@@ -77,15 +77,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { data_dump, context } = await request.json();
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Authentication required'
-      }), { status: 401 });
-    }
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
 
     console.log('🗣️ Processing data dump from Rahul...');
 

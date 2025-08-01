@@ -1,11 +1,13 @@
 // src/pages/api/content/add.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    // Hardcoded user ID for single-user system
-    const USER_ID = '368deac7-8526-45eb-927a-6a373c95d8c6';
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const USER_ID = user.id;
     
     const body = await request.json();
     console.log('📝 Content add request:', body);
@@ -23,8 +25,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Create supabase client with service role to bypass RLS
-    const supabase = createServerClient(cookies);
+    // Create supabase client
+    const supabase = serverAuth.supabase;
 
     // Create content entry in metrics table
     const { data, error } = await supabase

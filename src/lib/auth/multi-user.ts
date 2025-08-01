@@ -196,7 +196,7 @@ export class MultiUserAuth {
  * Server-side authentication utilities
  */
 export class ServerAuth {
-  private supabase: any;
+  public supabase: any;
 
   constructor(cookies: any) {
     this.supabase = createServerClient(cookies);
