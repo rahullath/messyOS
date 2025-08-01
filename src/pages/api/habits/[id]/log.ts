@@ -9,15 +9,6 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
   
   
   const habitId = params.id as string;
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
 
   try {
     const body = await request.json();

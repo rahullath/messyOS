@@ -8,11 +8,6 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
     const supabase = serverAuth.supabase;
   
   const habitId = params.id as string;
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-  }
 
   try {
     const body = await request.json();
@@ -56,7 +51,7 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
           mood,
           location,
           weather,
-          context: Array.isArray(context) ? context : context.split(',').filter(c => c.trim()),
+          context: Array.isArray(context) ? context : context.split(',').filter((c: string) => c.trim()),
           logged_at: new Date().toISOString()
         })
         .eq('id', existingEntry.id)
@@ -89,7 +84,7 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
         mood,
         location,
         weather,
-        context: Array.isArray(context) ? context : context.split(',').filter(c => c.trim()),
+        context: Array.isArray(context) ? context : context.split(',').filter((c: string) => c.trim()),
         logged_at: new Date().toISOString(),
         date: targetDate
       }])
