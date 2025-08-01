@@ -1,20 +1,14 @@
 // src/pages/api/tasks/stop-session.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
     const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+  try {
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required' 
-      }), { status: 401 });
-    }
+    
 
     // Find active session
     const { data: activeSession, error: sessionError } = await supabase

@@ -1,11 +1,13 @@
 // src/pages/api/ai/test.ts
 import type { APIRoute } from 'astro';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
+    
     // Test environment variables
     const hasGeminiKey = !!process.env.GEMINI_API_KEY;
     
@@ -33,11 +35,10 @@ export const GET: APIRoute = async ({ cookies }) => {
     // Test Supabase connection
     let supabaseStatus = 'unknown';
     try {
-      const { createServerClient } = await import('../../../lib/supabase/server');
-      const supabase = serverAuth.supabase;
+      
       const { data, error } = await supabase.from('habits').select('count').limit(1);
       supabaseStatus = error ? 'error: ' + error.message : 'connected';
-    } catch (error) {
+    } catch (error: any) {
       supabaseStatus = 'error: ' + error.message;
     }
 
@@ -46,7 +47,7 @@ export const GET: APIRoute = async ({ cookies }) => {
     try {
       const { MessyOSAIAgent } = await import('../../../lib/intelligence/meshos-ai-agent');
       aiAgentStatus = 'available';
-    } catch (error) {
+    } catch (error: any) {
       aiAgentStatus = 'error: ' + error.message;
     }
 
@@ -61,7 +62,7 @@ export const GET: APIRoute = async ({ cookies }) => {
         supabase: supabaseStatus,
         aiAgent: aiAgentStatus
       },
-      recommendations: []
+      recommendations: [] as string[]
     };
 
     // Add recommendations based on test results
@@ -94,7 +95,7 @@ export const GET: APIRoute = async ({ cookies }) => {
       headers: { 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Agent test error:', error);
     return new Response(JSON.stringify({ 
       success: false,

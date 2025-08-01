@@ -3,10 +3,11 @@ import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
+    
     const USER_ID = user.id;
     
     const body = await request.json();
@@ -26,7 +27,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Create supabase client
-    const supabase = serverAuth.supabase;
+    
 
     // Create content entry in metrics table
     const { data, error } = await supabase

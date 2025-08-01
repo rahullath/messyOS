@@ -1,18 +1,31 @@
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import { ContentAnalytics } from '../../../lib/content/ContentAnalytics';
+import type { Tables } from '../../../types/supabase';
+
+// Define a type for the metadata for content metrics
+interface ContentMetadata {
+  content_type?: string;
+  title?: string;
+  status?: string;
+  rating?: number;
+  genre?: string[];
+  language?: string;
+  runtime_minutes?: number;
+  pages?: number;
+  completed_at?: string;
+  started_at?: string;
+  platform?: string;
+  notes?: string;
+}
 
 export const GET: APIRoute = async ({ cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
+    const supabase = serverAuth.supabase;
+  try {
+    
+    
 
     // Fetch all content metrics for the user
     const { data: contentMetrics, error } = await supabase
@@ -25,24 +38,27 @@ export const GET: APIRoute = async ({ cookies }) => {
     if (error) throw error;
 
     // Convert metrics to content entries
-    const content = (contentMetrics || []).map(metric => ({
-      id: metric.id,
-      user_id: metric.user_id,
-      type: metric.metadata?.content_type || 'movie',
-      title: metric.metadata?.title || 'Unknown',
-      status: metric.metadata?.status || 'completed',
-      rating: metric.metadata?.rating,
-      genre: metric.metadata?.genre || [],
-      language: metric.metadata?.language || 'English',
-      runtime_minutes: metric.metadata?.runtime_minutes,
-      pages: metric.metadata?.pages,
-      completed_at: metric.metadata?.completed_at ? new Date(metric.metadata.completed_at) : undefined,
-      started_at: metric.metadata?.started_at ? new Date(metric.metadata.started_at) : undefined,
-      platform: metric.metadata?.platform,
-      notes: metric.metadata?.notes,
-      metadata: metric.metadata,
-      recorded_at: new Date(metric.recorded_at)
-    }));
+    const content = (contentMetrics || []).map((metric: Tables<'metrics'>) => {
+      const metadata = metric.metadata as ContentMetadata | null;
+      return {
+        id: metric.id,
+        user_id: metric.user_id,
+        type: metadata?.content_type || 'movie',
+        title: metadata?.title || 'Unknown',
+        status: metadata?.status || 'completed',
+        rating: metadata?.rating,
+        genre: metadata?.genre || [],
+        language: metadata?.language || 'English',
+        runtime_minutes: metadata?.runtime_minutes,
+        pages: metadata?.pages,
+        completed_at: metadata?.completed_at ? new Date(metadata.completed_at) : undefined,
+        started_at: metadata?.started_at ? new Date(metadata.started_at) : undefined,
+        platform: metadata?.platform,
+        notes: metadata?.notes,
+        metadata: metadata,
+        recorded_at: metric.recorded_at ? new Date(metric.recorded_at) : new Date()
+      };
+    });
 
     // Use ContentAnalytics to generate insights
     const contentAnalytics = new ContentAnalytics();

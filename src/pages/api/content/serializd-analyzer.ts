@@ -1,6 +1,6 @@
 // Serializd Content Analysis - Understanding Rahul's taste from 400+ reviews and 490+ shows
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 
 interface ContentAnalysis {
@@ -50,21 +50,11 @@ const llm = new ChatGoogleGenerativeAI({
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
     const { serializd_data, analysis_type } = await request.json();
     
-    // Get authenticated user
-    const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Authentication required'
-      }), { status: 401 });
-    }
 
     console.log('🎬 Analyzing Serializd data for content recommendations...');
 
@@ -389,19 +379,14 @@ async function storeContentAnalysis(supabase: any, userId: string, analysis: Con
 // GET endpoint for retrieving content analysis
 export const GET: APIRoute = async ({ request, cookies }) => {
   try {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
     const url = new URL(request.url);
     const action = url.searchParams.get('action') || 'analysis';
     
-    // Get authenticated user
-    const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Authentication required'
-      }), { status: 401 });
-    }
+    
 
     switch (action) {
       case 'analysis':

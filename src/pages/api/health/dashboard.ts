@@ -1,20 +1,13 @@
 // src/pages/api/health/dashboard.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import type { Tables } from '../../../types/supabase';
 
 export const GET: APIRoute = async ({ url, cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
   try {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
     const urlParams = new URLSearchParams(url.search);
     const range = urlParams.get('range') || '30d';
     
@@ -38,7 +31,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
     if (error) throw error;
 
-    const metrics = healthMetrics || [];
+    const metrics: Tables<'metrics'>[] = healthMetrics || [];
 
     // Group metrics by type
     const sleepData = metrics.filter(m => m.type === 'sleep_duration');
@@ -84,7 +77,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
       const dateStr = date.toISOString().split('T')[0];
       
       const dayMetrics = metrics.filter(m => 
-        m.recorded_at.split('T')[0] === dateStr
+        m.recorded_at!.split('T')[0] === dateStr
       );
       
       const sleepMetric = dayMetrics.find(m => m.type === 'sleep_duration');
@@ -106,7 +99,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     last30Days.setDate(last30Days.getDate() - 30);
     
     const recentMedication = medicationData.filter(m => 
-      new Date(m.recorded_at) >= last30Days
+      new Date(m.recorded_at!) >= last30Days
     );
 
     const bupropionEntries = recentMedication.filter(m => 

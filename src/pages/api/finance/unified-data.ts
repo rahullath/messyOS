@@ -1,17 +1,13 @@
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
+    const supabase = serverAuth.supabase;
+  try {
+    
+    
 
     // Get all finance metrics
     const { data: metrics, error } = await supabase

@@ -1,18 +1,15 @@
 // src/pages/api/content/dashboard.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import type { Tables } from '../../../types/supabase';
 
 export const GET: APIRoute = async ({ cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
+    const supabase = serverAuth.supabase;
+  try {
+    
+    
 
     // Get all content metrics with enriched data
     const { data: contentMetrics, error } = await supabase
@@ -46,8 +43,8 @@ export const GET: APIRoute = async ({ cookies }) => {
     }
 
     // Process enriched Serializd data
-    const content = contentMetrics.map(metric => {
-      const metadata = metric.metadata || {};
+    const content = contentMetrics.map((metric: Tables<'metrics'>) => {
+      const metadata = (metric.metadata as any) || {};
       
       // Handle enriched data structure from Serializd import
       return {
@@ -206,7 +203,7 @@ function calculateContentStats(content: any[]) {
     let genres: string[] = [];
     
     if (typeof item.Genres === 'string') {
-      genres = item.Genres.split(',').map(g => g.trim()).filter(g => g);
+      genres = item.Genres.split(',').map((g: string) => g.trim()).filter((g: string) => g);
     } else if (Array.isArray(item.Genres)) {
       genres = item.Genres;
     }

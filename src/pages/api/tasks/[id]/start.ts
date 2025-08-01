@@ -1,10 +1,13 @@
 // src/pages/api/tasks/[id]/start.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ params, request, cookies }) => {
-  try {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const supabase = serverAuth.supabase;
+  try {
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

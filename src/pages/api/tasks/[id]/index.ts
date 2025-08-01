@@ -1,10 +1,13 @@
 // src/pages/api/tasks/[id]/index.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ params, cookies }) => {
-  try {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const supabase = serverAuth.supabase;
+  try {
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -56,7 +59,7 @@ export const GET: APIRoute = async ({ params, cookies }) => {
 
 export const PATCH: APIRoute = async ({ params, request, cookies }) => {
   try {
-    const supabase = serverAuth.supabase;
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -133,7 +136,7 @@ export const PATCH: APIRoute = async ({ params, request, cookies }) => {
 
 export const DELETE: APIRoute = async ({ params, cookies }) => {
   try {
-    const supabase = serverAuth.supabase;
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

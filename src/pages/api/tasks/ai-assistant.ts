@@ -1,21 +1,16 @@
 // src/pages/api/tasks/ai-assistant.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import type { Tables } from '../../../types/supabase';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
     const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+  try {
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required' 
-      }), { status: 401 });
-    }
+    
 
     const { type = 'productivity_analysis' } = await request.json();
 
@@ -60,7 +55,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         Analyze this user's task and productivity patterns:
 
         TASKS DATA:
-        ${JSON.stringify(tasks.map(t => ({
+        ${JSON.stringify(tasks.map((t: any) => ({
           title: t.title,
           category: t.category,
           priority: t.priority,
@@ -74,7 +69,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         })), null, 2)}
 
         WORK SESSIONS DATA:
-        ${JSON.stringify(sessions.map(s => ({
+        ${JSON.stringify(sessions.map((s: any) => ({
           duration: s.duration,
           session_type: s.session_type,
           productivity_score: s.productivity_score,
@@ -132,7 +127,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         break;
 
       case 'task_prioritization':
-        const incompleteTasks = tasks.filter(t => t.status !== 'completed');
+        const incompleteTasks = tasks.filter((t: Tables<'tasks'>) => t.status !== 'completed');
         analysisPrompt = `
         Help prioritize these incomplete tasks based on urgency, importance, and user patterns:
 
@@ -174,7 +169,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         Create an optimal time-blocking schedule for today based on tasks and patterns:
 
         PENDING TASKS:
-        ${JSON.stringify(tasks.filter(t => t.status === 'todo' || t.status === 'in_progress'), null, 2)}
+        ${JSON.stringify(tasks.filter((t: Tables<'tasks'>) => t.status === 'todo' || t.status === 'in_progress'), null, 2)}
 
         PRODUCTIVITY PATTERNS:
         ${JSON.stringify(sessions, null, 2)}

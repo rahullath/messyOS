@@ -1,30 +1,18 @@
 // API endpoint for data understanding and quality analysis
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import { generateDataUnderstandingReport, getDataInsights } from '../../../lib/intelligence/data-understanding-engine';
 import { preprocessUserData } from '../../../lib/intelligence/data-preprocessor';
 
 export const GET: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
+    
     const url = new URL(request.url);
     const action = url.searchParams.get('action') || 'full_report';
     
-    // Get authenticated user
-    const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Authentication required'
-      }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
 
     console.log(`🧠 Data understanding request: ${action} for user ${user.id}`);
 
@@ -96,19 +84,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const body = await request.json();
     const { action, options = {} } = body;
     
-    // Get authenticated user
-    const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
     
-    if (authError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Authentication required'
-      }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    
 
     console.log(`🔄 Data understanding POST request: ${action} for user ${user.id}`);
 

@@ -1,29 +1,20 @@
 // src/pages/api/ai/weekly-report.ts
 import type { APIRoute } from 'astro';
 import { MessyOSAIAgent } from '../../../lib/intelligence/meshos-ai-agent';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    // Get user from session
     const supabase = serverAuth.supabase;
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+  try {
+    
 
     // Initialize AI agent
     const agent = new MessyOSAIAgent(cookies);
     
     // Generate weekly report
-    const report = await agent.generateWeeklyReport(session.user.id);
+    const report = await agent.generateWeeklyReport(user.id);
 
     return new Response(JSON.stringify({
       success: true,

@@ -1,23 +1,14 @@
 // src/pages/api/habits/recalculate-streaks.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import type { Tables } from '../../../types/supabase';
 
 export const POST: APIRoute = async ({ cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-
   try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+    
     console.log('🔄 Recalculating streaks for user:', user.id);
     
     // Get all habits for this user
@@ -44,7 +35,8 @@ export const POST: APIRoute = async ({ cookies }) => {
       }
       
       // Define success based on habit type and name
-      const isSuccess = (value: number, habitName: string, habitType: string): boolean => {
+      const isSuccess = (value: number | null, habitName: string, habitType: string): boolean => {
+        if (value === null) return false;
         const lower = habitName.toLowerCase();
         
         if (lower.includes('vap')) {
@@ -62,7 +54,7 @@ export const POST: APIRoute = async ({ cookies }) => {
       let tempStreak = 0;
       
       const today = new Date();
-      const entryMap = new Map(entries.map(e => [e.date, e.value]));
+      const entryMap = new Map(entries.map((e: any) => [e.date, e.value]));
       
       // Current streak calculation
       for (let i = 0; i < 90; i++) {
@@ -72,7 +64,7 @@ export const POST: APIRoute = async ({ cookies }) => {
         
         const value = entryMap.get(dateStr);
         const hasEntry = value !== undefined;
-        const success = hasEntry ? isSuccess(value, habit.name, habit.type) : false;
+        const success = hasEntry ? isSuccess(value, habit.name, habit.type!) : false;
         
         if (success) {
           currentStreak++;
@@ -86,7 +78,7 @@ export const POST: APIRoute = async ({ cookies }) => {
       // Best streak calculation
       const allEntries = [...entries].reverse(); // Oldest first
       for (const entry of allEntries) {
-        if (isSuccess(entry.value, habit.name, habit.type)) {
+        if (isSuccess(entry.value, habit.name, habit.type!)) {
           tempStreak++;
           bestStreak = Math.max(bestStreak, tempStreak);
         } else {
@@ -100,8 +92,8 @@ export const POST: APIRoute = async ({ cookies }) => {
         .update({ 
           streak_count: currentStreak,
           best_streak: Math.max(bestStreak, currentStreak),
-          total_completions: entries.filter(e => 
-            isSuccess(e.value, habit.name, habit.type)
+          total_completions: entries.filter((e: any) => 
+            isSuccess(e.value, habit.name, habit.type!)
           ).length
         })
         .eq('id', habit.id);

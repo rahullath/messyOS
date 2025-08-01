@@ -1,17 +1,11 @@
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ request, cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+  try {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
   
   const { data: habits, error } = await supabase
     .from('habits')
@@ -30,19 +24,19 @@ export const GET: APIRoute = async ({ request, cookies }) => {
   return new Response(JSON.stringify(habits), {
     headers: { 'Content-Type': 'application/json' }
   });
-};
-
-export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
-  if (authError || !user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
+} catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
+};
+
+export const POST: APIRoute = async ({ request, cookies }) => {
+  try {
+  const serverAuth = createServerAuth(cookies);
+  const user = await serverAuth.requireAuth();
+  const supabase = serverAuth.supabase;
   
   const body = await request.json();
   
@@ -66,4 +60,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     status: 201,
     headers: { 'Content-Type': 'application/json' }
   });
+} catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 };

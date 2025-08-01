@@ -1,12 +1,14 @@
 // src/pages/api/import/loop-habits.ts
 import type { APIRoute } from 'astro';
 import { importLoopHabitsData } from '../../../lib/import/loopHabits';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
+    
     const formData = await request.formData();
     const userId = formData.get('userId') as string;
     const habitsFile = formData.get('habits') as File;

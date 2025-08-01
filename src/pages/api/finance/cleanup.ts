@@ -2,23 +2,20 @@
 // src/pages/api/finance/cleanup.ts
 
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import type { Tables } from '../../../types/supabase';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-    }
+    const supabase = serverAuth.supabase;
+  try {
+    
+    
 
     const { action, options } = await request.json();
 
-    let result;
+    let result: any;
     switch (action) {
       case 'clean-all':
         result = await cleanAllFinanceData(supabase, user.id);
@@ -117,33 +114,33 @@ async function cleanDuplicates(supabase: any, userId: string) {
   }
 
   // Group by duplicate key
-  const duplicateGroups = new Map();
+  const duplicateGroups = new Map<string, Tables<'metrics'>[]>();
   
   for (const metric of metrics) {
-    const date = metric.recorded_at.split('T')[0];
-    const description = (metric.metadata?.description || '').substring(0, 30);
+    const date = metric.recorded_at!.split('T')[0];
+    const description = ((metric.metadata as any)?.description || '').substring(0, 30);
     const amount = metric.value;
     const key = `${date}-${description}-${amount}`;
     
     if (!duplicateGroups.has(key)) {
       duplicateGroups.set(key, []);
     }
-    duplicateGroups.get(key).push(metric);
+    duplicateGroups.get(key)!.push(metric);
   }
 
   // Find duplicates and keep only the latest
-  const toDelete = [];
+  const toDelete: Tables<'metrics'>[] = [];
   for (const [key, group] of duplicateGroups) {
     if (group.length > 1) {
       // Sort by recorded_at, keep the latest, delete the rest
-      group.sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+      group.sort((a, b) => new Date(b.recorded_at!).getTime() - new Date(a.recorded_at!).getTime());
       toDelete.push(...group.slice(1));
     }
   }
 
   // Delete duplicates
   if (toDelete.length > 0) {
-    const ids = toDelete.map(t => t.id);
+    const ids = toDelete.map((t: Tables<'metrics'>) => t.id);
     const { error } = await supabase
       .from('metrics')
       .delete()
@@ -185,14 +182,14 @@ async function cleanInternalTransfers(supabase: any, userId: string) {
     'internal fund transfer'
   ];
 
-  const toDelete = metrics.filter(metric => {
-    const description = (metric.metadata?.description || '').toLowerCase();
+  const toDelete = metrics.filter((metric: Tables<'metrics'>) => {
+    const description = ((metric.metadata as any)?.description || '').toLowerCase();
     return internalTransferPatterns.some(pattern => description.includes(pattern));
   });
 
   if (toDelete.length > 0) {
-    const ids = toDelete.map(t => t.id);
-    const totalAmount = toDelete.reduce((sum, t) => sum + t.value, 0);
+    const ids = toDelete.map((t: Tables<'metrics'>) => t.id);
+    const totalAmount = toDelete.reduce((sum: number, t: Tables<'metrics'>) => sum + t.value, 0);
     
     const { error } = await supabase
       .from('metrics')
@@ -234,13 +231,13 @@ async function cleanLargeAmounts(supabase: any, userId: string, threshold: numbe
     };
   }
 
-  const totalAmount = metrics.reduce((sum, m) => sum + m.value, 0);
-  const ids = metrics.map(m => m.id);
+  const totalAmount = metrics.reduce((sum: number, m: Tables<'metrics'>) => sum + m.value, 0);
+  const ids = metrics.map((m: Tables<'metrics'>) => m.id);
 
   // Show what's being deleted for transparency
-  const sampleTransactions = metrics.slice(0, 3).map(m => ({
+  const sampleTransactions = metrics.slice(0, 3).map((m: Tables<'metrics'>) => ({
     amount: m.value,
-    description: m.metadata?.description?.substring(0, 50) || 'Unknown'
+    description: (m.metadata as any)?.description?.substring(0, 50) || 'Unknown'
   }));
 
   const { error } = await supabase
@@ -253,7 +250,7 @@ async function cleanLargeAmounts(supabase: any, userId: string, threshold: numbe
   return {
     message: `Removed ${metrics.length} large transactions totaling ₹${totalAmount.toLocaleString()}`,
     deletedCount: metrics.length,
-    details: `These were likely internal transfers, not real expenses. Examples: ${sampleTransactions.map(t => `₹${t.amount} - ${t.description}`).join('; ')}`
+    details: `These were likely internal transfers, not real expenses. Examples: ${sampleTransactions.map((t: any) => `₹${t.amount} - ${t.description}`).join('; ')}`
   };
 }
 
@@ -276,22 +273,22 @@ async function analyzeFinanceData(supabase: any, userId: string) {
   }
 
   // Categorize metrics
-  const expenses = metrics.filter(m => m.type === 'expense');
-  const income = metrics.filter(m => m.type === 'income');
-  const crypto = metrics.filter(m => m.type === 'crypto_value');
+  const expenses = metrics.filter((m: Tables<'metrics'>) => m.type === 'expense');
+  const income = metrics.filter((m: Tables<'metrics'>) => m.type === 'income');
+  const crypto = metrics.filter((m: Tables<'metrics'>) => m.type === 'crypto_value');
 
   // Analyze expenses
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.value, 0);
-  const largeTransactions = expenses.filter(e => e.value > 20000);
-  const internalTransfers = expenses.filter(e => {
-    const desc = (e.metadata?.description || '').toLowerCase();
+  const totalExpenses = expenses.reduce((sum: number, e: Tables<'metrics'>) => sum + e.value, 0);
+  const largeTransactions = expenses.filter((e: Tables<'metrics'>) => e.value > 20000);
+  const internalTransfers = expenses.filter((e: Tables<'metrics'>) => {
+    const desc = ((e.metadata as any)?.description || '').toLowerCase();
     return desc.includes('transfer to pot') || desc.includes('ifn/neosiexeddd');
   });
 
   // Category breakdown
-  const categoryMap = new Map();
+  const categoryMap = new Map<string, number>();
   for (const expense of expenses) {
-    const category = expense.metadata?.category || 'Other';
+    const category = (expense.metadata as any)?.category || 'Other';
     categoryMap.set(category, (categoryMap.get(category) || 0) + expense.value);
   }
 
@@ -301,7 +298,7 @@ async function analyzeFinanceData(supabase: any, userId: string) {
     .map(([category, amount]) => ({ category, amount }));
 
   // Date range
-  const dates = metrics.map(m => m.recorded_at.split('T')[0]).sort();
+  const dates = metrics.map((m: Tables<'metrics'>) => m.recorded_at!.split('T')[0]).sort();
   const dateRange = dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : 'No dates';
 
   // Potential issues
@@ -325,11 +322,11 @@ async function analyzeFinanceData(supabase: any, userId: string) {
     },
     income: {
       count: income.length,
-      total: income.reduce((sum, i) => sum + i.value, 0)
+      total: income.reduce((sum: number, i: Tables<'metrics'>) => sum + i.value, 0)
     },
     crypto: {
       count: crypto.length,
-      totalValue: crypto.reduce((sum, c) => sum + c.value, 0)
+      totalValue: crypto.reduce((sum: number, c: Tables<'metrics'>) => sum + c.value, 0)
     },
     dateRange,
     topCategories,

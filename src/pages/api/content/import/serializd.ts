@@ -1,27 +1,17 @@
 // src/pages/api/content/import/serializd.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../../lib/auth/simple-multi-user';
 import { EnrichedSerializdProcessor } from '../../../../lib/content/EnrichedSerializdProcessor';
 import type { ContentEntry } from '../../../../types/content';
+import type { Tables } from '../../../../types/supabase';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Authentication required'
-      }), { 
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    const supabase = serverAuth.supabase;
+  try {
+    
+    
 
     const formData = await request.formData();
     const file = formData.get('serializd_data') as File;
@@ -75,9 +65,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .eq('type', 'content');
 
     if (existingMetrics) {
-      existingMetrics.forEach(metric => {
-        if (metric.metadata?.tmdb_id) {
-          existingEntries.add(metric.metadata.tmdb_id);
+      existingMetrics.forEach((metric: Tables<'metrics'>) => {
+        if ((metric.metadata as any)?.tmdb_id) {
+          existingEntries.add((metric.metadata as any).tmdb_id);
         }
       });
     }
@@ -91,7 +81,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     console.log(`📊 Found ${processedEntries.length} total entries, ${newEntries.length} new entries (${processedEntries.length - newEntries.length} duplicates)`);
 
     // Convert ContentEntry objects to metrics table schema
-    const metricsEntries = newEntries.map(entry => ({
+    const metricsEntries = newEntries.map(entry => {
+      const metadata = entry.metadata as any;
+      return {
       user_id: user.id,
       type: 'content',
       value: entry.rating || 0,
@@ -115,35 +107,35 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         notes: entry.notes,
 
         // Enhanced metadata from enriched Serializd
-        tmdb_id: entry.metadata.tmdb_id,
+        tmdb_id: metadata.tmdb_id,
         tmdb_title: entry.title, // Store TMDB title
-        original_title: entry.metadata.original_title,
-        overview: entry.metadata.overview,
-        cast: Array.isArray(entry.metadata.cast) ? entry.metadata.cast.join(', ') : entry.metadata.cast,
-        crew: entry.metadata.crew,
-        imdb_id: entry.metadata.imdb_id,
-        popularity: entry.metadata.popularity,
-        vote_average: entry.metadata.vote_average,
-        vote_count: entry.metadata.vote_count,
-        adult: entry.metadata.adult,
-        homepage: entry.metadata.homepage,
-        created_by: entry.metadata.created_by,
-        keywords: Array.isArray(entry.metadata.keywords) ? entry.metadata.keywords.join(', ') : entry.metadata.keywords,
+        original_title: metadata.original_title,
+        overview: metadata.overview,
+        cast: Array.isArray(metadata.cast) ? metadata.cast.join(', ') : metadata.cast,
+        crew: metadata.crew,
+        imdb_id: metadata.imdb_id,
+        popularity: metadata.popularity,
+        vote_average: metadata.vote_average,
+        vote_count: metadata.vote_count,
+        adult: metadata.adult,
+        homepage: metadata.homepage,
+        created_by: metadata.created_by,
+        keywords: Array.isArray(metadata.keywords) ? metadata.keywords.join(', ') : metadata.keywords,
 
         // TV Show specific fields
-        season_episode: entry.metadata.season_episode,
-        seasons: entry.metadata.seasons,
-        is_episode: entry.metadata.is_episode,
-        is_season: entry.metadata.is_season,
+        season_episode: metadata.season_episode,
+        seasons: metadata.seasons,
+        is_episode: metadata.is_episode,
+        is_season: metadata.is_season,
 
         // Import tracking
-        serializd_id: entry.metadata.serializd_id,
-        source: entry.metadata.source,
-        watched_date: entry.metadata.watched_date,
-        review_text: entry.metadata.review_text,
-        imported_at: entry.metadata.imported_at
+        serializd_id: metadata.serializd_id,
+        source: metadata.source,
+        watched_date: metadata.watched_date,
+        review_text: metadata.review_text,
+        imported_at: metadata.imported_at
       }
-    }));
+    }});
 
     // Batch insert with error handling
     let imported = 0;

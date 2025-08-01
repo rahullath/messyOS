@@ -73,13 +73,14 @@ const llm = new ChatGoogleGenerativeAI({
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    const { data_dump, context } = await request.json();
-    
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
     const supabase = serverAuth.supabase;
+  try {
+    const { data_dump, context } = await request.json();
+    
+    
+    
 
     console.log('🗣️ Processing data dump from Rahul...');
 

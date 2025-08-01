@@ -1,15 +1,18 @@
 // src/pages/api/content/index.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import { requireAuth } from '../../../lib/auth/serverAuth';
 
 export const GET: APIRoute = async ({ url, cookies }) => {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
   try {
     // Simple auth check
     const user = requireAuth(cookies);
     console.log('✅ User authenticated:', user.email);
 
-    const supabase = serverAuth.supabase;
+    
     
     // Parse query parameters
     const searchParams = url.searchParams;

@@ -2,24 +2,15 @@
 // src/pages/api/finance/complete-fix.ts
 
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import { runCompleteFinanceDataFix } from '../../../lib/scripts/fixFinanceDataComplete';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = serverAuth.supabase;
+  try {
     
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
 
     const { action } = await request.json();
     

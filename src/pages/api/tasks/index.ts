@@ -1,17 +1,12 @@
 // src/pages/api/tasks/index.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ url, cookies }) => {
   try {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required' 
-      }), { status: 401 });
-    }
 
     const status = url.searchParams.get('status');
     const category = url.searchParams.get('category');
@@ -62,13 +57,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
     const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required' 
-      }), { status: 401 });
-    }
 
     const body = await request.json();
     console.log('Received task data:', body);
@@ -110,7 +98,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const processedContext = Array.isArray(context) ? context : [];
 
     // Build insert data with only valid fields
-    const insertData = {
+    const insertData: any = {
       user_id: user.id,
       title: title.trim(),
       category: category.trim(),

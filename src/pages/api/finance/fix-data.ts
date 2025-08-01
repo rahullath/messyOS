@@ -2,23 +2,16 @@
 // src/pages/api/finance/fix-data.ts
 
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import type { Tables } from '../../../types/supabase';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = serverAuth.supabase;
-  
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = serverAuth.supabase;
+  try {
     
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    
 
     const { action } = await request.json();
     
@@ -249,11 +242,11 @@ async function generateSummary(supabase: any, userId: string) {
 
   if (!metrics) return {};
 
-  const expenses = metrics.filter(m => m.type === 'expense');
-  const crypto = metrics.filter(m => m.type === 'crypto_value');
+  const expenses = metrics.filter((m: Tables<'metrics'>) => m.type === 'expense');
+  const crypto = metrics.filter((m: Tables<'metrics'>) => m.type === 'crypto_value');
   
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.value, 0);
-  const totalCrypto = crypto.reduce((sum, c) => sum + c.value, 0);
+  const totalExpenses = expenses.reduce((sum: number, e: Tables<'metrics'>) => sum + e.value, 0);
+  const totalCrypto = crypto.reduce((sum: number, c: Tables<'metrics'>) => sum + c.value, 0);
   
   // Category breakdown
   const categoryMap = new Map<string, number>();

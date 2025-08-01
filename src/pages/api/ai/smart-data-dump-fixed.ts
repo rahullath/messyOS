@@ -1,6 +1,6 @@
 // Fixed Smart Data Dumping API - Handles workout data properly
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 
 const llm = new ChatGoogleGenerativeAI({
@@ -10,22 +10,13 @@ const llm = new ChatGoogleGenerativeAI({
 });
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
+    
     const { data_dump, context } = await request.json();
     
-    // Get authenticated user
-    const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Authentication required'
-      }), { status: 401 });
-    }
 
     console.log('🗣️ Processing fixed data dump from Rahul...');
     console.log('Input:', data_dump);
@@ -199,7 +190,7 @@ async function parseHealthDataManually(text: string) {
   }
   
   // Add habit for completing workout
-  if (data.health.some(h => h.type === 'workout')) {
+  if (data.health.some((h: any) => h.type === 'workout')) {
     data.habits.push({
       name: 'Gym workout',
       completed: true,

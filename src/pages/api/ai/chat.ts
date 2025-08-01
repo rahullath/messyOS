@@ -1,13 +1,13 @@
 // src/pages/api/ai/chat.ts
 import type { APIRoute } from 'astro';
 import { MessyOSAIAgent } from '../../../lib/intelligence/meshos-ai-agent';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
     const { message, conversationHistory } = await request.json();
 
     if (!message) {
@@ -17,16 +17,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Get authenticated user
-    const supabase = serverAuth.supabase;
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
+    
 
     console.log(`💬 Chat initiated with user ${user.id}`);
 

@@ -1,9 +1,12 @@
 // src/pages/api/habits/[id]/log.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, params, cookies }) => {
-  const supabase = serverAuth.supabase;
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  
   
   const habitId = params.id as string;
   

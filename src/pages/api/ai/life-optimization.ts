@@ -1,14 +1,15 @@
 import type { APIRoute } from 'astro';
 import { runLifeOptimizer } from '../../../agentic-life-optimizer';
-import { createServerAuth } from '../../../lib/auth/multi-user';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 // This endpoint can be triggered by a cron job (e.g., on Vercel or Render)
 // to run the proactive life optimization agent periodically.
 export const GET: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
+    
     // Although this is a server-to-server call via cron,
     // we can still check for a user if needed, or run for all users.
     // For now, we assume a generic run.

@@ -1,9 +1,12 @@
 import type { APIRoute } from 'astro';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+
 export const POST: APIRoute = async ({ request, cookies }) => {
-  try {
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
+  try {
+    
     // Forward the request to the specific Serializd import API route
     const response = await fetch('http://localhost:4321/api/content/import/serializd', {
       method: 'POST',

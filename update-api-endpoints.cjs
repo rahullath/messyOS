@@ -29,69 +29,52 @@ function updateApiFile(filePath) {
   console.log(`Updating: ${filePath}`);
   
   let content = fs.readFileSync(filePath, 'utf8');
+  
+  // Revert previous changes to start fresh
+  content = content.replace(/import { createServerAuth } from '..\/..\/..\/lib\/auth\/multi-user';/g, "import { createServerClient } from '../../../lib/supabase/server';");
+  content = content.replace(/import { createServerAuth } from '..\/..\/..\/..\/lib\/auth\/multi-user';/g, "import { createServerClient } from '../../../../lib/supabase/server';");
+  content = content.replace(/const supabase = serverAuth.supabase;/g, 'const supabase = createServerClient(cookies);');
+  content = content.replace(/\/\/ Get authenticated user\s+const serverAuth = createServerAuth\(cookies\);\s+const user = await serverAuth.requireAuth\(\);/g, '');
+
   let updated = false;
-  
-  // Skip if already updated
-  if (content.includes('createServerAuth')) {
-    console.log(`  ✓ Already updated`);
-    return;
-  }
-  
+
   // 1. Update imports
-  const oldImport = `import { createServerClient } from '../../../lib/supabase/server';`;
+  const oldImport1 = `import { createServerClient } from '../../../lib/supabase/server';`;
   const oldImport2 = `import { createServerClient } from '../../../../lib/supabase/server';`;
   const oldImport3 = `import { createServerClient } from '../../lib/supabase/server';`;
   
-  if (content.includes(oldImport)) {
-    content = content.replace(oldImport, `import { createServerAuth } from '../../../lib/auth/multi-user';`);
+  if (content.includes(oldImport1)) {
+    content = content.replace(oldImport1, `import { createServerAuth } from '../../../lib/auth/simple-multi-user';`);
     updated = true;
   } else if (content.includes(oldImport2)) {
-    content = content.replace(oldImport2, `import { createServerAuth } from '../../../../lib/auth/multi-user';`);
+    content = content.replace(oldImport2, `import { createServerAuth } from '../../../../lib/auth/simple-multi-user';`);
     updated = true;
   } else if (content.includes(oldImport3)) {
-    content = content.replace(oldImport3, `import { createServerAuth } from '../../lib/auth/multi-user';`);
+    content = content.replace(oldImport3, `import { createServerAuth } from '../../lib/auth/simple-multi-user';`);
     updated = true;
   }
-  
-  // 2. Add auth setup after export const POST/GET = async
-  const exportRegex = /(export const (?:POST|GET|PUT|DELETE): APIRoute = async \(\{ (?:request, )?cookies[^}]*\}\) => \{[\s\S]*?try \{)/;
+
+  // 2. Add auth setup
+  const exportRegex = /(export const (?:POST|GET|PUT|DELETE): APIRoute = async \({[^}]*cookies[^}]*\}\) => \{)/;
   const match = content.match(exportRegex);
-  
+
   if (match) {
-    const beforeTry = match[1];
-    if (!beforeTry.includes('createServerAuth')) {
+    const functionBody = content.substring(match.index + match[0].length);
+    if (!functionBody.includes('createServerAuth')) {
       const authSetup = `
-    // Get authenticated user
     const serverAuth = createServerAuth(cookies);
-    const user = await serverAuth.requireAuth();`;
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;`;
       
-      content = content.replace(match[1], match[1] + authSetup);
+      content = content.replace(match[0], match[0] + authSetup);
+      
+      // Remove old supabase client creation
+      content = content.replace(/const supabase = createServerClient\(cookies\);/g, '');
+      
       updated = true;
     }
   }
-  
-  // 3. Replace supabase client creation
-  content = content.replace(/const supabase = createServerClient\(cookies\);/g, 'const supabase = serverAuth.supabase;');
-  
-  // 4. Add error handling
-  const catchRegex = /} catch \(error[^}]*\) \{/;
-  if (content.match(catchRegex) && !content.includes('Authentication required')) {
-    content = content.replace(catchRegex, `} catch (error: any) {
-    // Handle auth errors
-    if (error.message === 'Authentication required') {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Please sign in to continue'
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    console.error('API Error:', error);`);
-    updated = true;
-  }
-  
+
   if (updated) {
     fs.writeFileSync(filePath, content, 'utf8');
     console.log(`  ✓ Updated successfully`);
