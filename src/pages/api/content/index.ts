@@ -1,6 +1,6 @@
 // src/pages/api/content/index.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 import { requireAuth } from '../../../lib/auth/serverAuth';
 
 export const GET: APIRoute = async ({ url, cookies }) => {
@@ -9,7 +9,7 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     const user = requireAuth(cookies);
     console.log('✅ User authenticated:', user.email);
 
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     
     // Parse query parameters
     const searchParams = url.searchParams;

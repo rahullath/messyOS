@@ -32,7 +32,19 @@ export const GET: APIRoute = async ({ params }) => {
         const movieData = await movieResponse.json();
         posterPath = movieData.poster_path;
       }
-    } catch (error) {
+    } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
       console.log('Not a movie, trying TV...');
     }
     

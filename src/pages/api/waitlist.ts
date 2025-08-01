@@ -20,37 +20,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     const supabase = createServerClient(cookies);
 
-    // Check if email already exists
-    const { data: existing } = await supabase
-      .from('waitlist')
-      .select('id')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    if (existing) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'This email is already on the waitlist'
-      }), {
-        status: 409,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
     // Add to waitlist
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('waitlist')
       .insert({
         email: email.toLowerCase(),
         interest_area: interest || 'everything',
         referrer: request.headers.get('referer') || 'direct',
         user_agent: request.headers.get('user-agent') || 'unknown'
-      })
-      .select()
-      .single();
+      });
 
     if (error) {
       console.error('Waitlist insert error:', error);
+      // Handle unique email constraint violation
+      if (error.code === '23505') {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'This email is already on the waitlist.'
+        }), {
+          status: 409, // Conflict
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
       return new Response(JSON.stringify({
         success: false,
         error: 'Failed to join waitlist. Please try again.'
@@ -65,8 +57,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: 'Successfully joined the waitlist!',
-      position: data.id // Could calculate actual position later
+      message: 'Successfully joined the waitlist!'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

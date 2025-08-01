@@ -1,16 +1,19 @@
 // API endpoint for data understanding and quality analysis
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 import { generateDataUnderstandingReport, getDataInsights } from '../../../lib/intelligence/data-understanding-engine';
 import { preprocessUserData } from '../../../lib/intelligence/data-preprocessor';
 
 export const GET: APIRoute = async ({ request, cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const url = new URL(request.url);
     const action = url.searchParams.get('action') || 'full_report';
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -94,7 +97,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { action, options = {} } = body;
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

@@ -1,6 +1,6 @@
 // Crypto Portfolio Tracker with Real-time Data and Investment Suggestions
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 
 interface CryptoPrice {
   symbol: string;
@@ -31,11 +31,14 @@ interface InvestmentSuggestion {
 
 export const GET: APIRoute = async ({ request, cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const url = new URL(request.url);
     const action = url.searchParams.get('action') || 'portfolio';
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -96,7 +99,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const { action, data } = await request.json();
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

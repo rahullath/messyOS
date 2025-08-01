@@ -1,12 +1,15 @@
 // src/pages/api/ai/weekly-report.ts
 import type { APIRoute } from 'astro';
 import { MessyOSAIAgent } from '../../../lib/intelligence/meshos-ai-agent';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 
 export const GET: APIRoute = async ({ cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     // Get user from session
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session?.user) {
@@ -31,7 +34,19 @@ export const GET: APIRoute = async ({ cookies }) => {
       headers: { 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     console.error('Weekly report error:', error);
     return new Response(JSON.stringify({ 
       error: 'Failed to generate weekly report',

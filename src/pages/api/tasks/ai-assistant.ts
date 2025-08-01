@@ -1,11 +1,14 @@
 // src/pages/api/tasks/ai-assistant.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    const supabase = createServerClient(cookies);
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

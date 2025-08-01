@@ -1,11 +1,14 @@
 import type { APIRoute } from 'astro';
 import { runLifeOptimizer } from '../../../agentic-life-optimizer';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 
 // This endpoint can be triggered by a cron job (e.g., on Vercel or Render)
 // to run the proactive life optimization agent periodically.
 export const GET: APIRoute = async ({ request, cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     // Although this is a server-to-server call via cron,
     // we can still check for a user if needed, or run for all users.
     // For now, we assume a generic run.
@@ -23,7 +26,19 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       headers: { 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
+  } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     console.error('Life optimization API error:', error);
     
     return new Response(JSON.stringify({

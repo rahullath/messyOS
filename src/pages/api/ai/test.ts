@@ -3,6 +3,9 @@ import type { APIRoute } from 'astro';
 
 export const GET: APIRoute = async ({ cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     // Test environment variables
     const hasGeminiKey = !!process.env.GEMINI_API_KEY;
     
@@ -11,7 +14,19 @@ export const GET: APIRoute = async ({ cookies }) => {
     try {
       const { ChatGoogleGenerativeAI } = await import('@langchain/google-genai');
       langchainStatus = 'available';
-    } catch (error) {
+    } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
       langchainStatus = 'error: ' + error.message;
     }
 
@@ -19,7 +34,7 @@ export const GET: APIRoute = async ({ cookies }) => {
     let supabaseStatus = 'unknown';
     try {
       const { createServerClient } = await import('../../../lib/supabase/server');
-      const supabase = createServerClient(cookies);
+      const supabase = serverAuth.supabase;
       const { data, error } = await supabase.from('habits').select('count').limit(1);
       supabaseStatus = error ? 'error: ' + error.message : 'connected';
     } catch (error) {

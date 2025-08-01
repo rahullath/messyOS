@@ -1,9 +1,9 @@
 // src/pages/api/health/dashboard.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 
 export const GET: APIRoute = async ({ url, cookies }) => {
-  const supabase = createServerClient(cookies);
+  const supabase = serverAuth.supabase;
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
@@ -152,6 +152,18 @@ export const GET: APIRoute = async ({ url, cookies }) => {
     });
     
   } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     console.error('Health dashboard API error:', error);
     return new Response(JSON.stringify({ 
       error: 'Failed to fetch health data', 

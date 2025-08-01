@@ -1,9 +1,9 @@
 // src/pages/api/habits/[id]/log.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../../lib/supabase/server';
+import { createServerAuth } from '../../../../lib/auth/multi-user';
 
 export const POST: APIRoute = async ({ request, params, cookies }) => {
-  const supabase = createServerClient(cookies);
+  const supabase = serverAuth.supabase;
   
   const habitId = params.id as string;
   
@@ -61,6 +61,18 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
     });
 
   } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

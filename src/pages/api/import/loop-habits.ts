@@ -4,6 +4,9 @@ import { importLoopHabitsData } from '../../../lib/import/loopHabits';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const formData = await request.formData();
     const userId = formData.get('userId') as string;
     const habitsFile = formData.get('habits') as File;
@@ -29,6 +32,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
     
   } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     return new Response(JSON.stringify({ 
       error: 'Import failed', 
       details: error.message 

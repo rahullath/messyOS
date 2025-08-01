@@ -1,6 +1,9 @@
 import type { APIRoute } from 'astro';
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     // Forward the request to the specific Serializd import API route
     const response = await fetch('http://localhost:4321/api/content/import/serializd', {
       method: 'POST',
@@ -15,6 +18,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return response;
 
   } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     console.error('❌ Content import proxy error:', error);
     return new Response(JSON.stringify({
       success: false,

@@ -1,9 +1,9 @@
 // src/pages/api/habits/recalculate-streaks.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 
 export const POST: APIRoute = async ({ cookies }) => {
-  const supabase = createServerClient(cookies);
+  const supabase = serverAuth.supabase;
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
@@ -15,6 +15,9 @@ export const POST: APIRoute = async ({ cookies }) => {
   }
 
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     console.log('🔄 Recalculating streaks for user:', user.id);
     
     // Get all habits for this user
@@ -122,6 +125,18 @@ export const POST: APIRoute = async ({ cookies }) => {
     });
     
   } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     console.error('Error recalculating streaks:', error);
     return new Response(JSON.stringify({ 
       error: 'Failed to recalculate streaks',

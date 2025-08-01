@@ -2,13 +2,16 @@
 // src/pages/api/finance/complete-fix.ts
 
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 import { runCompleteFinanceDataFix } from '../../../lib/scripts/fixFinanceDataComplete';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = createServerClient(cookies);
+  const supabase = serverAuth.supabase;
   
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
@@ -51,6 +54,18 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
     
   } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     console.error('❌ Complete fix error:', error);
     return new Response(JSON.stringify({
       success: false,

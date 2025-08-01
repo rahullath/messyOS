@@ -1,6 +1,6 @@
 // Health Data OCR Processor for Huawei Watch Screenshots
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 
 interface HealthDataExtraction {
@@ -47,13 +47,16 @@ const llm = new ChatGoogleGenerativeAI({
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const formData = await request.formData();
     const image = formData.get('image') as File;
     const dataType = formData.get('data_type') as string; // 'sleep', 'heart_rate', 'stress', 'steps', 'workout'
     const textData = formData.get('text_data') as string; // If user provides OCR text directly
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
@@ -381,7 +384,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     const action = url.searchParams.get('action') || 'recent';
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {

@@ -2,7 +2,6 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwind from '@astrojs/tailwind';
 import vercel from '@astrojs/vercel';
-import { onRequest } from './src/middleware'; // Import the middleware
 
 export default defineConfig({
   integrations: [
@@ -13,9 +12,7 @@ export default defineConfig({
   ],
   output: 'server',
   adapter: vercel(),
-  // Add the middleware to the Astro configuration
-  // This ensures that onRequest is called for every request
-  // before page rendering.
+  // Middleware is now automatically detected from src/middleware.ts
   // See: https://docs.astro.build/en/guides/middleware/
   scopedStyleStrategy: 'where', // Or 'attribute'
 });

@@ -172,7 +172,7 @@ const INTEGRATIONS = [
   }
 ];
 
-export default function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
+export default function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState(0);
   const [preferences, setPreferences] = useState({
     enabledModules: ['habits', 'tasks', 'health', 'finance'],
@@ -207,7 +207,9 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
         });
 
       if (error) throw error;
-      onComplete();
+      // Dispatch a custom event instead of calling a prop
+      const event = new CustomEvent('onboardingComplete');
+      window.dispatchEvent(event);
     } catch (error) {
       console.error('Failed to save preferences:', error);
     }

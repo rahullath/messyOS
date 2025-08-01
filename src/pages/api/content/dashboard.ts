@@ -1,11 +1,14 @@
 // src/pages/api/content/dashboard.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 
 export const GET: APIRoute = async ({ cookies }) => {
-  const supabase = createServerClient(cookies);
+  const supabase = serverAuth.supabase;
   
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -133,6 +136,18 @@ export const GET: APIRoute = async ({ cookies }) => {
     });
 
   } catch (error: any) {
+    // Handle auth errors
+    if (error.message === 'Authentication required') {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Please sign in to continue'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    
+    console.error('API Error:', error);
     console.error('❌ Content dashboard error:', error);
     return new Response(JSON.stringify({
       success: false,

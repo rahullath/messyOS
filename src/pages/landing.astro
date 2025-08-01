@@ -41,12 +41,13 @@ import Layout from '../layouts/Layout.astro';
           <form id="waitlistForm" class="space-y-4">
             <input 
               type="email" 
+              name="email"
               placeholder="Enter your email" 
               required
               class="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
             />
-            <select class="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400">
-              <option value="" disabled selected>What do you want to optimize most?</option>
+            <select name="interest" class="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="everything" disabled selected>What do you want to optimize most?</option>
               <option value="habits">Habits & Goals</option>
               <option value="health">Health & Wellness</option>
               <option value="finance">Finance & Investments</option>
@@ -263,9 +264,9 @@ import Layout from '../layouts/Layout.astro';
     // Waitlist form handling
     document.getElementById('waitlistForm')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
-      const email = formData.get('email');
-      const interest = formData.get('interest');
+      const form = e.target as HTMLFormElement;
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      const interest = (form.elements.namedItem('interest') as HTMLSelectElement).value;
       
       try {
         const response = await fetch('/api/waitlist', {
@@ -274,11 +275,13 @@ import Layout from '../layouts/Layout.astro';
           body: JSON.stringify({ email, interest })
         });
         
+        const result = await response.json();
+
         if (response.ok) {
-          alert('🎉 Welcome to the waitlist! Check your email for confirmation.');
-          e.target.reset();
+          alert('🎉 Welcome to the waitlist! You will be redirected to the onboarding.');
+          window.location.href = '/onboarding';
         } else {
-          alert('Something went wrong. Please try again.');
+          alert(`Error: ${result.error || 'Something went wrong. Please try again.'}`);
         }
       } catch (error) {
         alert('Something went wrong. Please try again.');

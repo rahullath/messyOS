@@ -1,13 +1,16 @@
 // src/pages/api/content/import/serializd.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../../lib/supabase/server';
+import { createServerAuth } from '../../../../lib/auth/multi-user';
 import { EnrichedSerializdProcessor } from '../../../../lib/content/EnrichedSerializdProcessor';
 import type { ContentEntry } from '../../../../types/content';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = createServerClient(cookies);
+  const supabase = serverAuth.supabase;
   
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

@@ -1,6 +1,6 @@
 // Enhanced Smart Data Dumping API - Better parsing for workout and health data
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../../lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/multi-user';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { z } from 'zod';
 
@@ -74,10 +74,13 @@ const llm = new ChatGoogleGenerativeAI({
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
+    // Get authenticated user
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
     const { data_dump, context } = await request.json();
     
     // Get authenticated user
-    const supabase = createServerClient(cookies);
+    const supabase = serverAuth.supabase;
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
