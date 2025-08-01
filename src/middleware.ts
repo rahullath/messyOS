@@ -12,10 +12,6 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
   const { pathname } = url;
 
   if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/api')) {
-    // If user is logged in and on a public page, redirect to dashboard
-    if (user && pathname !== '/auth/callback') {
-      return redirect(DASHBOARD_ROUTE);
-    }
     return next();
   }
 
