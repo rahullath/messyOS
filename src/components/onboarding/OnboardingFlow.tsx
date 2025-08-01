@@ -1,6 +1,6 @@
 // src/components/onboarding/OnboardingFlow.tsx
 import React, { useState } from 'react';
-import { createBrowserClient } from '../../lib/supabase/client';
+import { supabase } from '../../lib/supabase/client';
 
 interface OnboardingStep {
   id: string;
@@ -183,7 +183,7 @@ export default function OnboardingFlow({ onComplete }: { onComplete: () => void 
     selectedIntegrations: [] as string[]
   });
 
-  const supabase = createBrowserClient();
+  // Using the supabase client imported above
 
   const updatePreferences = (updates: Partial<typeof preferences>) => {
     setPreferences(prev => ({ ...prev, ...updates }));
