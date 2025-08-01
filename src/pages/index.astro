@@ -1,16 +1,17 @@
 ---
 // src/pages/index.astro - ENHANCED DASHBOARD
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { createServerClient } from '../lib/supabase/server';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
 
-const supabase = createServerClient(Astro.cookies);
-
-// Get the user from session
-const { data: { user } } = await supabase.auth.getUser();
+// Check authentication
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
 
 if (!user) {
-  return Astro.redirect('/login');
+  return Astro.redirect('/landing');
 }
+
+const supabase = serverAuth.supabase;
 
 // Fetch comprehensive dashboard data
 const { data: habits, error: habitsError } = await supabase

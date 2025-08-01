@@ -1,0 +1,52 @@
+---
+// src/pages/onboarding.astro - User Onboarding Flow
+import Layout from '../layouts/Layout.astro';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+
+// Require authentication
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// Check if user has already completed onboarding
+const { data: preferences } = await serverAuth.supabase
+  .from('user_preferences')
+  .select('*')
+  .eq('user_id', user.id)
+  .single();
+
+// If user has preferences, they've completed onboarding
+if (preferences) {
+  return Astro.redirect('/');
+}
+---
+
+<Layout title="Welcome to messyOS - Setup">
+  <div id="onboarding-container">
+    <!-- OnboardingFlow component will be mounted here -->
+  </div>
+
+  <script>
+    import OnboardingFlow from '../components/onboarding/OnboardingFlow.tsx';
+    import { createRoot } from 'react-dom/client';
+    import React from 'react';
+
+    // Mount the onboarding flow
+    const container = document.getElementById('onboarding-container');
+    const root = createRoot(container);
+
+    const handleOnboardingComplete = () => {
+      // Redirect to main dashboard after onboarding
+      window.location.href = '/';
+    };
+
+    root.render(
+      React.createElement(OnboardingFlow, {
+        onComplete: handleOnboardingComplete
+      })
+    );
+  </script>
+</Layout>

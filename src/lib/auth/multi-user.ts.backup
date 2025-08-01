@@ -1,5 +1,6 @@
 // src/lib/auth/multi-user.ts
-import { createBrowserClient, createServerClient } from '../supabase/client';
+import { supabase as browserSupabase } from '../supabase/client';
+import { createServerClient } from '../supabase/server';
 import type { Session, User } from '@supabase/supabase-js';
 
 export interface AuthUser {
@@ -26,7 +27,7 @@ export interface UserSubscription {
 }
 
 export class MultiUserAuth {
-  private supabase = createBrowserClient();
+  private supabase = browserSupabase;
   
   /**
    * Get current authenticated user with preferences and subscription
@@ -196,7 +197,7 @@ export class MultiUserAuth {
  * Server-side authentication utilities
  */
 export class ServerAuth {
-  private supabase: any;
+  public supabase: any;
 
   constructor(cookies: any) {
     this.supabase = createServerClient(cookies);
