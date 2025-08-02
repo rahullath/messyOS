@@ -1,0 +1,52 @@
+messyOS- 
+
+plans for execution as of 31/7
+
+- waitlist page, contact us page, etc - like a legit utility product landing page
+- 100% customizable by the user - choose what you want to use messyOS for 
+
+Example - 
+As of today - we have  Habits, Tasks, Health, Finance and Content to be tracked, analyzed, and optimized for life.
+
+The AI Agent can access all the data uploaded in this and talk to you everyday 
+
+--
+since this is THE everything app - it'll allow you to add
+suppose news (using reuters or some other neutral reporting site), connect to your swiggy account, blinkit account, zepto account - for shopping patterns etc, connect to your GitHub if you are a dev, connect to your notion if you already use it or any other to-do app you're using, gmail integration - using gemini to streamline and summarize your weekly mail and auto add tasks, integrate a tracking tool (like aftership) to automatically track all your orders in one place
+
+the AI model being used is the only concern - I would like to import directly the user's existing account - chatgpt has become a therapist for everyone - but without proper knowledge of prompting it will just feed into your existing ideas. make this therapist an actual agentic manager of your life.
+
+connect outlook, gym (cultfit or whatever) , linkedin, work portals (maybe jira, Trello, or something) 
+
+---
+
+the main issue is data - (when concerned with users other than me) - how will they trust my platform to upload so much data into it? I need to figure out a strong encryption thing later on. but even if everyone gives consent - there comes the issue of processing data. all of it is so vague and cannot be processed using simple code that I have written, by meshOS uses langchain and langgraph, gemini 2.5 pro credits etc - but it is still struggling to deal with properly structured data itself - dumping vague context dumps is ideally what I want users to do - everyday just yap on the notepad page or something about their day - and let the agent understand what you need - ask questions if needed , and create tasks
+
+- you have to finish an article? the agent will suggest a pomodoro technique - ask you to choose when to start - and run the timer etc - validate your efforts even if failed
+
+everyday this agent will help you improve your life and get better at everything you want to do
+
+-- 
+duolingo for example has been really successful in gamifying learning - but the xp points crap is not really what I am trying to do here - but would want a similar result in the user's life. 
+
+no bloatware, you choose the theme, colours of the ui (from options ) - you choose the features (out of these 20-30 things I have talked about)- so that your screen only has things that concern you. 
+
+free trial for all users in waitlist - autopay upi to subscribe - $1/month auto deduct after 30 day trial
+
+--
+these are all extremely far fetched ideas - I started building this in April (22 to be exact) - for myself. But it's already August 1st now. and I haven't been able to optimize my own life-  so it is too ambitious - but something I want to do - without consuming my entire life for it - but build and ship this product - it is already live on vercel, railway etc  by ship I mean usable with clear instructions 
+
+for example -
+habits - currently requires an import a csv file from loop habits to look good. I can make a manual new habit thing not hard but still just for context
+
+tasks- I think works fine - but very boring - nothing that makes it unique - it starts a timer on it's own etc but still has a very low chance of people using it to manage tasks 
+
+health - requires very specific imports ( of txt files with sleep, hearrate and steps data) which no one other than me would have
+
+finance - requires bank statement (in the same format as my own bank's statement lol) so again not multi user friendly
+
+content - serializd reviews txt files, serializd watched files (both I got using a python+selenium script) - and tmdb to show posters - it's the most wack of all 
+
+ai agent itself is not bad - but again can't help me much without good data - and feels underwhelming compared to chatting with gpt or claude or any other multi billion dollar company's llm
+
+ 

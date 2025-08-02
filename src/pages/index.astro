@@ -3,12 +3,13 @@
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerAuth } from '../lib/auth/simple-multi-user';
 
-// Check authentication
+// Get authenticated user (middleware ensures authentication)
 const serverAuth = createServerAuth(Astro.cookies);
 const user = await serverAuth.getUser();
 
 if (!user) {
-  return Astro.redirect('/landing');
+  // This shouldn't happen due to middleware, but just in case
+  return Astro.redirect('/login');
 }
 
 const supabase = serverAuth.supabase;

@@ -1,74 +1,43 @@
 // src/pages/api/waitlist.ts
 import type { APIRoute } from 'astro';
-import { createServerClient } from '../../lib/supabase/server';
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request }) => {
   try {
-    const { email, interest } = await request.json();
+    const body = await request.json();
+    const { email, interest } = body;
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Please provide a valid email address'
-      }), {
+    if (!email) {
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Email is required' 
+      }), { 
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const supabase = createServerClient(cookies);
+    // For now, just log the waitlist entry
+    // In production, you'd save this to a database
+    console.log('Waitlist signup:', { email, interest, timestamp: new Date().toISOString() });
 
-    // Add to waitlist
-    const { error } = await supabase
-      .from('waitlist')
-      .insert({
-        email: email.toLowerCase(),
-        interest_area: interest || 'everything',
-        referrer: request.headers.get('referer') || 'direct',
-        user_agent: request.headers.get('user-agent') || 'unknown'
-      });
+    // TODO: Save to database
+    // const { error } = await supabase
+    //   .from('waitlist')
+    //   .insert({ email, interest, created_at: new Date().toISOString() });
 
-    if (error) {
-      console.error('Waitlist insert error:', error);
-      // Handle unique email constraint violation
-      if (error.code === '23505') {
-        return new Response(JSON.stringify({
-          success: false,
-          error: 'This email is already on the waitlist.'
-        }), {
-          status: 409, // Conflict
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-      
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Failed to join waitlist. Please try again.'
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    // TODO: Send welcome email (implement with your email service)
-    // await sendWelcomeEmail(email);
-
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Successfully joined the waitlist!'
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: 'Successfully joined waitlist!' 
     }), {
-      status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
-    console.error('Waitlist API error:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: 'Something went wrong. Please try again.'
-    }), {
+  } catch (error: any) {
+    console.error('Waitlist error:', error);
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: 'Failed to join waitlist' 
+    }), { 
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });

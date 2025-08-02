@@ -13,25 +13,25 @@ if (user) {
 ---
 
 <Layout title="Sign In - messyOS">
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-6">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-6">
     <div class="max-w-md w-full space-y-8">
       
       <!-- Header -->
       <div class="text-center">
         <h1 class="text-4xl font-bold text-white mb-2">
-          <span class="text-purple-400">messy</span>OS
+          <span class="text-cyan-400">messy</span>OS
         </h1>
         <p class="text-gray-300">Your AI-powered life optimization system</p>
       </div>
 
       <!-- Auth Form -->
-      <div class="bg-black/20 backdrop-blur-sm border border-white/20 rounded-xl p-8">
+      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-8">
         
         <!-- Toggle Buttons -->
         <div class="flex mb-6 bg-gray-800 rounded-lg p-1">
           <button 
             id="signin-tab" 
-            class="flex-1 py-2 px-4 text-center rounded-md transition-colors bg-purple-600 text-white"
+            class="flex-1 py-2 px-4 text-center rounded-md transition-colors bg-cyan-600 text-white"
           >
             Sign In
           </button>
@@ -51,7 +51,7 @@ if (user) {
               type="email" 
               name="email" 
               required
-              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               placeholder="Enter your email"
             />
           </div>
@@ -62,14 +62,14 @@ if (user) {
               type="password" 
               name="password" 
               required
-              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               placeholder="Enter your password"
             />
           </div>
 
           <button 
             type="submit"
-            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+            class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
           >
             Sign In
           </button>
@@ -83,7 +83,7 @@ if (user) {
               type="email" 
               name="email" 
               required
-              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               placeholder="Enter your email"
             />
           </div>
@@ -95,7 +95,7 @@ if (user) {
               name="password" 
               required
               minlength="6"
-              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               placeholder="Create a password (6+ characters)"
             />
           </div>
@@ -106,14 +106,14 @@ if (user) {
               type="password" 
               name="confirmPassword" 
               required
-              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              class="w-full px-4 py-3 rounded-lg bg-gray-800 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               placeholder="Confirm your password"
             />
           </div>
 
           <button 
             type="submit"
-            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+            class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
           >
             Create Account
           </button>
@@ -137,7 +137,7 @@ if (user) {
 
         <!-- Links -->
         <div class="mt-6 text-center space-y-2">
-          <a href="#" id="forgot-password" class="text-sm text-purple-400 hover:text-purple-300">
+          <a href="#" id="forgot-password" class="text-sm text-cyan-400 hover:text-cyan-300">
             Forgot your password?
           </a>
           <br>
@@ -162,18 +162,18 @@ if (user) {
     const signupForm = document.getElementById('signup-form');
 
     function showSignIn() {
-      signinTab.classList.add('bg-purple-600', 'text-white');
+      signinTab.classList.add('bg-cyan-600', 'text-white');
       signinTab.classList.remove('text-gray-400');
-      signupTab.classList.remove('bg-purple-600', 'text-white');
+      signupTab.classList.remove('bg-cyan-600', 'text-white');
       signupTab.classList.add('text-gray-400');
       signinForm.classList.remove('hidden');
       signupForm.classList.add('hidden');
     }
 
     function showSignUp() {
-      signupTab.classList.add('bg-purple-600', 'text-white');
+      signupTab.classList.add('bg-cyan-600', 'text-white');
       signupTab.classList.remove('text-gray-400');
-      signinTab.classList.remove('bg-purple-600', 'text-white');
+      signinTab.classList.remove('bg-cyan-600', 'text-white');
       signinTab.classList.add('text-gray-400');
       signupForm.classList.remove('hidden');
       signinForm.classList.add('hidden');

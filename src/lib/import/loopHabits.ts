@@ -211,11 +211,22 @@ function parseCheckmarksCSV(csv: string) {
       
       const rawValue = parseInt(values[j]) || 0;
       
-      // UPDATED: Handle Loop Habits values correctly
-      if (habitName.toLowerCase().includes('vap') || 
-          habitName.toLowerCase().includes('no ') ||
-          habitName.toLowerCase().includes('quit')) {
-        // For "break" habits: 
+      // FIXED: Handle Loop Habits values correctly for vaping
+      if (habitName.toLowerCase().includes('vap')) {
+        // For vaping habits: 0 puffs = success, any puffs = failure
+        // Loop Habits: 0 = no entry, 2 = completed, 3 = skipped
+        if (rawValue === 2) {
+          data[habitName][dateStr] = 0; // Success (0 puffs)
+        } else if (rawValue === 0) {
+          data[habitName][dateStr] = 1; // Failure (had puffs)
+        } else if (rawValue === 3) {
+          data[habitName][dateStr] = 3; // Skip
+        } else {
+          data[habitName][dateStr] = 0; // Default to success (no puffs)
+        }
+      } else if (habitName.toLowerCase().includes('no ') ||
+                 habitName.toLowerCase().includes('quit')) {
+        // For other "break" habits: 
         // CSV 0 = failure, CSV 2 = success, CSV 3 = skip
         if (rawValue === 0) {
           data[habitName][dateStr] = 0; // Failure
@@ -338,14 +349,14 @@ async function calculateAllStreaks(userId: string, cookies: AstroCookies) {
       const lower = habitName.toLowerCase();
       
       if (lower.includes('vap')) {
-        // For vaping: 0 puffs = success, any puffs = failure
+        // For vaping: database value 0 = success (0 puffs), 1 = failure (had puffs)
         return value === 0;
       } else if (habitType === 'break') {
-        // For other "break" habits like "No Pot": any entry > 0 = success
-        return value > 0;
+        // For other "break" habits: database value 1 = success, 0 = failure
+        return value === 1;
       } else {
-        // For "build" habits: any entry > 0 = success
-        return value > 0;
+        // For "build" habits: database value 1 = success, 0 = failure
+        return value === 1;
       }
     };
     

@@ -12,17 +12,7 @@ if (!user) {
   return Astro.redirect('/login');
 }
 
-// Check if user has already completed onboarding
-const { data: preferences } = await serverAuth.supabase
-  .from('user_preferences')
-  .select('*')
-  .eq('user_id', user.id)
-  .single();
-
-// If user has preferences, they've completed onboarding
-if (preferences) {
-  return Astro.redirect('/');
-}
+// Note: Middleware will handle redirecting users who have already completed onboarding
 ---
 
 <Layout title="Welcome to messyOS - Setup">
@@ -34,7 +24,17 @@ if (preferences) {
 </Layout>
 
 <script>
+  // Listen for onboarding completion and redirect
   window.addEventListener('onboardingComplete', () => {
+    console.log('🎉 Onboarding completed, redirecting to dashboard...');
     window.location.href = '/';
+  });
+  
+  // Add debugging for page load
+  console.log('📄 Onboarding page loaded');
+  
+  // Check if user is authenticated
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🔍 Checking authentication status...');
   });
 </script>

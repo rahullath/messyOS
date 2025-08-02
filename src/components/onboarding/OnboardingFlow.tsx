@@ -96,8 +96,8 @@ const AVAILABLE_MODULES = [
 ];
 
 const THEMES = [
-  { id: 'dark', name: 'Dark', primary: '#1f2937', accent: '#8b5cf6' },
-  { id: 'light', name: 'Light', primary: '#ffffff', accent: '#6366f1' },
+  { id: 'dark', name: 'Dark', primary: '#1f2937', accent: '#06b6d4' },
+  { id: 'light', name: 'Light', primary: '#ffffff', accent: '#0891b2' },
   { id: 'midnight', name: 'Midnight', primary: '#0f172a', accent: '#06b6d4' },
   { id: 'forest', name: 'Forest', primary: '#1f2937', accent: '#10b981' },
   { id: 'sunset', name: 'Sunset', primary: '#1f2937', accent: '#f59e0b' },
@@ -177,7 +177,7 @@ export default function OnboardingFlow() {
   const [preferences, setPreferences] = useState({
     enabledModules: ['habits', 'tasks', 'health', 'finance'],
     theme: 'dark',
-    accentColor: '#8b5cf6',
+    accentColor: '#06b6d4',
     aiPersonality: 'professional',
     aiProactivity: 3,
     selectedIntegrations: [] as string[]
@@ -191,8 +191,12 @@ export default function OnboardingFlow() {
 
   const savePreferences = async () => {
     try {
+      console.log('🔄 Starting to save preferences...');
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user found');
+      
+      console.log('👤 User found:', user.id);
 
       const { error } = await supabase
         .from('user_preferences')
@@ -206,12 +210,21 @@ export default function OnboardingFlow() {
           module_order: preferences.enabledModules
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Database error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Preferences saved successfully');
+      
       // Dispatch a custom event instead of calling a prop
       const event = new CustomEvent('onboardingComplete');
       window.dispatchEvent(event);
+      
+      console.log('📡 Event dispatched');
     } catch (error) {
-      console.error('Failed to save preferences:', error);
+      console.error('❌ Failed to save preferences:', error);
+      alert('Failed to save preferences. Please try again.');
     }
   };
 
@@ -242,8 +255,8 @@ export default function OnboardingFlow() {
               You're about to experience the most comprehensive life optimization system ever built. 
               Let's customize it to fit your unique needs.
             </p>
-            <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-4 max-w-md mx-auto">
-              <p className="text-purple-200 text-sm">
+            <div className="bg-cyan-500/20 border border-cyan-500/30 rounded-lg p-4 max-w-md mx-auto">
+              <p className="text-cyan-200 text-sm">
                 ✨ You're in your <strong>30-day free trial</strong>. No credit card required!
               </p>
             </div>
@@ -265,7 +278,7 @@ export default function OnboardingFlow() {
                   className={`
                     cursor-pointer p-4 rounded-lg border-2 transition-all
                     ${preferences.enabledModules.includes(module.id)
-                      ? 'border-purple-500 bg-purple-500/20'
+                      ? 'border-cyan-500 bg-cyan-500/20'
                       : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
                     }
                   `}
@@ -314,7 +327,7 @@ export default function OnboardingFlow() {
                   className={`
                     cursor-pointer p-4 rounded-lg border-2 transition-all
                     ${preferences.theme === theme.id
-                      ? 'border-purple-500 bg-purple-500/20'
+                      ? 'border-cyan-500 bg-cyan-500/20'
                       : 'border-gray-600 hover:border-gray-500'
                     }
                   `}
@@ -362,7 +375,7 @@ export default function OnboardingFlow() {
                       className={`
                         cursor-pointer p-3 rounded-lg border transition-all flex items-start space-x-3
                         ${preferences.aiPersonality === personality.id
-                          ? 'border-purple-500 bg-purple-500/20'
+                          ? 'border-cyan-500 bg-cyan-500/20'
                           : 'border-gray-600 hover:border-gray-500'
                         }
                       `}
@@ -393,11 +406,11 @@ export default function OnboardingFlow() {
                     max="5"
                     value={preferences.aiProactivity}
                     onChange={(e) => updatePreferences({ aiProactivity: parseInt(e.target.value) })}
-                    className="w-full accent-purple-500"
+                    className="w-full accent-cyan-500"
                   />
                   <div className="flex justify-between text-sm text-gray-400">
                     <span>Passive</span>
-                    <span className="text-purple-400 font-medium">Level {preferences.aiProactivity}</span>
+                    <span className="text-cyan-400 font-medium">Level {preferences.aiProactivity}</span>
                     <span>Very Proactive</span>
                   </div>
                   <p className="text-sm text-gray-400 text-center">
@@ -428,7 +441,7 @@ export default function OnboardingFlow() {
                   className={`
                     cursor-pointer p-4 rounded-lg border-2 transition-all
                     ${preferences.selectedIntegrations.includes(integration.id)
-                      ? 'border-purple-500 bg-purple-500/20'
+                      ? 'border-cyan-500 bg-cyan-500/20'
                       : 'border-gray-600 bg-gray-800/50 hover:border-gray-500'
                     }
                   `}
@@ -474,7 +487,7 @@ export default function OnboardingFlow() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-6">
       <div className="max-w-4xl w-full">
         {/* Progress Bar */}
         <div className="mb-8">
@@ -488,14 +501,14 @@ export default function OnboardingFlow() {
           </div>
           <div className="w-full bg-gray-700 rounded-full h-2">
             <div 
-              className="bg-purple-500 h-2 rounded-full transition-all duration-300"
+              className="bg-cyan-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${((currentStep + 1) / ONBOARDING_STEPS.length) * 100}%` }}
             />
           </div>
         </div>
 
         {/* Step Content */}
-        <div className="bg-black/20 backdrop-blur-sm border border-white/20 rounded-xl p-8 mb-8">
+        <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-8 mb-8">
           {renderStep()}
         </div>
 
@@ -511,7 +524,7 @@ export default function OnboardingFlow() {
           
           <button
             onClick={nextStep}
-            className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+            className="px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg transition-colors"
           >
             {currentStep === ONBOARDING_STEPS.length - 1 ? 'Complete Setup' : 'Continue →'}
           </button>

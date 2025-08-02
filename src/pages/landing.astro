@@ -4,17 +4,17 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout title="messyOS - Your AI Life Optimizer">
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
     <!-- Navigation -->
     <nav class="relative z-10 px-6 py-4">
       <div class="max-w-7xl mx-auto flex justify-between items-center">
         <div class="text-2xl font-bold text-white">
-          <span class="text-purple-400">messy</span>OS
+          <span class="text-cyan-400">messy</span>OS
         </div>
         <div class="space-x-4">
           <a href="#features" class="text-gray-300 hover:text-white transition-colors">Features</a>
           <a href="#pricing" class="text-gray-300 hover:text-white transition-colors">Pricing</a>
-          <a href="/login" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors">
+          <a href="/login" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors">
             Sign In
           </a>
         </div>
@@ -26,7 +26,7 @@ import Layout from '../layouts/Layout.astro';
       <div class="max-w-4xl mx-auto text-center">
         <h1 class="text-5xl md:text-7xl font-bold text-white mb-6">
           Stop managing your life.<br/>
-          <span class="text-purple-400">Start optimizing it.</span>
+          <span class="text-cyan-400">Start optimizing it.</span>
         </h1>
         <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
           The AI-powered everything app that learns from your data, understands your patterns, 
@@ -34,7 +34,7 @@ import Layout from '../layouts/Layout.astro';
         </p>
         
         <!-- Waitlist Form -->
-        <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 max-w-md mx-auto mb-8">
+        <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 max-w-md mx-auto mb-8">
           <h3 class="text-2xl font-semibold text-white mb-4">Join the Waitlist</h3>
           <p class="text-gray-300 mb-6">Get 30 days free when we launch + priority access</p>
           
@@ -44,9 +44,9 @@ import Layout from '../layouts/Layout.astro';
               name="email"
               placeholder="Enter your email" 
               required
-              class="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400"
+              class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
             />
-            <select name="interest" class="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <select name="interest" class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
               <option value="everything" disabled selected>What do you want to optimize most?</option>
               <option value="habits">Habits & Goals</option>
               <option value="health">Health & Wellness</option>
@@ -56,7 +56,7 @@ import Layout from '../layouts/Layout.astro';
             </select>
             <button 
               type="submit"
-              class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
             >
               Get Early Access
             </button>
@@ -77,13 +77,13 @@ import Layout from '../layouts/Layout.astro';
     <section id="features" class="relative z-10 px-6 py-20 bg-black/20">
       <div class="max-w-6xl mx-auto">
         <h2 class="text-4xl font-bold text-white text-center mb-16">
-          One app. <span class="text-purple-400">Infinite possibilities.</span>
+          One app. <span class="text-cyan-400">Infinite possibilities.</span>
         </h2>
         
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           <!-- Smart Data Input -->
-          <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-            <div class="text-purple-400 text-3xl mb-4">🧠</div>
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🧠</div>
             <h3 class="text-xl font-semibold text-white mb-3">Smart Data Dumping</h3>
             <p class="text-gray-300">
               Just talk naturally: "Spent $50 on groceries, worked out 45 mins, need to apply for visa" 
@@ -92,8 +92,8 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <!-- Customizable Modules -->
-          <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-            <div class="text-purple-400 text-3xl mb-4">🎛️</div>
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🎛️</div>
             <h3 class="text-xl font-semibold text-white mb-3">100% Customizable</h3>
             <p class="text-gray-300">
               Choose your modules, themes, and features. Your dashboard shows only what matters to you. 
@@ -102,8 +102,8 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <!-- AI Agent -->
-          <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-            <div class="text-purple-400 text-3xl mb-4">🤖</div>
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🤖</div>
             <h3 class="text-xl font-semibold text-white mb-3">Personal AI Coach</h3>
             <p class="text-gray-300">
               Your AI knows your patterns, suggests optimizations, and helps you achieve goals with 
@@ -112,8 +112,8 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <!-- Integrations -->
-          <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-            <div class="text-purple-400 text-3xl mb-4">🔗</div>
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🔗</div>
             <h3 class="text-xl font-semibold text-white mb-3">Universal Integrations</h3>
             <p class="text-gray-300">
               Connect Gmail, GitHub, Notion, banking, fitness apps, shopping platforms - 
@@ -122,8 +122,8 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <!-- Security -->
-          <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-            <div class="text-purple-400 text-3xl mb-4">🔒</div>
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🔒</div>
             <h3 class="text-xl font-semibold text-white mb-3">Bank-Grade Security</h3>
             <p class="text-gray-300">
               End-to-end encryption, zero-knowledge architecture. Your data stays yours. 
@@ -132,8 +132,8 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <!-- Cross-Domain Insights -->
-          <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-            <div class="text-purple-400 text-3xl mb-4">📊</div>
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">📊</div>
             <h3 class="text-xl font-semibold text-white mb-3">Cross-Domain Intelligence</h3>
             <p class="text-gray-300">
               Discover hidden connections: how sleep affects productivity, spending patterns during stress, 
@@ -148,7 +148,7 @@ import Layout from '../layouts/Layout.astro';
     <section class="relative z-10 px-6 py-20">
       <div class="max-w-4xl mx-auto text-center">
         <h2 class="text-4xl font-bold text-white mb-12">
-          Perfect for <span class="text-purple-400">ambitious people</span> who want more
+          Perfect for <span class="text-cyan-400">ambitious people</span> who want more
         </h2>
         
         <div class="grid md:grid-cols-2 gap-8 text-left">
@@ -182,7 +182,7 @@ import Layout from '../layouts/Layout.astro';
           Simple, honest pricing
         </h2>
         
-        <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8">
+        <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
           <div class="text-center">
             <div class="text-5xl font-bold text-white mb-2">$1</div>
             <div class="text-gray-300 mb-6">per month</div>
@@ -210,7 +210,7 @@ import Layout from '../layouts/Layout.astro';
               </div>
             </div>
             
-            <button class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+            <button class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
               Start Free Trial
             </button>
             
@@ -233,7 +233,7 @@ import Layout from '../layouts/Layout.astro';
         </p>
         <button 
           onclick="document.getElementById('waitlistForm').scrollIntoView()"
-          class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+          class="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
         >
           Get Early Access
         </button>
@@ -241,7 +241,7 @@ import Layout from '../layouts/Layout.astro';
     </section>
 
     <!-- Footer -->
-    <footer class="relative z-10 px-6 py-8 border-t border-white/20">
+    <footer class="relative z-10 px-6 py-8 border-t border-white/10">
       <div class="max-w-4xl mx-auto text-center text-gray-400">
         <p>&copy; 2024 messyOS. Built for people who want to optimize everything.</p>
         <div class="mt-4 space-x-6">
@@ -255,9 +255,9 @@ import Layout from '../layouts/Layout.astro';
 
   <!-- Background Animation -->
   <div class="fixed inset-0 z-0">
-    <div class="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-pink-900/20"></div>
-    <div class="absolute top-0 left-0 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-    <div class="absolute bottom-0 right-0 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-cyan-900/20 to-blue-900/20"></div>
+    <div class="absolute top-0 left-0 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
   </div>
 
   <script>
