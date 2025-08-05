@@ -34,6 +34,11 @@ if (typeof window !== 'undefined') {
     if (event === 'SIGNED_IN' && session) {
       console.log('✅ User signed in:', session.user.email);
       console.log('🍪 Session should be automatically handled by Supabase SSR');
+      
+      // Debug: check what cookies are actually set
+      setTimeout(() => {
+        console.log('🔍 Document cookies:', document.cookie);
+      }, 100);
     }
 
     if (event === 'SIGNED_OUT') {

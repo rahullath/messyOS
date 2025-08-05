@@ -11,6 +11,9 @@ export function createServerClient(cookies: AstroCookies) {
       cookies: {
         get(name: string) {
           const cookie = cookies.get(name);
+          if (cookie?.value) {
+            console.log(`🍪 Server found cookie: ${name.substring(0, 20)}...`);
+          }
           return cookie?.value;
         },
         set(name: string, value: string, options: any) {
