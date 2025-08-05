@@ -182,12 +182,21 @@ if (user) {
     signinTab.addEventListener('click', showSignIn);
     signupTab.addEventListener('click', showSignUp);
 
+    // Debug form elements
+    console.log('🔍 Form elements found:', {
+      signinForm: !!signinForm,
+      signupForm: !!signupForm,
+      signinTab: !!signinTab,
+      signupTab: !!signupTab
+    });
+
     // Form handling
     function showMessage(text, type = 'error') {
       const messageEl = document.getElementById('message');
       messageEl.textContent = text;
       messageEl.className = `p-4 rounded-lg text-center ${
         type === 'error' ? 'bg-red-900/50 text-red-200 border border-red-800' : 
+        type === 'info' ? 'bg-blue-900/50 text-blue-200 border border-blue-800' :
         'bg-green-900/50 text-green-200 border border-green-800'
       }`;
       messageEl.classList.remove('hidden');
@@ -195,19 +204,28 @@ if (user) {
 
          // Sign In Form
      signinForm.addEventListener('submit', async (e) => {
+       console.log('📝 Form submitted!');
        e.preventDefault();
        const formData = new FormData(e.target);
        const email = formData.get('email');
        const password = formData.get('password');
 
        try {
-         const { error } = await supabase.auth.signInWithPassword({ email, password });
+         showMessage('Attempting to sign in...', 'info');
+         console.log('🔄 Attempting sign in with email:', email);
+         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
          if (error) throw error;
+         
+         console.log('✅ Sign in response:', data);
          showMessage('Signed in successfully! Redirecting...', 'success');
+         
+         // Wait for auth state change to set cookies, then redirect
          setTimeout(() => {
-           window.location.href = '/onboarding';
-         }, 1000);
+           console.log('🔄 Redirecting to home page');
+           window.location.href = '/';
+         }, 1500);
        } catch (error) {
+         console.error('❌ Sign in error:', error);
          showMessage(error.message || 'Sign in failed. Please try again.');
        }
      });
@@ -226,15 +244,23 @@ if (user) {
        }
 
        try {
-         const { error } = await supabase.auth.signUp({ 
+         const { data, error } = await supabase.auth.signUp({ 
            email, 
            password,
            options: {
-             emailRedirectTo: `${window.location.origin}/onboarding`
+             emailRedirectTo: `${window.location.origin}/auth/exchange`
            }
          });
          if (error) throw error;
-         showMessage('Account created! Check your email to verify your account.', 'success');
+         
+         if (data.user && !data.user.email_confirmed_at) {
+           showMessage('Account created! Check your email to verify your account.', 'success');
+         } else if (data.session) {
+           showMessage('Account created! Redirecting...', 'success');
+           setTimeout(() => {
+             window.location.href = '/';
+           }, 1500);
+         }
        } catch (error) {
          showMessage(error.message || 'Sign up failed. Please try again.');
        }

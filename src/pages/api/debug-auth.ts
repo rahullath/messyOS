@@ -18,6 +18,16 @@ export const GET: APIRoute = async ({ cookies }) => {
       'supabase-auth-token'
     ];
     
+    // Also check all cookies to see what's actually there
+    const allCookieNames: string[] = [];
+    // Get all cookie names (this is a simple way to inspect what cookies exist)
+    try {
+      // We can't easily enumerate all cookies server-side, but we can log what we're looking for
+      console.log('🔍 Looking for cookies with names:', possibleNames);
+    } catch (e) {
+      console.log('Error checking cookies:', e);
+    }
+    
     for (const name of possibleNames) {
       const cookie = cookies.get(name);
       if (cookie) {

@@ -11,35 +11,15 @@ export class ServerAuth {
 
   async getUser(): Promise<User | null> {
     try {
-      // First try to get the session
-      const { data: { session }, error: sessionError } = await this.supabase.auth.getSession();
+      const { data: { user }, error } = await this.supabase.auth.getUser();
       
-      if (sessionError) {
-        console.log('Session error:', sessionError.message);
-      }
-      
-      if (session?.user) {
-        console.log('✅ Found session for:', session.user.email);
-        return session.user;
-      }
-
-      // If no session, try to get user directly
-      const { data: { user }, error: userError } = await this.supabase.auth.getUser();
-      
-      if (userError) {
-        console.log('User fetch error:', userError.message);
+      if (error || !user) {
         return null;
       }
 
-      if (user) {
-        console.log('✅ Found user:', user.email);
-        return user;
-      }
-
-      console.log('🚫 No user found');
-      return null;
+      return user;
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('Server auth error:', error);
       return null;
     }
   }

@@ -1,0 +1,176 @@
+---
+// src/pages/debug-session.astro - Debug session and auth state
+import Layout from '../layouts/Layout.astro';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+
+const serverAuth = createServerAuth(Astro.cookies);
+
+// Try to get session and user
+let serverSession = null;
+let serverUser = null;
+let serverError = null;
+
+try {
+  const sessionResult = await serverAuth.supabase.auth.getSession();
+  serverSession = sessionResult.data.session;
+  serverError = sessionResult.error;
+  
+  if (!serverError) {
+    serverUser = await serverAuth.getUser();
+  }
+} catch (error) {
+  serverError = error;
+}
+
+// Get all cookies for debugging
+const allCookies = {};
+const cookieHeader = Astro.request.headers.get('cookie');
+if (cookieHeader) {
+  cookieHeader.split(';').forEach(cookie => {
+    const [name, value] = cookie.trim().split('=');
+    if (name && value) {
+      allCookies[name] = value.length > 50 ? value.substring(0, 50) + '...' : value;
+    }
+  });
+}
+---
+
+<Layout title="Session Debug - messyOS">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-8">
+        <h1 class="text-3xl font-bold text-white mb-6">Session Debug</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Server-side Info -->
+          <div class="space-y-4">
+            <h2 class="text-xl font-semibold text-cyan-400">Server-side State</h2>
+            
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+              <h3 class="font-semibold text-white mb-2">Session</h3>
+              <pre class="text-sm text-gray-300 overflow-auto">{JSON.stringify({
+                exists: !!serverSession,
+                user_id: serverSession?.user?.id,
+                user_email: serverSession?.user?.email,
+                expires_at: serverSession?.expires_at,
+                error: serverError?.message
+              }, null, 2)}</pre>
+            </div>
+            
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+              <h3 class="font-semibold text-white mb-2">User</h3>
+              <pre class="text-sm text-gray-300 overflow-auto">{JSON.stringify({
+                exists: !!serverUser,
+                id: serverUser?.id,
+                email: serverUser?.email,
+                created_at: serverUser?.created_at
+              }, null, 2)}</pre>
+            </div>
+            
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+              <h3 class="font-semibold text-white mb-2">Cookies ({Object.keys(allCookies).length})</h3>
+              <pre class="text-sm text-gray-300 overflow-auto max-h-48">{JSON.stringify(allCookies, null, 2)}</pre>
+            </div>
+          </div>
+          
+          <!-- Client-side Info -->
+          <div class="space-y-4">
+            <h2 class="text-xl font-semibold text-cyan-400">Client-side State</h2>
+            
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+              <h3 class="font-semibold text-white mb-2">Session</h3>
+              <pre id="client-session" class="text-sm text-gray-300 overflow-auto">Loading...</pre>
+            </div>
+            
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+              <h3 class="font-semibold text-white mb-2">LocalStorage</h3>
+              <pre id="client-storage" class="text-sm text-gray-300 overflow-auto max-h-48">Loading...</pre>
+            </div>
+            
+            <div class="bg-gray-800/50 p-4 rounded-lg">
+              <h3 class="font-semibold text-white mb-2">Document Cookies</h3>
+              <pre id="client-cookies" class="text-sm text-gray-300 overflow-auto max-h-48">Loading...</pre>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-6 flex gap-4">
+          <button id="refresh-btn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors">
+            Refresh Debug Info
+          </button>
+          <button id="clear-storage-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+            Clear All Storage
+          </button>
+          <a href="/login" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">
+            Go to Login
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { supabase } from '../lib/supabase/client';
+    
+    async function updateClientInfo() {
+      try {
+        // Get session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        document.getElementById('client-session').textContent = JSON.stringify({
+          exists: !!session,
+          user_id: session?.user?.id,
+          user_email: session?.user?.email,
+          expires_at: session?.expires_at,
+          error: error?.message
+        }, null, 2);
+        
+        // Get localStorage
+        const storage = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.includes('supabase')) {
+            const value = localStorage.getItem(key);
+            storage[key] = value && value.length > 50 ? value.substring(0, 50) + '...' : value;
+          }
+        }
+        document.getElementById('client-storage').textContent = JSON.stringify(storage, null, 2);
+        
+        // Get document cookies
+        const cookies = {};
+        document.cookie.split(';').forEach(cookie => {
+          const [name, value] = cookie.trim().split('=');
+          if (name && value && name.includes('sb-')) {
+            cookies[name] = value.length > 50 ? value.substring(0, 50) + '...' : value;
+          }
+        });
+        document.getElementById('client-cookies').textContent = JSON.stringify(cookies, null, 2);
+        
+      } catch (error) {
+        console.error('Debug update error:', error);
+        document.getElementById('client-session').textContent = 'Error: ' + error.message;
+      }
+    }
+    
+    // Initial load
+    updateClientInfo();
+    
+    // Refresh button
+    document.getElementById('refresh-btn').addEventListener('click', () => {
+      location.reload();
+    });
+    
+    // Clear storage button
+    document.getElementById('clear-storage-btn').addEventListener('click', async () => {
+      localStorage.clear();
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      
+      await supabase.auth.signOut();
+      
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    });
+  </script>
+</Layout>

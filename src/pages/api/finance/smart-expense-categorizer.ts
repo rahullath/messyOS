@@ -1,4 +1,4 @@
-/ src/pages/api/finance/smart-expense-categorizer.ts
+// src/pages/api/finance/smart-expense-categorizer.ts
 
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';

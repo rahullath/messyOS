@@ -17,13 +17,16 @@ export function createServerClient(cookies: AstroCookies) {
           cookies.set(name, value, {
             ...options,
             httpOnly: false,
-            secure: false,
+            secure: import.meta.env.PROD,
             sameSite: 'lax',
             path: '/'
           });
         },
         remove(name: string, options: any) {
-          cookies.delete(name, options);
+          cookies.delete(name, {
+            ...options,
+            path: '/'
+          });
         },
       },
     }

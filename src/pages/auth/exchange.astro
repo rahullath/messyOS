@@ -7,10 +7,17 @@
 // This page handles the PKCE exchange on the client side
 ---
 
+---
+const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+---
+
 <!DOCTYPE html>
 <html>
 <head>
   <title>Completing Login...</title>
+  <meta name="supabase-url" content={supabaseUrl} />
+  <meta name="supabase-key" content={supabaseKey} />
   <style>
     body { 
       font-family: system-ui; 
@@ -50,11 +57,23 @@
       try {
         status.textContent = 'Setting up authentication...';
         
+        // Get environment variables from meta tags
+        const supabaseUrl = document.querySelector('meta[name="supabase-url"]')?.getAttribute('content');
+        const supabaseKey = document.querySelector('meta[name="supabase-key"]')?.getAttribute('content');
+        
+        if (!supabaseUrl || !supabaseKey) {
+          throw new Error('Missing Supabase configuration');
+        }
+        
         // Initialize Supabase client
-        const supabase = createClient(
-          'PUBLIC_SUPABASE_URL', // Replace with actual URL
-          'PUBLIC_SUPABASE_ANON_KEY' // Replace with actual key
-        );
+        const supabase = createClient(supabaseUrl, supabaseKey, {
+          auth: {
+            flowType: 'pkce',
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            persistSession: true
+          }
+        });
         
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
@@ -79,6 +98,7 @@
         
         status.textContent = 'Authentication successful! Redirecting...';
         console.log('✅ Successfully exchanged code for session:', data.user?.email);
+        console.log('🍪 Cookies should be automatically set by Supabase client');
         
         // Clear the URL and redirect
         setTimeout(() => {
