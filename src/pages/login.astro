@@ -241,19 +241,30 @@ if (user) {
      });
 
          // Google Sign In
-     document.getElementById('google-signin').addEventListener('click', async () => {
-       try {
-         const { error } = await supabase.auth.signInWithOAuth({
-           provider: 'google',
-           options: {
-             redirectTo: `${window.location.origin}/onboarding`
-           }
-         });
-         if (error) throw error;
-       } catch (error) {
-         showMessage(error.message || 'Google sign in failed. Please try again.');
-       }
-     });
+     document.getElementById('google-signin')?.addEventListener('click', async () => {
+  try {
+    console.log('🔄 Starting Google sign in...');
+    
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/exchange`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
+    });
+    
+    if (error) {
+      console.error('Google sign in error:', error);
+      alert('Google sign in failed. Please try again.');
+    }
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    alert('Something went wrong. Please try again.');
+  }
+});
 
          // Forgot Password
      document.getElementById('forgot-password').addEventListener('click', async (e) => {

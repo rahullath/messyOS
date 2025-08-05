@@ -1,47 +1,57 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createServerAuth } from './lib/auth/simple-multi-user';
 
-const PUBLIC_ROUTES = ['/landing', '/login', '/auth/callback', '/onboarding', '/test-auth'];
-const ONBOARDING_ROUTE = '/onboarding';
-const DASHBOARD_ROUTE = '/';
+const PUBLIC_ROUTES = [
+  '/landing', '/login', '/auth/callback', '/auth/exchange', 
+  '/test-auth', '/onboarding'
+];
 
 export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, next) => {
-  const serverAuth = createServerAuth(cookies);
-  const user = await serverAuth.getUser();
-
   const { pathname } = url;
 
-  // Allow public routes and API routes
-  if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/api')) {
+  console.log(`🌐 Request: ${pathname}`);
+
+  // Always allow public routes and API routes
+  if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/api/')) {
+    console.log(`✅ Public route allowed: ${pathname}`);
     return next();
   }
 
+  const serverAuth = createServerAuth(cookies);
+  const user = await serverAuth.getUser();
+
   // Redirect unauthenticated users to login
   if (!user) {
+    console.log(`🚫 No user found, redirecting to login from ${pathname}`);
     return redirect('/login');
   }
 
+  console.log(`👤 User found: ${user.email}`);
+
+  // Check onboarding status for authenticated users
   try {
-    // Check if user has completed onboarding by checking for user preferences
     const preferences = await serverAuth.getUserPreferences(user.id);
-    const hasCompletedOnboarding = !!preferences; // If preferences exist, onboarding is complete
+    const hasCompletedOnboarding = !!preferences;
 
-    // If user hasn't completed onboarding and is not on onboarding page, redirect to onboarding
-    if (!hasCompletedOnboarding && pathname !== ONBOARDING_ROUTE) {
-      return redirect(ONBOARDING_ROUTE);
+    console.log(`📋 Onboarding complete: ${hasCompletedOnboarding}`);
+
+    // Force onboarding if not completed
+    if (!hasCompletedOnboarding && pathname !== '/onboarding') {
+      console.log(`📝 Redirecting to onboarding from ${pathname}`);
+      return redirect('/onboarding');
     }
 
-    // If user has completed onboarding and is on onboarding page, redirect to dashboard
-    if (hasCompletedOnboarding && pathname === ONBOARDING_ROUTE) {
-      return redirect(DASHBOARD_ROUTE);
+    // If onboarding is complete and user is on onboarding page, redirect to dashboard
+    if (hasCompletedOnboarding && pathname === '/onboarding') {
+      console.log(`🏠 Redirecting to dashboard from onboarding`);
+      return redirect('/');
     }
+
   } catch (error) {
-    console.error('Middleware error:', error);
-    // If there's an error checking preferences, assume onboarding is not complete
-    if (pathname !== ONBOARDING_ROUTE) {
-      return redirect(ONBOARDING_ROUTE);
-    }
+    console.error('⚠️ Middleware error:', error);
+    // On error, allow access but log the issue
   }
 
+  console.log(`✅ Access granted to ${pathname}`);
   return next();
 });

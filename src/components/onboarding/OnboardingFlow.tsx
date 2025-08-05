@@ -189,44 +189,45 @@ export default function OnboardingFlow() {
     setPreferences(prev => ({ ...prev, ...updates }));
   };
 
-  const savePreferences = async () => {
-    try {
-      console.log('🔄 Starting to save preferences...');
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user found');
-      
-      console.log('👤 User found:', user.id);
+  // ==================================================
+// 3. Fix OnboardingFlow Component
+// ==================================================
 
-      const { error } = await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: user.id,
-          enabled_modules: preferences.enabledModules,
-          theme: preferences.theme,
-          accent_color: preferences.accentColor,
-          ai_personality: preferences.aiPersonality,
-          ai_proactivity_level: preferences.aiProactivity,
-          module_order: preferences.enabledModules
-        });
+// Update src/components/onboarding/OnboardingFlow.tsx
+// Replace the savePreferences function with this:
 
-      if (error) {
-        console.error('❌ Database error:', error);
-        throw error;
-      }
-      
-      console.log('✅ Preferences saved successfully');
-      
-      // Dispatch a custom event instead of calling a prop
-      const event = new CustomEvent('onboardingComplete');
-      window.dispatchEvent(event);
-      
-      console.log('📡 Event dispatched');
-    } catch (error) {
-      console.error('❌ Failed to save preferences:', error);
-      alert('Failed to save preferences. Please try again.');
+const savePreferences = async () => {
+  try {
+    console.log('🔄 Starting to save preferences...');
+    
+    const response = await fetch('/api/auth/save-preferences', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(preferences)
+    });
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      console.error('❌ API error:', result.error);
+      alert(`Failed to save preferences: ${result.error}`);
+      return;
     }
-  };
+    
+    console.log('✅ Preferences saved successfully');
+    
+    // Dispatch completion event
+    const event = new CustomEvent('onboardingComplete');
+    window.dispatchEvent(event);
+    
+    console.log('📡 Event dispatched');
+  } catch (error) {
+    console.error('❌ Failed to save preferences:', error);
+    alert('Failed to save preferences. Please try again.');
+  }
+};
 
   const nextStep = () => {
     if (currentStep < ONBOARDING_STEPS.length - 1) {
