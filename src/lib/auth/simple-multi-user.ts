@@ -13,13 +13,20 @@ export class ServerAuth {
     try {
       const { data: { user }, error } = await this.supabase.auth.getUser();
       
-      if (error || !user) {
+      if (error) {
+        console.log('🚫 Server auth error:', error.message);
+        return null;
+      }
+      
+      if (!user) {
+        console.log('🚫 No user found on server');
         return null;
       }
 
+      console.log('✅ Server found user:', user.email);
       return user;
     } catch (error) {
-      console.error('Server auth error:', error);
+      console.error('Server auth exception:', error);
       return null;
     }
   }

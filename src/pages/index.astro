@@ -3,6 +3,14 @@
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerAuth } from '../lib/auth/simple-multi-user';
 
+// Check if this is an OAuth callback (Google redirects to / instead of /auth/exchange)
+const url = new URL(Astro.request.url);
+const code = url.searchParams.get('code');
+if (code) {
+  // This is an OAuth callback, redirect to the proper exchange handler
+  return Astro.redirect(`/auth/exchange?code=${code}`);
+}
+
 // Get authenticated user (middleware ensures authentication)
 const serverAuth = createServerAuth(Astro.cookies);
 const user = await serverAuth.getUser();

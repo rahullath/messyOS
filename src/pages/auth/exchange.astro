@@ -1,23 +1,11 @@
-// ==================================================
-// 1. Fix Google Auth Callback - Replace auth/exchange.astro
-// ==================================================
-
-// src/pages/auth/exchange.astro
 ---
 // This page handles the PKCE exchange on the client side
----
-
----
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 ---
 
 <!DOCTYPE html>
 <html>
 <head>
   <title>Completing Login...</title>
-  <meta name="supabase-url" content={supabaseUrl} />
-  <meta name="supabase-key" content={supabaseKey} />
   <style>
     body { 
       font-family: system-ui; 
@@ -48,32 +36,14 @@ const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
     <p id="status" style="color: #64748b; font-size: 14px;">Initializing...</p>
   </div>
 
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+  <script>
+    import { supabase } from '../../lib/supabase/client';
     
     async function handleAuthExchange() {
       const status = document.getElementById('status');
       
       try {
-        status.textContent = 'Setting up authentication...';
-        
-        // Get environment variables from meta tags
-        const supabaseUrl = document.querySelector('meta[name="supabase-url"]')?.getAttribute('content');
-        const supabaseKey = document.querySelector('meta[name="supabase-key"]')?.getAttribute('content');
-        
-        if (!supabaseUrl || !supabaseKey) {
-          throw new Error('Missing Supabase configuration');
-        }
-        
-        // Initialize Supabase client
-        const supabase = createClient(supabaseUrl, supabaseKey, {
-          auth: {
-            flowType: 'pkce',
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            persistSession: true
-          }
-        });
+        status.textContent = 'Processing authentication...';
         
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get('code');
@@ -82,13 +52,14 @@ const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
           throw new Error('No auth code received');
         }
         
+        console.log('🔄 Exchanging auth code for session...');
         status.textContent = 'Exchanging authentication code...';
         
         // This will use the code verifier from localStorage
         const { data, error } = await supabase.auth.exchangeCodeForSession(code);
         
         if (error) {
-          console.error('Exchange error:', error);
+          console.error('❌ Exchange error:', error);
           status.textContent = 'Authentication failed. Redirecting...';
           setTimeout(() => {
             window.location.href = '/login?error=exchange_failed';
@@ -98,15 +69,16 @@ const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
         
         status.textContent = 'Authentication successful! Redirecting...';
         console.log('✅ Successfully exchanged code for session:', data.user?.email);
-        console.log('🍪 Cookies should be automatically set by Supabase client');
         
-        // Clear the URL and redirect
+        // Force reload the page to trigger proper server-side session detection
+        // This is a simple fix for SSR cookie issues
         setTimeout(() => {
-          window.location.href = '/';
+          console.log('🔄 Reloading page to establish server session');
+          window.location.reload();
         }, 1000);
         
       } catch (error) {
-        console.error('Auth exchange error:', error);
+        console.error('❌ Auth exchange error:', error);
         status.textContent = 'Something went wrong. Redirecting...';
         setTimeout(() => {
           window.location.href = '/login?error=unexpected';
