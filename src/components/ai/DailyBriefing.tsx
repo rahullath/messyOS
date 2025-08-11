@@ -9,15 +9,32 @@ import {
   Clock, 
   Brain,
   RefreshCw,
-  Loader2
+  Loader2,
+  Zap,
+  Globe
 } from 'lucide-react';
-import type { AgentInsight, AgentAction } from '../../lib/intelligence/meshos-ai-agent';
 
 interface DailyBriefingData {
-  briefing: string;
-  insights: AgentInsight[];
-  actions: AgentAction[];
-  focus: string;
+  briefing: {
+    greeting: string;
+    todaysFocus: string;
+    priorities: string[];
+    insights: Array<{
+      type: string;
+      domain: string;
+      title: string;
+      description: string;
+      confidence: number;
+      urgency: string;
+      actionable: boolean;
+      suggestedActions: string[];
+    }>;
+    warnings: string[];
+    energyRecommendations: string[];
+    timelineAlerts: string[];
+    contextualGuidance: string;
+  };
+  success: boolean;
   timestamp: string;
 }
 
@@ -174,13 +191,12 @@ export default function DailyBriefing({ className = '' }: DailyBriefingProps) {
             <Brain className="w-5 h-5 text-blue-600" />
             <h3 className="font-semibold text-gray-900">Your Daily Overview</h3>
           </div>
-          <div className="prose prose-sm max-w-none text-gray-700">
-            {briefingData.briefing.split('\n').map((paragraph, index) => (
-              <p key={index} className="mb-2 last:mb-0">
-                {paragraph}
-              </p>
-            ))}
-          </div>
+          <p className="text-gray-700 mb-4">{briefingData.briefing.greeting}</p>
+          {briefingData.briefing.contextualGuidance && (
+            <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+              💡 {briefingData.briefing.contextualGuidance}
+            </p>
+          )}
         </div>
 
         {/* Today's Focus */}
@@ -189,21 +205,84 @@ export default function DailyBriefing({ className = '' }: DailyBriefingProps) {
             <Target className="w-5 h-5 text-blue-600" />
             <h3 className="font-semibold text-gray-900">Today's Focus</h3>
           </div>
-          <p className="text-gray-700 font-medium">{briefingData.focus}</p>
+          <p className="text-gray-700 font-medium">{briefingData.briefing.todaysFocus}</p>
         </div>
 
+        {/* Priorities */}
+        {briefingData.briefing.priorities.length > 0 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              <h3 className="font-semibold text-gray-900">Top Priorities</h3>
+            </div>
+            <div className="space-y-2">
+              {briefingData.briefing.priorities.map((priority, index) => (
+                <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                  <span className="text-gray-700">{priority}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Energy Recommendations */}
+        {briefingData.briefing.energyRecommendations.length > 0 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-5 h-5 text-yellow-600" />
+              <h3 className="font-semibold text-gray-900">Energy Recommendations</h3>
+            </div>
+            <div className="space-y-2">
+              {briefingData.briefing.energyRecommendations.map((rec, index) => (
+                <p key={index} className="text-gray-700 text-sm">{rec}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Timeline Alerts */}
+        {briefingData.briefing.timelineAlerts.length > 0 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-orange-500">
+            <div className="flex items-center gap-2 mb-3">
+              <Globe className="w-5 h-5 text-orange-600" />
+              <h3 className="font-semibold text-gray-900">Timeline Alerts</h3>
+            </div>
+            <div className="space-y-2">
+              {briefingData.briefing.timelineAlerts.map((alert, index) => (
+                <p key={index} className="text-gray-700 text-sm">{alert}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Warnings */}
+        {briefingData.briefing.warnings.length > 0 && (
+          <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-red-500">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <h3 className="font-semibold text-gray-900">Attention Needed</h3>
+            </div>
+            <div className="space-y-2">
+              {briefingData.briefing.warnings.map((warning, index) => (
+                <p key={index} className="text-red-700 text-sm">{warning}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Key Insights */}
-        {briefingData.insights.length > 0 && (
+        {briefingData.briefing.insights.length > 0 && (
           <div className="bg-white rounded-lg p-4 shadow-sm">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
               Key Insights
             </h3>
             <div className="space-y-3">
-              {briefingData.insights.slice(0, 4).map((insight) => (
+              {briefingData.briefing.insights.slice(0, 4).map((insight, index) => (
                 <div
-                  key={insight.id}
-                  className={`border rounded-lg p-3 ${getImpactColor(insight.impact)}`}
+                  key={index}
+                  className={`border rounded-lg p-3 ${getImpactColor(insight.urgency)}`}
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
@@ -213,57 +292,22 @@ export default function DailyBriefing({ className = '' }: DailyBriefingProps) {
                       <h4 className="font-medium text-sm mb-1">{insight.title}</h4>
                       <p className="text-sm opacity-90">{insight.description}</p>
                       <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs font-medium">
-                          {insight.impact} impact
+                        <span className="text-xs font-medium capitalize">
+                          {insight.urgency} urgency
                         </span>
                         <span className="text-xs opacity-75">
                           {Math.round(insight.confidence * 100)}% confidence
                         </span>
                         <span className="text-xs opacity-75 capitalize">
-                          {insight.urgency} urgency
+                          {insight.domain}
                         </span>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Today's Actions */}
-        {briefingData.actions.length > 0 && (
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-blue-600" />
-              Recommended Actions
-            </h3>
-            <div className="space-y-3">
-              {briefingData.actions.slice(0, 4).map((action) => (
-                <div
-                  key={action.id}
-                  className={`border rounded-lg p-3 ${getPriorityColor(action.priority)}`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-medium text-sm">{action.title}</h4>
-                        {action.automated && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                            Auto
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-700 mb-2">{action.description}</p>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {action.timing}
-                        </span>
-                        <span className="text-xs font-medium text-gray-600 capitalize">
-                          {action.priority} priority
-                        </span>
-                      </div>
+                      {insight.suggestedActions.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium text-gray-600 mb-1">Quick action:</p>
+                          <p className="text-xs text-gray-600">{insight.suggestedActions[0]}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -275,24 +319,20 @@ export default function DailyBriefing({ className = '' }: DailyBriefingProps) {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-blue-600">{briefingData.insights.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{briefingData.briefing.insights.length}</div>
             <div className="text-sm text-gray-600">Insights</div>
           </div>
           <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-green-600">{briefingData.actions.length}</div>
-            <div className="text-sm text-gray-600">Actions</div>
+            <div className="text-2xl font-bold text-green-600">{briefingData.briefing.priorities.length}</div>
+            <div className="text-sm text-gray-600">Priorities</div>
           </div>
           <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-purple-600">
-              {briefingData.insights.filter(i => i.impact === 'high').length}
-            </div>
-            <div className="text-sm text-gray-600">High Impact</div>
+            <div className="text-2xl font-bold text-yellow-600">{briefingData.briefing.energyRecommendations.length}</div>
+            <div className="text-sm text-gray-600">Energy Tips</div>
           </div>
           <div className="bg-white rounded-lg p-4 text-center shadow-sm">
-            <div className="text-2xl font-bold text-orange-600">
-              {briefingData.actions.filter(a => a.timing === 'immediate').length}
-            </div>
-            <div className="text-sm text-gray-600">Immediate</div>
+            <div className="text-2xl font-bold text-orange-600">{briefingData.briefing.timelineAlerts.length}</div>
+            <div className="text-sm text-gray-600">Timeline Alerts</div>
           </div>
         </div>
       </div>

@@ -1,15 +1,12 @@
 // src/components/ai/AIAgentChat.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Brain, TrendingUp, Target, AlertTriangle } from 'lucide-react';
-import type { AgentInsight, AgentAction, ConversationTurn } from '../../lib/intelligence/meshos-ai-agent';
 
 interface ChatMessage {
   id: string;
   type: 'user' | 'agent';
   content: string;
   timestamp: string;
-  insights?: AgentInsight[];
-  actions?: AgentAction[];
 }
 
 interface AIAgentChatProps {
@@ -27,7 +24,7 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<ConversationTurn[]>([]);
+  const [conversationHistory, setConversationHistory] = useState([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -53,42 +50,27 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/ai/chat', {
+      const response = await fetch('/api/ai/life-coach', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: inputMessage,
-          conversationHistory
+          message: inputMessage
         }),
       });
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.response) {
         const agentMessage: ChatMessage = {
-          id: data.conversationId,
+          id: Date.now().toString(),
           type: 'agent',
           content: data.response,
-          timestamp: new Date().toISOString(),
-          insights: data.insights,
-          actions: data.actions,
+          timestamp: new Date().toISOString()
         };
 
         setMessages(prev => [...prev, agentMessage]);
-
-        // Update conversation history
-        const newTurn: ConversationTurn = {
-          id: data.conversationId,
-          timestamp: new Date().toISOString(),
-          userMessage: inputMessage,
-          agentResponse: data.response,
-          context: {},
-          sentiment: 'positive',
-          actionsTaken: []
-        };
-        setConversationHistory(prev => [...prev, newTurn]);
       } else {
         throw new Error(data.error || 'Failed to get response');
       }
@@ -113,46 +95,6 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
     }
   };
 
-  const getInsightIcon = (type: string) => {
-    switch (type) {
-      case 'habit':
-        return <Target className="w-4 h-4" />;
-      case 'health':
-        return <Brain className="w-4 h-4" />;
-      case 'finance':
-        return <TrendingUp className="w-4 h-4" />;
-      case 'correlation':
-        return <Brain className="w-4 h-4" />;
-      default:
-        return <AlertTriangle className="w-4 h-4" />;
-    }
-  };
-
-  const getImpactColor = (impact: string) => {
-    switch (impact) {
-      case 'high':
-        return 'text-red-600 bg-red-50';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'low':
-        return 'text-green-600 bg-green-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'low':
-        return 'text-green-600 bg-green-50 border-green-200';
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
 
   return (
     <div className={`flex flex-col h-full bg-white rounded-lg shadow-lg ${className}`}>
@@ -200,69 +142,6 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
                 </div>
               </div>
 
-              {/* Insights */}
-              {message.insights && message.insights.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <Brain className="w-4 h-4" />
-                    Insights from your data:
-                  </h4>
-                  {message.insights.slice(0, 3).map((insight) => (
-                    <div key={insight.id} className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm">
-                      <div className="flex items-start gap-2">
-                        <div className={`p-1 rounded ${getImpactColor(insight.impact)}`}>
-                          {getInsightIcon(insight.type)}
-                        </div>
-                        <div className="flex-1">
-                          <h5 className="font-medium text-gray-900 text-sm">{insight.title}</h5>
-                          <p className="text-sm text-gray-600 mt-1">{insight.description}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getImpactColor(insight.impact)}`}>
-                              {insight.impact} impact
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {Math.round(insight.confidence * 100)}% confidence
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Actions */}
-              {message.actions && message.actions.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <Target className="w-4 h-4" />
-                    Recommended actions:
-                  </h4>
-                  {message.actions.slice(0, 3).map((action) => (
-                    <div key={action.id} className={`border rounded-lg p-3 ${getPriorityColor(action.priority)}`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h5 className="font-medium text-sm">{action.title}</h5>
-                          <p className="text-sm mt-1 opacity-90">{action.description}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs font-medium">
-                              {action.priority} priority
-                            </span>
-                            <span className="text-xs opacity-75">
-                              {action.timing}
-                            </span>
-                          </div>
-                        </div>
-                        {action.automated && (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                            Auto
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         ))}
@@ -314,10 +193,10 @@ export default function AIAgentChat({ className = '' }: AIAgentChatProps) {
         {/* Quick suggestions */}
         <div className="flex flex-wrap gap-2 mt-2">
           {[
-            "I need to finish the project by Friday",
-            "I did all my habits today",
-            "I went to the gym this morning",
-            "What patterns do you see?"
+            "What should I focus on today?",
+            "Help with UK move planning",
+            "I'm feeling overwhelmed",
+            "What are my energy recommendations?"
           ].map((suggestion) => (
             <button
               key={suggestion}

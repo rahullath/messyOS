@@ -1,9 +1,18 @@
 ---
 // src/pages/ai-agent.astro
 import DashboardLayout from '../layouts/DashboardLayout.astro';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+
+// Get authenticated user for the layout
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
 ---
 
-<DashboardLayout title="AI Agent - Mesh">
+<DashboardLayout title="AI Agent - Mesh" user={user}>
   <div class="space-y-6">
     <!-- Page Header -->
     <div class="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg p-6 text-white">
@@ -21,8 +30,11 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
     </div>
 
     <!-- Daily Briefing -->
-    <div id="daily-briefing-container">
-      <!-- Daily briefing will be loaded here -->
+    <div id="daily-briefing-container" class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg shadow-lg p-6">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p class="text-gray-600">Loading your daily briefing...</p>
+      </div>
     </div>
 
     <!-- Main Content Grid -->
@@ -34,8 +46,52 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
             <h2 class="text-xl font-semibold text-gray-900">Chat with Mesh</h2>
             <p class="text-gray-600 text-sm mt-1">Ask about your patterns, get optimization suggestions, or just chat about your goals</p>
           </div>
-          <div id="ai-chat-container" style="height: 600px;">
-            <!-- AI chat will be loaded here -->
+          <div id="ai-chat-container" class="p-6" style="height: 600px;">
+            <div class="h-full flex flex-col">
+              <!-- Chat messages will go here -->
+              <div id="chat-messages" class="flex-1 overflow-y-auto space-y-4 mb-4">
+                <div class="flex justify-start">
+                  <div class="flex items-start gap-2">
+                    <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path>
+                      </svg>
+                    </div>
+                    <div class="bg-gray-100 rounded-lg p-3 max-w-xs">
+                      <p class="text-gray-900">I'm Mesh. I can analyze your tasks, habits, and patterns. Ask me about your priorities, UK move planning, or energy optimization!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Input area -->
+              <div class="border-t pt-4">
+                <div class="flex gap-2">
+                  <input
+                    id="chat-input"
+                    type="text"
+                    placeholder="Ask Mesh about your priorities, UK move, or energy management..."
+                    class="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    id="send-button"
+                    class="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2 transition-colors"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                <!-- Quick suggestions -->
+                <div class="flex flex-wrap gap-2 mt-2">
+                  <button class="quick-suggestion text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-full transition-colors" data-message="What should I focus on today?">What should I focus on today?</button>
+                  <button class="quick-suggestion text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-full transition-colors" data-message="Help with UK move planning">Help with UK move planning</button>
+                  <button class="quick-suggestion text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-full transition-colors" data-message="I'm feeling overwhelmed">I'm feeling overwhelmed</button>
+                  <button class="quick-suggestion text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded-full transition-colors" data-message="What are my energy recommendations?">Energy recommendations</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -54,16 +110,16 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
               </span>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-gray-600">Data Sources</span>
-              <span class="text-gray-900 font-medium">4 Connected</span>
+              <span class="text-gray-600">Focus</span>
+              <span class="text-gray-900 font-medium">Tasks & UK Move</span>
             </div>
             <div class="flex items-center justify-between">
               <span class="text-gray-600">Last Analysis</span>
               <span class="text-gray-900 font-medium" id="last-analysis">Just now</span>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-gray-600">Confidence</span>
-              <span class="text-gray-900 font-medium">85%</span>
+              <span class="text-gray-600">Insights Ready</span>
+              <span class="text-gray-900 font-medium">✓</span>
             </div>
           </div>
         </div>
@@ -76,25 +132,25 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
               id="generate-briefing"
               class="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
             >
-              Generate New Briefing
+              Refresh Daily Briefing
             </button>
             <button 
-              id="weekly-report"
+              id="get-priorities"
               class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
             >
-              Weekly Report
+              What Should I Focus On?
             </button>
             <button 
-              id="optimize-habits"
+              id="uk-help"
               class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
             >
-              Optimize Habits
+              UK Move Guidance
             </button>
             <button 
-              id="analyze-patterns"
+              id="energy-tips"
               class="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-lg transition-colors text-sm"
             >
-              Analyze Patterns
+              Energy Optimization
             </button>
           </div>
         </div>
@@ -106,49 +162,30 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
             <div class="flex items-start gap-3">
               <div class="w-2 h-2 bg-cyan-500 rounded-full mt-2"></div>
               <div>
-                <div class="font-medium text-gray-900">Pattern Recognition</div>
-                <div class="text-gray-600">Identifies hidden patterns in your habits, health, and lifestyle data</div>
+                <div class="font-medium text-gray-900">Task Optimization</div>
+                <div class="text-gray-600">Prioritizes your tasks and detects bottlenecks</div>
               </div>
             </div>
             <div class="flex items-start gap-3">
               <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
               <div>
-                <div class="font-medium text-gray-900">Proactive Optimization</div>
-                <div class="text-gray-600">Suggests improvements before problems occur</div>
+                <div class="font-medium text-gray-900">UK Move Planning</div>
+                <div class="text-gray-600">Timeline management and Birmingham-specific guidance</div>
               </div>
             </div>
             <div class="flex items-start gap-3">
               <div class="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
               <div>
-                <div class="font-medium text-gray-900">Cross-Domain Insights</div>
-                <div class="text-gray-600">Connects habits, health, finance, and productivity data</div>
+                <div class="font-medium text-gray-900">Energy-Based Scheduling</div>
+                <div class="text-gray-600">Matches task difficulty to your energy levels</div>
               </div>
             </div>
             <div class="flex items-start gap-3">
               <div class="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
               <div>
-                <div class="font-medium text-gray-900">Personalized Coaching</div>
-                <div class="text-gray-600">Adapts recommendations to your unique patterns</div>
+                <div class="font-medium text-gray-900">Cross-Domain Insights</div>
+                <div class="text-gray-600">Connects tasks, habits, health, and stress patterns</div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Recent Insights -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Insights</h3>
-          <div id="recent-insights" class="space-y-3 text-sm">
-            <div class="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-              <div class="font-medium text-cyan-900">Habit Correlation Found</div>
-              <div class="text-cyan-700 mt-1">Your gym sessions correlate with better sleep quality</div>
-            </div>
-            <div class="p-3 bg-green-50 rounded-lg border border-green-200">
-              <div class="font-medium text-green-900">Optimization Opportunity</div>
-              <div class="text-green-700 mt-1">Morning routine timing can be improved by 15 minutes</div>
-            </div>
-            <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div class="font-medium text-blue-900">Pattern Detected</div>
-              <div class="text-blue-700 mt-1">Weekend productivity follows a predictable pattern</div>
             </div>
           </div>
         </div>
@@ -157,75 +194,192 @@ import DashboardLayout from '../layouts/DashboardLayout.astro';
   </div>
 
   <script>
-    import AIAgentChat from '../components/ai/AIAgentChat.tsx';
-    import DailyBriefing from '../components/ai/DailyBriefing.tsx';
-    import React from 'react';
-    import { createRoot } from 'react-dom/client';
+    // Simple vanilla JavaScript implementation
+    let chatMessages = [];
+    let isLoading = false;
 
-    // Mount React components
+    // DOM elements
+    const chatMessagesContainer = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
+    const briefingContainer = document.getElementById('daily-briefing-container');
+
+    // Load daily briefing
+    async function loadDailyBriefing() {
+      try {
+        const response = await fetch('/api/ai/daily-briefing');
+        const data = await response.json();
+        
+        if (data.success && data.briefing) {
+          const briefing = data.briefing;
+          briefingContainer.innerHTML = `
+            <div class="border-b border-gray-200 pb-4 mb-4">
+              <h2 class="text-xl font-bold text-gray-900">${briefing.greeting}</h2>
+              <p class="text-sm text-gray-600 mt-1">Generated by Mesh • ${new Date().toLocaleString()}</p>
+            </div>
+            
+            <div class="space-y-4">
+              <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
+                <h3 class="font-semibold text-gray-900 mb-2">🎯 Today's Focus</h3>
+                <p class="text-gray-700">${briefing.todaysFocus}</p>
+              </div>
+              
+              ${briefing.priorities.length > 0 ? `
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                  <h3 class="font-semibold text-gray-900 mb-2">✅ Top Priorities</h3>
+                  <ul class="space-y-1">
+                    ${briefing.priorities.map((priority, index) => `<li class="text-gray-700">${index + 1}. ${priority}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+              
+              ${briefing.energyRecommendations.length > 0 ? `
+                <div class="bg-white rounded-lg p-4 shadow-sm">
+                  <h3 class="font-semibold text-gray-900 mb-2">⚡ Energy Tips</h3>
+                  ${briefing.energyRecommendations.map(rec => `<p class="text-gray-700 text-sm mb-1">${rec}</p>`).join('')}
+                </div>
+              ` : ''}
+              
+              ${briefing.timelineAlerts.length > 0 ? `
+                <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-orange-500">
+                  <h3 class="font-semibold text-gray-900 mb-2">🇬🇧 Timeline Alerts</h3>
+                  ${briefing.timelineAlerts.map(alert => `<p class="text-orange-700 text-sm mb-1">${alert}</p>`).join('')}
+                </div>
+              ` : ''}
+              
+              ${briefing.warnings.length > 0 ? `
+                <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-red-500">
+                  <h3 class="font-semibold text-gray-900 mb-2">⚠️ Attention Needed</h3>
+                  ${briefing.warnings.map(warning => `<p class="text-red-700 text-sm mb-1">${warning}</p>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Failed to load daily briefing:', error);
+        briefingContainer.innerHTML = `
+          <div class="text-center py-8">
+            <p class="text-red-600 mb-4">Failed to load daily briefing</p>
+            <button onclick="loadDailyBriefing()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors">
+              Try Again
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // Add message to chat
+    function addMessage(content, isUser = false) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+      
+      messageDiv.innerHTML = `
+        <div class="flex items-start gap-2 ${isUser ? 'flex-row-reverse' : ''}">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center ${
+            isUser ? 'bg-blue-500' : 'bg-gradient-to-r from-blue-500 to-purple-600'
+          }">
+            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+              ${isUser 
+                ? '<path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>'
+                : '<path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"></path>'
+              }
+            </svg>
+          </div>
+          <div class="${isUser ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-900'} rounded-lg p-3 max-w-md">
+            <p class="whitespace-pre-wrap">${content}</p>
+            <p class="text-xs mt-1 ${isUser ? 'text-blue-100' : 'text-gray-500'}">
+              ${new Date().toLocaleTimeString()}
+            </p>
+          </div>
+        </div>
+      `;
+      
+      chatMessagesContainer.appendChild(messageDiv);
+      chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    }
+
+    // Send message to AI
+    async function sendMessage(message) {
+      if (!message.trim() || isLoading) return;
+      
+      // Add user message
+      addMessage(message, true);
+      chatInput.value = '';
+      isLoading = true;
+      sendButton.disabled = true;
+      sendButton.innerHTML = '<div class="w-4 h-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>';
+      
+      try {
+        const response = await fetch('/api/ai/life-coach', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.response) {
+          addMessage(data.response, false);
+        } else {
+          throw new Error(data.error || 'Failed to get response');
+        }
+      } catch (error) {
+        console.error('Chat error:', error);
+        addMessage("I'm having trouble processing that right now. Try asking about your tasks, UK move planning, or energy management.", false);
+      } finally {
+        isLoading = false;
+        sendButton.disabled = false;
+        sendButton.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>';
+      }
+    }
+
+    // Event listeners
+    sendButton.addEventListener('click', () => sendMessage(chatInput.value));
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage(chatInput.value);
+      }
+    });
+
+    // Quick suggestion buttons
+    document.querySelectorAll('.quick-suggestion').forEach(button => {
+      button.addEventListener('click', () => {
+        sendMessage(button.dataset.message);
+      });
+    });
+
+    // Quick action buttons
+    document.getElementById('generate-briefing')?.addEventListener('click', () => {
+      loadDailyBriefing();
+    });
+
+    document.getElementById('get-priorities')?.addEventListener('click', () => {
+      sendMessage("What should I focus on today?");
+    });
+
+    document.getElementById('uk-help')?.addEventListener('click', () => {
+      sendMessage("Help with UK move planning");
+    });
+
+    document.getElementById('energy-tips')?.addEventListener('click', () => {
+      sendMessage("What are my energy recommendations?");
+    });
+
+    // Update last analysis time
+    const updateLastAnalysis = () => {
+      const lastAnalysisElement = document.getElementById('last-analysis');
+      if (lastAnalysisElement) {
+        lastAnalysisElement.textContent = new Date().toLocaleTimeString();
+      }
+    };
+
+    // Initialize
     document.addEventListener('DOMContentLoaded', () => {
-      // Mount Daily Briefing
-      const briefingContainer = document.getElementById('daily-briefing-container');
-      if (briefingContainer) {
-        const briefingRoot = createRoot(briefingContainer);
-        briefingRoot.render(React.createElement(DailyBriefing, { className: '' }));
-      }
-
-      // Mount AI Chat
-      const chatContainer = document.getElementById('ai-chat-container');
-      if (chatContainer) {
-        const chatRoot = createRoot(chatContainer);
-        chatRoot.render(React.createElement(AIAgentChat, { className: 'h-full' }));
-      }
-
-      // Quick action handlers
-      document.getElementById('generate-briefing')?.addEventListener('click', async () => {
-        // Refresh the daily briefing
-        window.location.reload();
-      });
-
-      document.getElementById('weekly-report')?.addEventListener('click', async () => {
-        try {
-          const response = await fetch('/api/ai/weekly-report');
-          const data = await response.json();
-          
-          if (data.success) {
-            // Show weekly report in a modal or new page
-            alert('Weekly report generated! Check your insights.');
-          }
-        } catch (error) {
-          console.error('Weekly report error:', error);
-          alert('Failed to generate weekly report');
-        }
-      });
-
-      document.getElementById('optimize-habits')?.addEventListener('click', () => {
-        // Add a pre-filled message to the chat
-        const chatInput = document.querySelector('#ai-chat-container textarea');
-        if (chatInput) {
-          chatInput.value = "Can you analyze my habits and suggest optimizations?";
-          chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      });
-
-      document.getElementById('analyze-patterns')?.addEventListener('click', () => {
-        // Add a pre-filled message to the chat
-        const chatInput = document.querySelector('#ai-chat-container textarea');
-        if (chatInput) {
-          chatInput.value = "What patterns do you see in my data across all domains?";
-          chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-      });
-
-      // Update last analysis time
-      const updateLastAnalysis = () => {
-        const lastAnalysisElement = document.getElementById('last-analysis');
-        if (lastAnalysisElement) {
-          lastAnalysisElement.textContent = new Date().toLocaleTimeString();
-        }
-      };
-
-      // Update every minute
+      loadDailyBriefing();
       setInterval(updateLastAnalysis, 60000);
     });
   </script>
