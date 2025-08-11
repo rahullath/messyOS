@@ -5,13 +5,44 @@ import type { Database } from '../../types/supabase';
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     flowType: 'pkce',
     autoRefreshToken: true,
     detectSessionInUrl: true,
     persistSession: true,
-    storage: typeof window !== 'undefined' ? localStorage : undefined,
+    storage: {
+      // Custom storage that syncs localStorage with cookies for SSR compatibility
+      getItem: (key: string) => {
+        if (typeof window === 'undefined') return null;
+        return localStorage.getItem(key);
+      },
+      setItem: (key: string, value: string) => {
+        if (typeof window === 'undefined') return;
+        localStorage.setItem(key, value);
+        
+        // Set cookie for SSR access without encoding the value
+        // Let Supabase SSR handle the cookie format properly
+        if (key.includes('auth-token')) {
+          const projectRef = supabaseUrl.split('.')[0].split('//')[1];
+          document.cookie = `sb-${projectRef}-auth-token=${value}; path=/; max-age=604800; SameSite=Lax; ${import.meta.env.PROD ? 'Secure;' : ''}`;
+        }
+      },
+      removeItem: (key: string) => {
+        if (typeof window === 'undefined') return;
+        localStorage.removeItem(key);
+        
+        // Remove cookie
+        if (key.includes('auth-token')) {
+          const projectRef = supabaseUrl.split('.')[0].split('//')[1];
+          document.cookie = `sb-${projectRef}-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+        }
+      }
+    },
   },
 });
 
@@ -33,17 +64,12 @@ if (typeof window !== 'undefined') {
 
     if (event === 'SIGNED_IN' && session) {
       console.log('✅ User signed in:', session.user.email);
-      console.log('🍪 Session should be automatically handled by Supabase SSR');
-      
-      // Debug: check what cookies are actually set
-      setTimeout(() => {
-        console.log('🔍 Document cookies:', document.cookie);
-      }, 100);
+      console.log('🍪 Session storage handled by Supabase SSR');
     }
 
     if (event === 'SIGNED_OUT') {
       console.log('👋 User signed out');
-      console.log('🍪 Cookies should be automatically cleared by Supabase SSR');
+      console.log('🍪 Cookies cleared by Supabase SSR');
     }
   });
 }

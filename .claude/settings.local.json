@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp:*)",
+      "Bash(del landing.astro)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}

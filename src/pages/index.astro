@@ -1,524 +1,291 @@
 ---
-// src/pages/index.astro - ENHANCED DASHBOARD
-import DashboardLayout from '../layouts/DashboardLayout.astro';
-import { createServerAuth } from '../lib/auth/simple-multi-user';
-
-// Check if this is an OAuth callback (Google redirects to / instead of /auth/exchange)
-const url = new URL(Astro.request.url);
-const code = url.searchParams.get('code');
-if (code) {
-  // This is an OAuth callback, redirect to the proper exchange handler
-  return Astro.redirect(`/auth/exchange?code=${code}`);
-}
-
-// Get authenticated user (middleware ensures authentication)
-const serverAuth = createServerAuth(Astro.cookies);
-const user = await serverAuth.getUser();
-
-if (!user) {
-  // This shouldn't happen due to middleware, but just in case
-  return Astro.redirect('/login');
-}
-
-const supabase = serverAuth.supabase;
-
-// Fetch comprehensive dashboard data
-const { data: habits, error: habitsError } = await supabase
-  .from('habits')
-  .select(`
-    *,
-    habit_entries(
-      id,
-      value,
-      date,
-      logged_at,
-      effort,
-      duration,
-      completion_time,
-      energy_level,
-      mood,
-      location,
-      weather,
-      context,
-      notes
-    )
-  `)
-  .eq('user_id', user.id)
-  .eq('is_active', true)
-  .order('streak_count', { ascending: false });
-
-// Fetch recent metrics (health, finance, etc.)
-const { data: recentMetrics } = await supabase
-  .from('metrics')
-  .select('*')
-  .eq('user_id', user.id)
-  .gte('recorded_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-  .order('recorded_at', { ascending: false })
-  .limit(20);
-
-// Process dashboard data
-const today = new Date().toISOString().split('T')[0];
-const habitsWithStatus = (habits || []).map((habit) => {
-  const entries = habit.habit_entries || [];
-  const todayEntry = entries.find(e => e.date === today);
-  const completedToday = todayEntry ? todayEntry.value === 1 : false;
-  
-  // Get last 7 days for weekly progress
-  const last7Days = [];
-  for (let i = 6; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
-    const dayEntry = entries.find(e => e.date === dateStr);
-    last7Days.push({
-      date: dateStr,
-      completed: dayEntry ? dayEntry.value === 1 : false,
-      entry: dayEntry
-    });
-  }
-  
-  return {
-    ...habit,
-    completedToday,
-    todayEntry,
-    last7Days,
-    weeklyCompletion: last7Days.filter(d => d.completed).length
-  };
-});
-
-// Calculate dashboard statistics
-const totalHabits = habitsWithStatus.length;
-const completedToday = habitsWithStatus.filter(h => h.completedToday).length;
-const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
-const perfectStreaks = habitsWithStatus.filter(h => h.streak_count >= 90).length;
-const totalStreakDays = habitsWithStatus.reduce((sum, h) => sum + (h.streak_count || 0), 0);
-
-// Health metrics analysis
-const healthMetrics = {
-  avgSleep: 0,
-  avgStress: 0,
-  avgHeartRate: 0,
-  lastUpdate: null
-};
-
-if (recentMetrics) {
-  const sleepMetrics = recentMetrics.filter(m => m.type === 'sleep_duration');
-  const stressMetrics = recentMetrics.filter(m => m.type === 'stress_level');
-  const heartRateMetrics = recentMetrics.filter(m => m.type === 'heart_rate_avg');
-  
-  healthMetrics.avgSleep = sleepMetrics.length > 0 ? 
-    Math.round(sleepMetrics.reduce((sum, m) => sum + m.value, 0) / sleepMetrics.length / 60 * 10) / 10 : 0;
-  healthMetrics.avgStress = stressMetrics.length > 0 ? 
-    Math.round(stressMetrics.reduce((sum, m) => sum + m.value, 0) / stressMetrics.length) : 0;
-  healthMetrics.avgHeartRate = heartRateMetrics.length > 0 ? 
-    Math.round(heartRateMetrics.reduce((sum, m) => sum + m.value, 0) / heartRateMetrics.length) : 0;
-  healthMetrics.lastUpdate = recentMetrics[0]?.recorded_at;
-}
-
-// Recent activity feed
-const recentActivity = [];
-
-// Add today's habit completions
-habitsWithStatus.forEach(habit => {
-  if (habit.completedToday && habit.todayEntry) {
-    const entry = habit.todayEntry;
-    recentActivity.push({
-      type: 'habit',
-      icon: '✅',
-      title: `Completed ${habit.name}`,
-      time: entry.logged_at,
-      details: entry.effort ? `Effort: ${entry.effort}/5` : null,
-      context: entry.context ? entry.context.join(', ') : null
-    });
-  }
-});
-
-// Add recent metrics
-if (recentMetrics) {
-  recentMetrics.slice(0, 5).forEach(metric => {
-    recentActivity.push({
-      type: 'metric',
-      icon: getMetricIcon(metric.type),
-      title: `Logged ${metric.type.replace('_', ' ')}`,
-      time: metric.recorded_at,
-      details: `${metric.value} ${metric.unit || ''}`,
-      context: null
-    });
-  });
-}
-
-// Sort by time and limit
-recentActivity.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-const displayActivity = recentActivity.slice(0, 8);
-
-function getMetricIcon(type) {
-  switch (type) {
-    case 'sleep_duration': return '😴';
-    case 'heart_rate_avg': return '❤️';
-    case 'stress_level': return '😰';
-    case 'weight': return '⚖️';
-    case 'expense': return '💰';
-    case 'crypto_value': return '₿';
-    default: return '📊';
-  }
-}
-
-// Category breakdown
-const categoryStats = habitsWithStatus.reduce((acc, habit) => {
-  const cat = habit.category || 'Other';
-  if (!acc[cat]) {
-    acc[cat] = { count: 0, totalStreak: 0, completed: 0 };
-  }
-  acc[cat].count++;
-  acc[cat].totalStreak += habit.streak_count || 0;
-  if (habit.completedToday) acc[cat].completed++;
-  return acc;
-}, {});
-
-const topCategories = Object.entries(categoryStats)
-  .map(([name, stats]) => ({
-    name,
-    avgStreak: Math.round(stats.totalStreak / stats.count),
-    completion: Math.round((stats.completed / stats.count) * 100),
-    count: stats.count
-  }))
-  .sort((a, b) => b.avgStreak - a.avgStreak);
+// src/pages/landing.astro - Modern SaaS Landing Page
+import Layout from '../layouts/Layout.astro';
 ---
 
-<DashboardLayout title="MeshOS - Dashboard">
-  <div class="space-y-8">
-    <!-- Welcome Header -->
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-semibold text-text-primary mb-2">
-          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, Rahul
+<Layout title="messyOS - Your AI Life Optimizer">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+    <!-- Navigation -->
+    <nav class="relative z-10 px-6 py-4">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <div class="text-2xl font-bold text-white">
+          <span class="text-cyan-400">messy</span>OS
+        </div>
+        <div class="space-x-4">
+          <a href="#features" class="text-gray-300 hover:text-white transition-colors">Features</a>
+          <a href="#pricing" class="text-gray-300 hover:text-white transition-colors">Pricing</a>
+          <a href="/login" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors">
+            Sign In
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative z-10 px-6 py-20">
+      <div class="max-w-4xl mx-auto text-center">
+        <h1 class="text-5xl md:text-7xl font-bold text-white mb-6">
+          Stop managing your life.<br/>
+          <span class="text-cyan-400">Start optimizing it.</span>
         </h1>
-        <p class="text-text-secondary">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+        <p class="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+          The AI-powered everything app that learns from your data, understands your patterns, 
+          and helps you optimize every aspect of your life - automatically.
         </p>
-      </div>
-      <div class="flex items-center space-x-4">
-        <!-- AI Insights Button -->
-        <button 
-          id="ai-insights-btn"
-          class="flex items-center px-4 py-2 bg-gradient-to-r from-accent-primary to-accent-purple text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <span class="text-lg mr-2">🤖</span>
-          AI Agent
-        </button>
         
-        <!-- Quick Add Button -->
-        <button class="flex items-center px-3 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-          </svg>
-          Quick Add
-        </button>
-      </div>
-    </div>
+        <!-- Waitlist Form -->
+        <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 max-w-md mx-auto mb-8">
+          <h3 class="text-2xl font-semibold text-white mb-4">Join the Waitlist</h3>
+          <p class="text-gray-300 mb-6">Get 30 days free when we launch + priority access</p>
+          
+          <form id="waitlistForm" class="space-y-4">
+            <input 
+              type="email" 
+              name="email"
+              placeholder="Enter your email" 
+              required
+              class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            />
+            <select name="interest" class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+              <option value="everything" disabled selected>What do you want to optimize most?</option>
+              <option value="habits">Habits & Goals</option>
+              <option value="health">Health & Wellness</option>
+              <option value="finance">Finance & Investments</option>
+              <option value="productivity">Tasks & Productivity</option>
+              <option value="everything">Everything!</option>
+            </select>
+            <button 
+              type="submit"
+              class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Get Early Access
+            </button>
+          </form>
+          
+          <p class="text-sm text-gray-400 mt-4">
+            $1/month after free trial • Cancel anytime
+          </p>
+        </div>
 
-    <!-- Key Metrics Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <!-- Today's Progress -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Today's Progress</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">
-              {completedToday}/{totalHabits}
+        <div class="text-gray-400">
+          <p>✨ 100% customizable • 🔒 Your data, encrypted • 🤖 AI that actually understands you</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="relative z-10 px-6 py-20 bg-black/20">
+      <div class="max-w-6xl mx-auto">
+        <h2 class="text-4xl font-bold text-white text-center mb-16">
+          One app. <span class="text-cyan-400">Infinite possibilities.</span>
+        </h2>
+        
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Smart Data Input -->
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🧠</div>
+            <h3 class="text-xl font-semibold text-white mb-3">Smart Data Dumping</h3>
+            <p class="text-gray-300">
+              Just talk naturally: "Spent $50 on groceries, worked out 45 mins, need to apply for visa" 
+              - our AI structures everything automatically.
             </p>
-            <p class="text-sm text-accent-success mt-1">{completionRate}% complete</p>
           </div>
-          <div class="w-12 h-12 bg-accent-success/10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-accent-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-        </div>
-      </div>
 
-      <!-- Perfect Streaks -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Perfect Streaks</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">{perfectStreaks}</p>
-            <p class="text-sm text-text-muted mt-1">90+ days</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-warning/10 rounded-lg flex items-center justify-center">
-            <span class="text-2xl">🏆</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Health Score -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Health Score</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">
-              {healthMetrics.avgSleep > 0 ? Math.round((healthMetrics.avgSleep / 8 + (100 - healthMetrics.avgStress) / 100) * 50) : '--'}
-            </p>
-            <p class="text-sm text-text-muted mt-1">
-              {healthMetrics.avgSleep > 0 ? 'Based on sleep & stress' : 'No data yet'}
+          <!-- Customizable Modules -->
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🎛️</div>
+            <h3 class="text-xl font-semibold text-white mb-3">100% Customizable</h3>
+            <p class="text-gray-300">
+              Choose your modules, themes, and features. Your dashboard shows only what matters to you. 
+              No bloatware, ever.
             </p>
           </div>
-          <div class="w-12 h-12 bg-accent-error/10 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-accent-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-            </svg>
+
+          <!-- AI Agent -->
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🤖</div>
+            <h3 class="text-xl font-semibold text-white mb-3">Personal AI Coach</h3>
+            <p class="text-gray-300">
+              Your AI knows your patterns, suggests optimizations, and helps you achieve goals with 
+              personalized strategies that actually work.
+            </p>
+          </div>
+
+          <!-- Integrations -->
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🔗</div>
+            <h3 class="text-xl font-semibold text-white mb-3">Universal Integrations</h3>
+            <p class="text-gray-300">
+              Connect Gmail, GitHub, Notion, banking, fitness apps, shopping platforms - 
+              everything in one intelligent dashboard.
+            </p>
+          </div>
+
+          <!-- Security -->
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">🔒</div>
+            <h3 class="text-xl font-semibold text-white mb-3">Bank-Grade Security</h3>
+            <p class="text-gray-300">
+              End-to-end encryption, zero-knowledge architecture. Your data stays yours. 
+              We can't see it, nobody can.
+            </p>
+          </div>
+
+          <!-- Cross-Domain Insights -->
+          <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+            <div class="text-cyan-400 text-3xl mb-4">📊</div>
+            <h3 class="text-xl font-semibold text-white mb-3">Cross-Domain Intelligence</h3>
+            <p class="text-gray-300">
+              Discover hidden connections: how sleep affects productivity, spending patterns during stress, 
+              and optimization opportunities you never knew existed.
+            </p>
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Total Streak Days -->
-      <div class="card-hover">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-text-muted">Total Streak Days</p>
-            <p class="text-2xl font-semibold text-text-primary mt-1">{totalStreakDays.toLocaleString()}</p>
-            <p class="text-sm text-text-muted mt-1">across all habits</p>
-          </div>
-          <div class="w-12 h-12 bg-accent-purple/10 rounded-lg flex items-center justify-center">
-            <span class="text-2xl">🔥</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Today's Habits Progress -->
-      <div class="lg:col-span-2">
-        <div class="card">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-semibold text-text-primary">Today's Habits</h2>
-            <a href="/habits" class="text-accent-primary hover:text-accent-primary/80 text-sm font-medium">
-              View All →
-            </a>
+    <!-- Use Cases -->
+    <section class="relative z-10 px-6 py-20">
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-4xl font-bold text-white mb-12">
+          Perfect for <span class="text-cyan-400">ambitious people</span> who want more
+        </h2>
+        
+        <div class="grid md:grid-cols-2 gap-8 text-left">
+          <div class="space-y-4">
+            <h3 class="text-xl font-semibold text-white">📈 For Growth-Minded Individuals</h3>
+            <ul class="text-gray-300 space-y-2">
+              <li>• Track habits that actually matter to your goals</li>
+              <li>• Optimize your health and energy levels</li>
+              <li>• Make better financial decisions with data</li>
+              <li>• Build systems that compound over time</li>
+            </ul>
           </div>
           
           <div class="space-y-4">
-            {habitsWithStatus.slice(0, 6).map((habit) => (
-              <div key={habit.id} class="flex items-center justify-between p-4 bg-surface-hover rounded-lg">
-                <div class="flex items-center space-x-3">
-                  <div 
-                    class="w-3 h-3 rounded-full" 
-                    style={`background-color: ${habit.color}`}
-                  ></div>
-                  <div>
-                    <h3 class="font-medium text-text-primary">{habit.name}</h3>
-                    <p class="text-sm text-text-muted">{habit.streak_count} day streak</p>
-                  </div>
-                </div>
-                
-                <div class="flex items-center space-x-4">
-                  <!-- Weekly Progress Dots -->
-                  <div class="flex space-x-1">
-                    {habit.last7Days.map((day, index) => (
-                      <div
-                        key={index}
-                        class={`w-2 h-2 rounded-full ${
-                          day.completed
-                            ? 'bg-accent-success'
-                            : 'bg-surface border border-border'
-                        }`}
-                        title={day.date}
-                      ></div>
-                    ))}
-                  </div>
-                  
-                  <!-- Status -->
-                  <div class="flex items-center">
-                    {habit.completedToday ? (
-                      <div class="flex items-center text-accent-success">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        <span class="text-sm">Done</span>
-                      </div>
-                    ) : (
-                      <button 
-                        onclick={`logHabit('${habit.id}', '${habit.name}', '${habit.measurement_type}', ${habit.allows_skips})`}
-                        class="px-3 py-1 bg-accent-primary text-white text-sm rounded-lg hover:bg-accent-primary/90 transition-colors"
-                      >
-                        Log
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+            <h3 class="text-xl font-semibold text-white">🚀 For High Performers</h3>
+            <ul class="text-gray-300 space-y-2">
+              <li>• Manage complex projects and deadlines</li>
+              <li>• Integrate all your productivity tools</li>
+              <li>• Get AI-powered optimization suggestions</li>
+              <li>• Focus on what moves the needle</li>
+            </ul>
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Sidebar Content -->
-      <div class="space-y-6">
-        <!-- Quick Actions -->
-        <div class="card">
-          <h2 class="text-xl font-semibold text-text-primary mb-6">Quick Actions</h2>
-          
-          <div class="space-y-3">
-            <a href="/habits" class="w-full flex items-center justify-start px-4 py-3 bg-accent-success/10 hover:bg-accent-success/20 border border-accent-success/20 text-accent-success rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Log Habits
-            </a>
-
-            <a href="/analytics" class="w-full flex items-center justify-start px-4 py-3 bg-accent-primary/10 hover:bg-accent-primary/20 border border-accent-primary/20 text-accent-primary rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-              View Analytics
-            </a>
-
-            <button class="w-full flex items-center justify-start px-4 py-3 bg-accent-warning/10 hover:bg-accent-warning/20 border border-accent-warning/20 text-accent-warning rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-              </svg>
-              Log Health Data
-            </button>
-
-            <a href="/import" class="w-full flex items-center justify-start px-4 py-3 bg-accent-purple/10 hover:bg-accent-purple/20 border border-accent-purple/20 text-accent-purple rounded-lg transition-colors">
-              <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-              </svg>
-              Import Data
-            </a>
-          </div>
-        </div>
-
-        <!-- Recent Activity -->
-        <div class="card">
-          <h3 class="text-lg font-medium text-text-primary mb-4">Recent Activity</h3>
-          
-          <div class="space-y-3">
-            {displayActivity.length > 0 ? (
-              displayActivity.map((activity, index) => (
-                <div key={index} class="flex items-start space-x-3">
-                  <span class="text-lg mt-0.5">{activity.icon}</span>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm text-text-primary font-medium">{activity.title}</p>
-                    {activity.details && (
-                      <p class="text-xs text-text-muted">{activity.details}</p>
-                    )}
-                    {activity.context && (
-                      <p class="text-xs text-accent-primary">{activity.context}</p>
-                    )}
-                    <p class="text-xs text-text-muted">
-                      {new Date(activity.time).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p class="text-text-muted text-sm">No recent activity</p>
-            )}
-          </div>
-        </div>
-
-        <!-- Categories Overview */
-        <div class="card">
-          <h3 class="text-lg font-medium text-text-primary mb-4">Categories</h3>
-          
-          <div class="space-y-3">
-            {topCategories.slice(0, 4).map((category) => (
-              <div key={category.name} class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-text-primary">{category.name}</p>
-                  <p class="text-xs text-text-muted">{category.count} habits</p>
-                </div>
-                <div class="text-right">
-                  <p class="text-sm font-medium text-text-primary">{category.avgStreak}d</p>
-                  <p class="text-xs text-accent-success">{category.completion}% today</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <!-- System Status -->
-        <div class="card">
-          <h3 class="text-lg font-medium text-text-primary mb-4">System Status</h3>
-          
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">Database</span>
-              </div>
-              <span class="text-sm text-accent-success">Online</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">AI Analysis</span>
-              </div>
-              <span class="text-sm text-accent-success">Active</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <div class="w-2 h-2 bg-accent-success rounded-full"></div>
-                <span class="text-sm text-text-secondary">Enhanced Logging</span>
-              </div>
-              <span class="text-sm text-accent-success">Ready</span>
-            </div>
-
-            {healthMetrics.lastUpdate && (
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                  <div class="w-2 h-2 bg-accent-warning rounded-full"></div>
-                  <span class="text-sm text-text-secondary">Health Data</span>
-                </div>
-                <span class="text-sm text-text-secondary">
-                  {new Date(healthMetrics.lastUpdate).toLocaleDateString()}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</DashboardLayout>
-
-<script>
-  // Enhanced habit logging function (will be replaced when enhanced logging is implemented)
-  window.logHabit = async function(habitId, habitName, measurementType, allowsSkips = false) {
-    // For now, use simple logging - will be enhanced with the modal later
-    const success = confirm(`Did you complete ${habitName} today?`);
-    const value = success ? 1 : 0;
-    
-    try {
-      const response = await fetch(`/api/habits/${habitId}/log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value, notes: '' })
-      });
-
-      if (response.ok) {
-        const toast = document.createElement('div');
-        toast.className = 'fixed top-4 right-4 bg-accent-success text-white px-4 py-2 rounded-lg shadow-lg z-50';
-        toast.textContent = `✅ ${habitName} logged successfully`;
-        document.body.appendChild(toast);
+    <!-- Pricing -->
+    <section id="pricing" class="relative z-10 px-6 py-20 bg-black/20">
+      <div class="max-w-2xl mx-auto text-center">
+        <h2 class="text-4xl font-bold text-white mb-8">
+          Simple, honest pricing
+        </h2>
         
-        setTimeout(() => {
-          toast.remove();
-          window.location.reload();
-        }, 2000);
-      }
-    } catch (error) {
-      alert('Failed to log habit');
-    }
-  };
+        <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+          <div class="text-center">
+            <div class="text-5xl font-bold text-white mb-2">$1</div>
+            <div class="text-gray-300 mb-6">per month</div>
+            
+            <div class="space-y-3 text-left mb-8">
+              <div class="flex items-center text-gray-300">
+                <span class="text-green-400 mr-3">✓</span>
+                Unlimited data and AI analysis
+              </div>
+              <div class="flex items-center text-gray-300">
+                <span class="text-green-400 mr-3">✓</span>
+                All integrations and modules
+              </div>
+              <div class="flex items-center text-gray-300">
+                <span class="text-green-400 mr-3">✓</span>
+                Personal AI coach
+              </div>
+              <div class="flex items-center text-gray-300">
+                <span class="text-green-400 mr-3">✓</span>
+                Bank-grade security
+              </div>
+              <div class="flex items-center text-gray-300">
+                <span class="text-green-400 mr-3">✓</span>
+                30-day free trial
+              </div>
+            </div>
+            
+            <button class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+              Start Free Trial
+            </button>
+            
+            <p class="text-sm text-gray-400 mt-4">
+              No credit card required • Cancel anytime • UPI autopay
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  // AI Insights button
-  document.getElementById('ai-insights-btn')?.addEventListener('click', () => {
-    window.location.href = '/analytics';
-  });
-</script>
-</DashboardLayout>
+    <!-- CTA -->
+    <section class="relative z-10 px-6 py-20">
+      <div class="max-w-2xl mx-auto text-center">
+        <h2 class="text-3xl font-bold text-white mb-4">
+          Ready to optimize your life?
+        </h2>
+        <p class="text-gray-300 mb-8">
+          Join the waitlist and be among the first to experience the future of personal optimization.
+        </p>
+        <button 
+          onclick="document.getElementById('waitlistForm').scrollIntoView()"
+          class="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+        >
+          Get Early Access
+        </button>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative z-10 px-6 py-8 border-t border-white/10">
+      <div class="max-w-4xl mx-auto text-center text-gray-400">
+        <p>&copy; 2024 messyOS. Built for people who want to optimize everything.</p>
+        <div class="mt-4 space-x-6">
+          <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
+          <a href="/terms" class="hover:text-white transition-colors">Terms</a>
+          <a href="mailto:hey@messyos.com" class="hover:text-white transition-colors">Contact</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Background Animation -->
+  <div class="fixed inset-0 z-0">
+    <div class="absolute inset-0 bg-gradient-to-br from-cyan-900/20 to-blue-900/20"></div>
+    <div class="absolute top-0 left-0 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl animate-pulse"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+  </div>
+
+  <script>
+    // Waitlist form handling
+    document.getElementById('waitlistForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target as HTMLFormElement;
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      const interest = (form.elements.namedItem('interest') as HTMLSelectElement).value;
+      
+      try {
+        const response = await fetch('/api/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, interest })
+        });
+        
+        const result = await response.json();
+
+        if (response.ok) {
+          alert('🎉 Welcome to the waitlist! You will be redirected to the onboarding.');
+          window.location.href = '/onboarding';
+        } else {
+          alert(`Error: ${result.error || 'Something went wrong. Please try again.'}`);
+        }
+      } catch (error) {
+        alert('Something went wrong. Please try again.');
+      }
+    });
+  </script>
+</Layout>

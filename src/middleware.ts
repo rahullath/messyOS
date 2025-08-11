@@ -2,8 +2,8 @@ import { defineMiddleware } from 'astro:middleware';
 import { createServerAuth } from './lib/auth/simple-multi-user';
 
 const PUBLIC_ROUTES = [
-  '/landing', '/login', '/auth/callback', '/auth/exchange', 
-  '/test-auth', '/onboarding', '/debug-session'
+  '/', '/landing', '/login', '/auth/callback', '/auth/exchange', 
+  '/test-auth', '/onboarding', '/debug-session', '/reset-password'
 ];
 
 export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, next) => {
@@ -11,8 +11,8 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
 
   console.log(`🌐 Request: ${pathname}`);
 
-  // Always allow public routes and API routes
-  if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/api/')) {
+  // Always allow non-root public routes and API routes
+  if ((PUBLIC_ROUTES.includes(pathname) && pathname !== '/') || pathname.startsWith('/api/')) {
     console.log(`✅ Public route allowed: ${pathname}`);
     return next();
   }
@@ -20,7 +20,20 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
   const serverAuth = createServerAuth(cookies);
   const user = await serverAuth.getUser();
 
-  // Redirect unauthenticated users to login
+  // Handle root path specifically
+  if (pathname === '/') {
+    if (!user) {
+      // Unauthenticated user on landing page - allow access
+      console.log(`🏠 Unauthenticated user on landing page`);
+      return next();
+    } else {
+      // Authenticated user on landing page - redirect to dashboard
+      console.log(`🔄 Authenticated user on landing, redirecting to dashboard`);
+      return redirect('/dashboard');
+    }
+  }
+
+  // Redirect unauthenticated users to login for protected routes
   if (!user) {
     console.log(`🚫 No user found, redirecting to login from ${pathname}`);
     return redirect('/login');
@@ -44,7 +57,7 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
     // If onboarding is complete and user is on onboarding page, redirect to dashboard
     if (hasCompletedOnboarding && pathname === '/onboarding') {
       console.log(`🏠 Redirecting to dashboard from onboarding`);
-      return redirect('/');
+      return redirect('/dashboard');
     }
 
   } catch (error) {

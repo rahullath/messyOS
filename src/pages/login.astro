@@ -8,7 +8,7 @@ const serverAuth = createServerAuth(Astro.cookies);
 const user = await serverAuth.getUser();
 
 if (user) {
-  return Astro.redirect('/');
+  return Astro.redirect('/dashboard');
 }
 ---
 
@@ -141,8 +141,8 @@ if (user) {
             Forgot your password?
           </a>
           <br>
-          <a href="/landing" class="text-sm text-gray-400 hover:text-white">
-            ← Back to landing page
+          <a href="/" class="text-sm text-gray-400 hover:text-white">
+            ← Back to home
           </a>
         </div>
       </div>
@@ -222,7 +222,7 @@ if (user) {
          // Wait for auth state change to set cookies, then redirect
          setTimeout(() => {
            console.log('🔄 Redirecting to home page');
-           window.location.href = '/';
+           window.location.href = '/dashboard';
          }, 1500);
        } catch (error) {
          console.error('❌ Sign in error:', error);
@@ -248,7 +248,7 @@ if (user) {
            email, 
            password,
            options: {
-             emailRedirectTo: `${window.location.origin}/auth/exchange`
+             emailRedirectTo: `${window.location.origin}/auth/callback`
            }
          });
          if (error) throw error;
@@ -258,7 +258,7 @@ if (user) {
          } else if (data.session) {
            showMessage('Account created! Redirecting...', 'success');
            setTimeout(() => {
-             window.location.href = '/';
+             window.location.href = '/dashboard';
            }, 1500);
          }
        } catch (error) {
@@ -274,7 +274,7 @@ if (user) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/exchange`,
+        redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',

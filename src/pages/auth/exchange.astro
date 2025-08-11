@@ -70,11 +70,12 @@
         status.textContent = 'Authentication successful! Redirecting...';
         console.log('✅ Successfully exchanged code for session:', data.user?.email);
         
-        // Force reload the page to trigger proper server-side session detection
-        // This is a simple fix for SSR cookie issues
+        // Clear URL params and redirect to home page
+        // Let the middleware handle authentication checks
         setTimeout(() => {
-          console.log('🔄 Reloading page to establish server session');
-          window.location.reload();
+          console.log('🔄 Redirecting to home page');
+          window.history.replaceState(null, '', '/');
+          window.location.href = '/';
         }, 1000);
         
       } catch (error) {

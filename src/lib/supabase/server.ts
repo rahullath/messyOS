@@ -19,16 +19,20 @@ export function createServerClient(cookies: AstroCookies) {
         set(name: string, value: string, options: any) {
           cookies.set(name, value, {
             ...options,
-            httpOnly: false,
-            secure: import.meta.env.PROD,
-            sameSite: 'lax',
-            path: '/'
+            httpOnly: false, // Must be false for client-side access
+            secure: import.meta.env.PROD, // Only secure in production
+            sameSite: 'lax', // Lax for OAuth compatibility
+            path: '/', // Global path
+            maxAge: options.maxAge || 60 * 60 * 24 * 7 // Default 7 days
           });
         },
         remove(name: string, options: any) {
           cookies.delete(name, {
             ...options,
-            path: '/'
+            path: '/',
+            httpOnly: false,
+            secure: import.meta.env.PROD,
+            sameSite: 'lax'
           });
         },
       },
