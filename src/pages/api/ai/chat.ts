@@ -1,6 +1,6 @@
 // src/pages/api/ai/chat.ts
 import type { APIRoute } from 'astro';
-import { MessyOSAIAgent } from '../../../lib/intelligence/meshos-ai-agent';
+import { GeminiLifeAgent } from '../../../lib/intelligence/gemini-life-agent';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
@@ -22,18 +22,14 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     console.log(`💬 Chat initiated with user ${user.id}`);
 
     // Initialize AI agent
-    const agent = new MessyOSAIAgent(cookies);
+    const agent = new GeminiLifeAgent(cookies, user.id, process.env.GOOGLE_API_KEY!);
     
     // Get chat response
-    const result = await agent.chat(
-      user.id,
-      message,
-      conversationHistory || []
-    );
+    const result = await agent.chat(message);
 
     return new Response(JSON.stringify({
       success: true,
-      ...result
+      ai_response: result
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

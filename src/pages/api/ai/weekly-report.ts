@@ -1,6 +1,6 @@
 // src/pages/api/ai/weekly-report.ts
 import type { APIRoute } from 'astro';
-import { MessyOSAIAgent } from '../../../lib/intelligence/meshos-ai-agent';
+import { GeminiLifeAgent } from '../../../lib/intelligence/gemini-life-agent';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ cookies }) => {
@@ -11,10 +11,10 @@ export const GET: APIRoute = async ({ cookies }) => {
     
 
     // Initialize AI agent
-    const agent = new MessyOSAIAgent(cookies);
+    const agent = new GeminiLifeAgent(cookies, user.id, process.env.GOOGLE_API_KEY!);
     
     // Generate weekly report
-    const report = await agent.generateWeeklyReport(user.id);
+    const report = await agent.generateDailyBriefing();
 
     return new Response(JSON.stringify({
       success: true,
