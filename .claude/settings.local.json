@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cp:*)",
       "Bash(del landing.astro)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(dir:*)"
     ],
     "deny": []
   }
