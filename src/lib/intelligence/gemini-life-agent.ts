@@ -102,11 +102,11 @@ export class GeminiLifeAgent {
         .single()
     ]);
 
-    const health = metricsResult.data?.filter(m => 
+    const health = metricsResult.data?.filter((m: any) => 
       ['sleep_duration', 'heart_rate_avg', 'stress_level', 'weight', 'steps', 'mood'].includes(m.type)
     ) || [];
     
-    const finance = metricsResult.data?.filter(m => 
+    const finance = metricsResult.data?.filter((m: any) => 
       ['expense', 'income', 'crypto_value'].includes(m.type)
     ) || [];
 
@@ -166,7 +166,7 @@ ${JSON.stringify({
     name: h.name,
     description: h.description,
     category: h.category,
-    recent_entries: (h.habit_entries || []).slice(-7).map(e => ({
+    recent_entries: (h.habit_entries || []).slice(-60).map((e: any) => ({
       date: e.date,
       value: e.value,
       energy_level: e.energy_level,
