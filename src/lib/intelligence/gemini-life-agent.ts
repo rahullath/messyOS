@@ -65,12 +65,7 @@ export class GeminiLifeAgent {
     ] = await Promise.all([
       this.supabase
         .from('habits')
-        .select(`
-          *,
-          habit_entries(
-            id, value, date, logged_at, effort, energy_level, mood, context, notes
-          )
-        `)
+        .select(`*`)
         .eq('user_id', this.userId)
         .eq('is_active', true),
       
@@ -102,6 +97,17 @@ export class GeminiLifeAgent {
         .single()
     ]);
 
+    const habits = habitsResult.data || [];
+    for (const habit of habits) {
+      const habitEntriesResult = await this.supabase
+        .from('habit_entries')
+        .select('id, value, date, logged_at, effort, energy_level, mood, context, notes')
+        .eq('habit_id', habit.id)
+        .order('date', { ascending: false })
+        .limit(60);
+      habit.habit_entries = habitEntriesResult.data || [];
+    }
+
     const health = metricsResult.data?.filter((m: any) => 
       ['sleep_duration', 'heart_rate_avg', 'stress_level', 'weight', 'steps', 'mood'].includes(m.type)
     ) || [];
@@ -111,7 +117,7 @@ export class GeminiLifeAgent {
     ) || [];
 
     return {
-      habits: habitsResult.data || [],
+      habits: habits,
       tasks: tasksResult.data || [],
       health,
       finance,
@@ -162,11 +168,11 @@ ${JSON.stringify({
     created_at: t.created_at,
     due_date: t.due_date
   })),
-  habits: context.habits.map(h => ({
+  habits: context.habits.map((h: any) => ({
     name: h.name,
     description: h.description,
     category: h.category,
-    recent_entries: (h.habit_entries || []).slice(-60).map((e: any) => ({
+    recent_entries: (h.habit_entries || []).map((e: any) => ({
       date: e.date,
       value: e.value,
       energy_level: e.energy_level,
