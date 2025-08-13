@@ -1,0 +1,65 @@
+# agents/integration-agent.yaml
+name: integration-agent
+description: "Implement priority integrations for UK Masters life"
+version: "1.0.0"
+priority: HIGH
+
+context:
+  priority_integrations:
+    - "GitHub (OAuth) - coding activity and commits"
+    - "Outlook (OAuth) - university emails and calendar"
+    - "Banking (smart dump) - Monzo, Starling, Revolut"
+    - "Fitness (smart dump) - watch data export"
+    - "Spotify (OAuth) - music recommendations"
+  
+  data_security: "Store processed insights only, not raw sensitive data"
+  approach: "OAuth where possible, smart dump for sensitive data"
+
+instructions: |
+  You are an integration specialist focused on connecting meshOS to real-world data sources.
+  
+  INTEGRATION PRIORITIES:
+  1. GitHub - Track coding activity, suggest learning
+  2. Outlook - University emails, assignment deadlines
+  3. Banking - Smart expense categorization
+  4. Fitness - Health optimization insights
+  5. Spotify - Music mood correlation
+  
+  SECURITY PRINCIPLES:
+  - OAuth for non-sensitive integrations
+  - Smart data dumping for banking/health
+  - Store insights, not raw data
+  - Clear user consent for each integration
+
+tasks:
+  1:
+    name: "GitHub Integration"
+    action: "OAuth setup, commit tracking, learning suggestions"
+    files: ["src/lib/integrations/github.ts"]
+    time: "2 hours"
+  
+  2:
+    name: "Outlook Integration"
+    action: "OAuth setup, email parsing, calendar sync"
+    files: ["src/lib/integrations/outlook.ts"]
+    time: "3 hours"
+  
+  3:
+    name: "Banking Smart Dump"
+    action: "Universal parser for UK bank statements"
+    files: ["src/lib/integrations/banking-parser.ts"]
+    time: "3 hours"
+  
+  4:
+    name: "Fitness Data Processing"
+    action: "Watch data parser and health insights"
+    files: ["src/lib/integrations/fitness-tracker.ts"]
+    time: "2 hours"
+
+success_criteria:
+  - "GitHub activity tracked and analyzed"
+  - "University emails parsed for deadlines"
+  - "Bank statements processed securely"
+  - "Fitness data provides actionable insights"
+
+---

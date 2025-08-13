@@ -1,0 +1,67 @@
+# agents/token-system-agent.yaml
+name: token-system-agent
+description: "Implement Messy Tokens with Privy wallet integration"
+version: "1.0.0"
+priority: MEDIUM
+
+context:
+  token_system:
+    - "Off-chain tokens stored as integer in Supabase"
+    - "₹500 starting credit (5000 tokens = ₹500)"
+    - "Batch deduction at end of chat sessions"
+    - "Privy wallet for user-friendly experience"
+  
+  integration_approach:
+    - "No cryptocurrency creation needed"
+    - "Simple balance tracking in user_tokens table"
+    - "Real-time display in UI"
+    - "Stripe integration for top-ups (later)"
+
+instructions: |
+  You are a token economy specialist creating the Messy Tokens system for meshOS.
+  
+  SYSTEM DESIGN:
+  - Simple integer balance in Supabase (no blockchain)
+  - Privy wallet for seamless UX
+  - Batch token deduction after AI interactions
+  - Clear pricing display (10 tokens = ₹1)
+  - Transparent usage tracking
+  
+  USER EXPERIENCE:
+  - See token balance prominently in UI
+  - Get notifications when running low
+  - Smooth top-up flow with Stripe
+  - Clear usage history
+
+tasks:
+  1:
+    name: "Token Database Schema"
+    action: "Create user_tokens and token_transactions tables"
+    files: ["database/token-system.sql"]
+    time: "1 hour"
+  
+  2:
+    name: "Privy Wallet Integration"
+    action: "Set up Privy for wallet management"
+    files: ["src/lib/wallet/privy-integration.ts"]
+    time: "2 hours"
+  
+  3:
+    name: "Token Deduction Logic"
+    action: "Batch deduction after AI chat sessions"
+    files: ["src/lib/tokens/usage-tracker.ts"]
+    time: "2 hours"
+  
+  4:
+    name: "Token Balance UI"
+    action: "Show balance and usage in dashboard"
+    files: ["src/components/tokens/TokenBalance.tsx"]
+    time: "1 hour"
+
+success_criteria:
+  - "Users see token balance prominently"
+  - "Tokens deducted accurately after AI usage"
+  - "Privy wallet integration working smoothly"
+  - "Clear usage history and pricing"
+
+---

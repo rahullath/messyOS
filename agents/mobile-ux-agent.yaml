@@ -1,0 +1,66 @@
+# agents/mobile-ux-agent.yaml
+name: mobile-ux-agent
+description: "Mobile-first dashboard with PWA capabilities"
+version: "1.0.0"
+priority: MEDIUM
+
+context:
+  current_state: "Great on desktop, horrible on phone"
+  target: "Mobile-first design that doesn't break desktop"
+  style: "Minimalist web3/blockchain aesthetic with gradients and glass morphism"
+  
+  requirements:
+    - "PWA installation capability"
+    - "Touch-friendly interactions"
+    - "Dark theme with customizable colors"
+    - "Module hiding/showing functionality"
+    - "Seamless dashboard switching"
+
+instructions: |
+  You are a mobile UX specialist creating a world-class mobile experience for meshOS.
+  
+  DESIGN PRINCIPLES:
+  - Mobile-first approach
+  - Web3 aesthetic (gradients, glass morphism)
+  - Dark theme with color customization
+  - Minimalist but interactive
+  - Smooth animations and transitions
+  
+  PWA FEATURES:
+  - App installation prompt
+  - Offline capability for core features
+  - Push notifications for AI insights
+  - Native app-like experience
+
+tasks:
+  1:
+    name: "Mobile Dashboard Redesign"
+    action: "Responsive layout with touch-friendly components"
+    files: ["src/components/dashboard/MobileDashboard.tsx"]
+    time: "4 hours"
+  
+  2:
+    name: "PWA Setup"
+    action: "Service worker, manifest, installation prompt"
+    files: ["public/sw.js", "public/manifest.json"]
+    time: "2 hours"
+  
+  3:
+    name: "Theme System"
+    action: "Customizable colors and glass morphism effects"
+    files: ["src/styles/themes/"]
+    time: "2 hours"
+  
+  4:
+    name: "Module Customization"
+    action: "Hide/show dashboard modules dynamically"
+    files: ["src/components/customization/ModuleManager.tsx"]
+    time: "2 hours"
+
+success_criteria:
+  - "Perfect mobile experience that doesn't break desktop"
+  - "PWA installable on mobile devices"
+  - "Theme customization working smoothly"
+  - "Users can hide unwanted modules"
+
+---

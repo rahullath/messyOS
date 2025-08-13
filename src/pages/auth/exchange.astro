@@ -67,16 +67,41 @@
           return;
         }
         
-        status.textContent = 'Authentication successful! Redirecting...';
+        status.textContent = 'Authentication successful! Setting up your account...';
         console.log('✅ Successfully exchanged code for session:', data.user?.email);
         
-        // Clear URL params and redirect to home page
-        // Let the middleware handle authentication checks
-        setTimeout(() => {
-          console.log('🔄 Redirecting to home page');
-          window.history.replaceState(null, '', '/');
-          window.location.href = '/';
-        }, 1000);
+        // Check if this is a new user and complete signup process
+        try {
+          const signupResponse = await fetch('/api/auth/complete-signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          const signupResult = await signupResponse.json();
+          
+          if (signupResult.success) {
+            const redirectTo = signupResult.redirectTo || '/';
+            const message = signupResult.isNewUser ? 'Welcome to meshOS!' : 'Welcome back!';
+            
+            status.textContent = `${message} Redirecting...`;
+            
+            setTimeout(() => {
+              console.log('🔄 Redirecting to:', redirectTo);
+              window.history.replaceState(null, '', '/');
+              window.location.href = redirectTo;
+            }, 1000);
+          } else {
+            throw new Error(signupResult.error || 'Signup completion failed');
+          }
+        } catch (signupError) {
+          console.error('❌ Signup completion error:', signupError);
+          // Fallback to normal redirect
+          setTimeout(() => {
+            console.log('🔄 Fallback redirect to home page');
+            window.history.replaceState(null, '', '/');
+            window.location.href = '/';
+          }, 1000);
+        }
         
       } catch (error) {
         console.error('❌ Auth exchange error:', error);

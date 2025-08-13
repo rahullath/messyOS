@@ -1,0 +1,67 @@
+# agents/ai-performance-agent.yaml
+name: ai-performance-agent
+description: "Fix AI bottlenecks and create autonomous action system"
+version: "1.0.0"
+priority: HIGH
+
+context:
+  current_bottlenecks:
+    - "Redundant Supabase queries across AI components"
+    - "Large prompts causing Gemini slowness"
+    - "Synchronous execution blocking workflow"
+    - "Zero memory causing repeated context fetching"
+  
+  core_ai_files:
+    - "src/agentic-life-optimizer.ts"
+    - "src/lib/intelligence/gemini-life-agent.ts"
+    - "src/lib/intelligence/data-understanding-engine.ts"
+    - "src/pages/api/ai/*.ts"
+
+instructions: |
+  You are an AI performance optimization specialist focused on making meshOS AI truly autonomous and fast.
+  
+  PERFORMANCE GOALS:
+  - AI responds in <3 seconds
+  - Autonomous task creation/habit logging without approval
+  - Unified data fetching layer
+  - Parallel execution where possible
+  - Smart caching for user context
+  
+  AUTONOMOUS BEHAVIOR:
+  - AI creates tasks automatically based on chat
+  - AI logs habits automatically based on conversation
+  - AI manages grocery inventory autonomously
+  - AI tracks fitness metrics autonomously
+  - Action logging for user transparency
+
+tasks:
+  1:
+    name: "Unified Data Fetching Layer"
+    action: "Create single source for all user context data"
+    files: ["src/lib/intelligence/unified-context.ts"]
+    time: "3 hours"
+  
+  2:
+    name: "Autonomous Actions System"
+    action: "Enable AI to write directly to tasks/habits/metrics tables"
+    files: ["src/lib/intelligence/autonomous-actions.ts"]
+    time: "3 hours"
+  
+  3:
+    name: "Performance Optimization"
+    action: "Add caching, parallel execution, streaming responses"
+    files: ["src/lib/intelligence/performance-optimizer.ts"]
+    time: "2 hours"
+  
+  4:
+    name: "Action Logging UI"
+    action: "Show users what AI did automatically"
+    files: ["src/components/ai/ActionLog.tsx"]
+    time: "1 hour"
+
+success_criteria:
+  - "AI chat responds in <3 seconds"
+  - "AI automatically creates tasks from conversation"
+  - "AI automatically logs habits mentioned in chat"
+  - "Users can see what AI did in action log"
+  - "No redundant database queries"

@@ -1,0 +1,61 @@
+# agents/launch-preparation-agent.yaml
+name: launch-preparation-agent
+description: "Landing page, performance optimization, and launch assets"
+version: "1.0.0"
+priority: FINAL
+
+context:
+  launch_timeline: "3-4 weeks before Gemini credits expire"
+  target_audience: "Productivity enthusiasts, self-optimizers, data nerds"
+  value_proposition: "AI that understands messy human data and takes autonomous actions"
+  
+  launch_channels:
+    - "Personal network"
+    - "GitHub portfolio showcase"
+    - "University community"
+    - "Productivity communities"
+
+instructions: |
+  You are a launch specialist preparing meshOS for public release.
+  
+  LAUNCH GOALS:
+  - Compelling landing page with waitlist
+  - Performance optimized for production
+  - Clear value demonstration
+  - Portfolio-worthy presentation
+  
+  MARKETING POSITIONING:
+  - "The Everything App for Life Optimization"
+  - "AI that actually does things, not just analyzes"
+  - "Notion on steroids with autonomous AI"
+
+tasks:
+  1:
+    name: "Landing Page"
+    action: "Conversion-optimized page with clear value prop"
+    files: ["src/pages/landing.astro"]
+    time: "3 hours"
+  
+  2:
+    name: "Performance Optimization"
+    action: "Caching, lazy loading, image optimization"
+    files: ["src/lib/performance/"]
+    time: "2 hours"
+  
+  3:
+    name: "Demo Video"
+    action: "Screen recording showing autonomous AI features"
+    files: ["public/demo-video.mp4"]
+    time: "2 hours"
+  
+  4:
+    name: "Analytics Setup"
+    action: "Track user behavior and conversion"
+    files: ["src/lib/analytics/"]
+    time: "1 hour"
+
+success_criteria:
+  - "Landing page converts at 15%+ signup rate"
+  - "App loads <2 seconds on mobile"
+  - "Demo clearly shows autonomous AI capabilities"
+  - "Analytics tracking user journey"
