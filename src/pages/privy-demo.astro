@@ -1,0 +1,468 @@
+---
+// src/pages/privy-demo.astro - Privy Authentication Demo
+// Showcases Privy authentication with token balance and wallet integration
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privy Authentication Demo - meshOS</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        min-height: 100vh;
+        color: white;
+      }
+      
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .demo-card {
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+
+      .status-success {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22c55e;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+      }
+
+      .status-warning {
+        background: rgba(251, 191, 36, 0.2);
+        color: #fbbf24;
+        border: 1px solid rgba(251, 191, 36, 0.3);
+      }
+
+      .status-error {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
+
+      .feature-card {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+      }
+
+      .feature-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      .code-block {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.875rem;
+        overflow-x: auto;
+        margin: 1rem 0;
+      }
+
+      .implementation-step {
+        background: rgba(6, 182, 212, 0.1);
+        border-left: 4px solid #06b6d4;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 0 0.5rem 0.5rem 0;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #06b6d4, #3b82f6);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #0891b2, #2563eb);
+        transform: translateY(-1px);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <div class="demo-card">
+        <h1 style="margin: 0 0 1rem 0; font-size: 2.5rem; background: linear-gradient(135deg, #06b6d4, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+          🔐 Privy Authentication Demo
+        </h1>
+        <p style="margin: 0; opacity: 0.8; font-size: 1.125rem;">
+          Experience seamless wallet-based authentication with embedded token management
+        </p>
+      </div>
+
+      <!-- Authentication Status -->
+      <div class="demo-card">
+        <h2 style="margin: 0 0 1.5rem 0;">Authentication Status</h2>
+        
+        <div id="auth-status" class="status-indicator status-warning">
+          <span>⏳</span>
+          <span>Initializing Privy...</span>
+        </div>
+
+        <div id="user-info" style="margin-top: 1.5rem; display: none;"></div>
+        
+        <div style="margin-top: 1.5rem;">
+          <div id="privy-login-container"></div>
+        </div>
+      </div>
+
+      <!-- Token Balance -->
+      <div class="demo-card">
+        <h2 style="margin: 0 0 1.5rem 0;">💎 Messy Tokens Balance</h2>
+        <div id="token-balance-container"></div>
+      </div>
+
+      <!-- Features Overview -->
+      <div class="demo-card">
+        <h2 style="margin: 0 0 1.5rem 0;">✨ Privy Integration Features</h2>
+        
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🔐</div>
+            <h3 style="margin: 0 0 0.5rem 0;">Seamless Authentication</h3>
+            <p style="margin: 0; opacity: 0.8;">
+              Login with email, social accounts, or wallet. No complex setup required.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">👛</div>
+            <h3 style="margin: 0 0 0.5rem 0;">Embedded Wallet</h3>
+            <p style="margin: 0; opacity: 0.8;">
+              Auto-generated wallet for each user with secure key management.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">💰</div>
+            <h3 style="margin: 0 0 0.5rem 0;">Token Management</h3>
+            <p style="margin: 0; opacity: 0.8;">
+              Off-chain tokens stored in Supabase, ₹500 starting credit for new users.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">🔒</div>
+            <h3 style="margin: 0 0 0.5rem 0;">Enhanced Security</h3>
+            <p style="margin: 0; opacity: 0.8;">
+              Row-level security with Privy user IDs for data isolation.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">🚀</div>
+            <h3 style="margin: 0 0 0.5rem 0;">Quick Migration</h3>
+            <p style="margin: 0; opacity: 0.8;">
+              Easy migration from Supabase auth with preserved functionality.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">🌐</div>
+            <h3 style="margin: 0 0 0.5rem 0;">Integration Ready</h3>
+            <p style="margin: 0; opacity: 0.8;">
+              GitHub, Outlook, Banking, and Fitness integrations updated for Privy.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Implementation Guide -->
+      <div class="demo-card">
+        <h2 style="margin: 0 0 1.5rem 0;">🛠️ Implementation Guide</h2>
+        
+        <div class="implementation-step">
+          <h3 style="margin: 0 0 0.5rem 0;">Step 1: Install Dependencies</h3>
+          <div class="code-block">npm install @privy-io/react-auth @privy-io/server-auth</div>
+        </div>
+
+        <div class="implementation-step">
+          <h3 style="margin: 0 0 0.5rem 0;">Step 2: Database Migration</h3>
+          <p style="margin: 0 0 0.5rem 0;">Run the Privy migration SQL:</p>
+          <div class="code-block">psql -f database/privy-migration.sql</div>
+        </div>
+
+        <div class="implementation-step">
+          <h3 style="margin: 0 0 0.5rem 0;">Step 3: Environment Variables</h3>
+          <div class="code-block">
+PRIVY_APP_ID=your_privy_app_id
+PRIVY_APP_SECRET=your_privy_app_secret
+NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
+          </div>
+        </div>
+
+        <div class="implementation-step">
+          <h3 style="margin: 0 0 0.5rem 0;">Step 4: Replace Auth Components</h3>
+          <p style="margin: 0 0 0.5rem 0;">Replace Supabase auth with Privy components:</p>
+          <div class="code-block">
+import { PrivyProvider } from './components/auth/PrivyProvider';
+import PrivyLoginButton from './components/auth/PrivyLoginButton';
+          </div>
+        </div>
+
+        <div style="margin-top: 2rem;">
+          <a href="/ai-dashboard" class="btn btn-primary">
+            <span>🚀</span>
+            <span>View AI Dashboard</span>
+          </a>
+          <a href="https://docs.privy.io" class="btn btn-secondary" style="margin-left: 1rem;">
+            <span>📖</span>
+            <span>Privy Documentation</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Migration Benefits -->
+      <div class="demo-card">
+        <h2 style="margin: 0 0 1.5rem 0;">🎯 Migration Benefits</h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+          <div>
+            <h4 style="margin: 0 0 0.5rem 0; color: #22c55e;">✅ Solved Issues</h4>
+            <ul style="margin: 0; padding-left: 1.5rem; opacity: 0.9;">
+              <li>No more Supabase auth limitations</li>
+              <li>Simplified user onboarding</li>
+              <li>Built-in wallet functionality</li>
+              <li>Better user experience</li>
+              <li>Enhanced security</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 style="margin: 0 0 0.5rem 0; color: #06b6d4;">🔧 Preserved Features</h4>
+            <ul style="margin: 0; padding-left: 1.5rem; opacity: 0.9;">
+              <li>All existing integrations</li>
+              <li>Token system functionality</li>
+              <li>AI performance optimizations</li>
+              <li>User preferences and data</li>
+              <li>Database structure</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 style="margin: 0 0 0.5rem 0; color: #3b82f6;">🚀 New Capabilities</h4>
+            <ul style="margin: 0; padding-left: 1.5rem; opacity: 0.9;">
+              <li>Embedded wallet for each user</li>
+              <li>Social login options</li>
+              <li>Cross-device synchronization</li>
+              <li>Future Web3 readiness</li>
+              <li>Better scalability</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load React Components -->
+    <script type="module">
+      // Mock Privy integration for demo
+      window.mockPrivyDemo = {
+        ready: false,
+        authenticated: false,
+        user: null,
+        tokenBalance: null,
+
+        init() {
+          setTimeout(() => {
+            this.ready = true;
+            this.updateStatus();
+          }, 1000);
+        },
+
+        login() {
+          const mockUser = {
+            id: 'did:privy:demo123',
+            email: 'demo@meshos.dev',
+            walletAddress: '0x742d35Cc92c1A2A4b4fD68E5F0C0a4F9E4C7D123',
+            hasEmbeddedWallet: true
+          };
+
+          const mockTokenBalance = {
+            balance: 5000,
+            total_earned: 5000,
+            total_spent: 0
+          };
+
+          this.authenticated = true;
+          this.user = mockUser;
+          this.tokenBalance = mockTokenBalance;
+          this.updateStatus();
+          this.updateUserInfo();
+          this.updateTokenBalance();
+        },
+
+        logout() {
+          this.authenticated = false;
+          this.user = null;
+          this.tokenBalance = null;
+          this.updateStatus();
+          this.updateUserInfo();
+          this.updateTokenBalance();
+        },
+
+        updateStatus() {
+          const statusEl = document.getElementById('auth-status');
+          const loginContainer = document.getElementById('privy-login-container');
+
+          if (!this.ready) {
+            statusEl.className = 'status-indicator status-warning';
+            statusEl.innerHTML = '<span>⏳</span><span>Initializing Privy...</span>';
+            return;
+          }
+
+          if (this.authenticated) {
+            statusEl.className = 'status-indicator status-success';
+            statusEl.innerHTML = '<span>✅</span><span>Authenticated with Privy</span>';
+            
+            loginContainer.innerHTML = `
+              <button onclick="window.mockPrivyDemo.logout()" class="btn btn-secondary">
+                <span>🚪</span>
+                <span>Logout</span>
+              </button>
+            `;
+          } else {
+            statusEl.className = 'status-indicator status-error';
+            statusEl.innerHTML = '<span>❌</span><span>Not authenticated</span>';
+            
+            loginContainer.innerHTML = `
+              <button onclick="window.mockPrivyDemo.login()" class="btn btn-primary">
+                <span>🔐</span>
+                <span>Login with Privy</span>
+              </button>
+            `;
+          }
+        },
+
+        updateUserInfo() {
+          const userInfoEl = document.getElementById('user-info');
+          
+          if (this.authenticated && this.user) {
+            userInfoEl.style.display = 'block';
+            userInfoEl.innerHTML = `
+              <div style="background: rgba(0,0,0,0.3); border-radius: 0.5rem; padding: 1rem;">
+                <h4 style="margin: 0 0 0.5rem 0;">User Information</h4>
+                <div style="font-family: monospace; font-size: 0.875rem;">
+                  <div><strong>Privy ID:</strong> ${this.user.id}</div>
+                  <div><strong>Email:</strong> ${this.user.email}</div>
+                  <div><strong>Wallet:</strong> ${this.user.walletAddress}</div>
+                  <div><strong>Embedded Wallet:</strong> ${this.user.hasEmbeddedWallet ? 'Yes' : 'No'}</div>
+                </div>
+              </div>
+            `;
+          } else {
+            userInfoEl.style.display = 'none';
+          }
+        },
+
+        updateTokenBalance() {
+          const balanceContainer = document.getElementById('token-balance-container');
+          
+          if (this.authenticated && this.tokenBalance) {
+            balanceContainer.innerHTML = `
+              <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-between; margin-bottom: 1rem;">
+                  <h3 style="margin: 0; color: #06b6d4;">Current Balance</h3>
+                  <div style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 600;">
+                    ₹${Math.round(this.tokenBalance.balance / 10)}
+                  </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                  <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #06b6d4;">
+                      ${this.tokenBalance.balance.toLocaleString()}
+                    </div>
+                    <div style="font-size: 0.875rem; opacity: 0.8;">Total Tokens</div>
+                  </div>
+                  
+                  <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #22c55e;">
+                      ${this.tokenBalance.total_earned.toLocaleString()}
+                    </div>
+                    <div style="font-size: 0.875rem; opacity: 0.8;">Earned</div>
+                  </div>
+                  
+                  <div style="text-align: center;">
+                    <div style="font-size: 1.5rem; font-weight: bold; color: #ef4444;">
+                      ${this.tokenBalance.total_spent.toLocaleString()}
+                    </div>
+                    <div style="font-size: 0.875rem; opacity: 0.8;">Spent</div>
+                  </div>
+                </div>
+                
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem; font-size: 0.875rem; opacity: 0.9;">
+                  <strong>Welcome Bonus:</strong> New users receive ₹500 (5000 tokens) automatically upon first login with Privy.
+                </div>
+              </div>
+            `;
+          } else {
+            balanceContainer.innerHTML = `
+              <div style="text-align: center; padding: 2rem; opacity: 0.6;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+                <p>Login with Privy to view your token balance</p>
+              </div>
+            `;
+          }
+        }
+      };
+
+      // Initialize demo
+      window.mockPrivyDemo.init();
+    </script>
+  </body>
+</html>

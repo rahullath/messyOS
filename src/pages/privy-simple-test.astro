@@ -1,0 +1,227 @@
+---
+// src/pages/privy-simple-test.astro - Simple Privy Test Page
+const appId = import.meta.env.PUBLIC_PRIVY_APP_ID;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Privy Test - MeshOS</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .status {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        .loading { background: rgba(59, 130, 246, 0.2); border-left: 4px solid #3b82f6; }
+        .success { background: rgba(34, 197, 94, 0.2); border-left: 4px solid #22c55e; }
+        .error { background: rgba(239, 68, 68, 0.2); border-left: 4px solid #ef4444; }
+        button {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem;
+        }
+        button:hover { opacity: 0.9; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Simple Privy Test</h1>
+        
+        <div class="card">
+            <h2>Authentication Status</h2>
+            <div id="auth-status" class="status loading">
+                Initializing Privy...
+            </div>
+            
+            <div id="auth-controls" style="display: none;">
+                <button id="login-btn">Login with Privy</button>
+                <button id="logout-btn" style="display: none;">Logout</button>
+            </div>
+        </div>
+        
+        <div class="card" id="user-info" style="display: none;">
+            <h2>User Information</h2>
+            <div id="user-details"></div>
+        </div>
+        
+        <div class="card" id="token-info" style="display: none;">
+            <h2>Token Balance</h2>
+            <div id="token-details"></div>
+            <button id="refresh-balance-btn">Refresh Balance</button>
+        </div>
+        
+        <div class="card">
+            <h2>Debug Information</h2>
+            <div id="debug-info">
+                <p><strong>Environment:</strong> {appId ? '✅ App ID set' : '❌ App ID missing'}</p>
+                <p><strong>App ID:</strong> {appId ? `${appId.substring(0, 15)}...` : 'Not configured'}</p>
+                <p><strong>Console:</strong> Check browser console for detailed logs</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Privy -->
+    <script type="module">
+        import { PrivyProvider, usePrivy, useWallets } from 'https://esm.sh/@privy-io/react-auth@2.21.2';
+        import React, { useEffect, useState } from 'https://esm.sh/react@18';
+        import { createRoot } from 'https://esm.sh/react-dom@18/client';
+
+        // Simple Privy Test Component
+        function PrivyTest() {
+            const { ready, authenticated, user, login, logout } = usePrivy();
+            const { wallets } = useWallets();
+            const [tokenBalance, setTokenBalance] = useState(null);
+            const [error, setError] = useState(null);
+
+            // Update status
+            useEffect(() => {
+                const statusEl = document.getElementById('auth-status');
+                const controlsEl = document.getElementById('auth-controls');
+                const userInfoEl = document.getElementById('user-info');
+                const tokenInfoEl = document.getElementById('token-info');
+
+                if (!ready) {
+                    statusEl.className = 'status loading';
+                    statusEl.textContent = 'Initializing Privy...';
+                    controlsEl.style.display = 'none';
+                    userInfoEl.style.display = 'none';
+                    tokenInfoEl.style.display = 'none';
+                } else if (!authenticated) {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'Privy ready - please login';
+                    controlsEl.style.display = 'block';
+                    document.getElementById('login-btn').style.display = 'inline-block';
+                    document.getElementById('logout-btn').style.display = 'none';
+                    userInfoEl.style.display = 'none';
+                    tokenInfoEl.style.display = 'none';
+                } else {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = '✅ Authenticated successfully!';
+                    controlsEl.style.display = 'block';
+                    document.getElementById('login-btn').style.display = 'none';
+                    document.getElementById('logout-btn').style.display = 'inline-block';
+                    userInfoEl.style.display = 'block';
+                    tokenInfoEl.style.display = 'block';
+
+                    // Show user info
+                    const userDetailsEl = document.getElementById('user-details');
+                    userDetailsEl.innerHTML = `
+                        <p><strong>Privy ID:</strong> ${user.id}</p>
+                        <p><strong>Email:</strong> ${user.linkedAccounts?.find(acc => acc.type === 'email')?.address || 'Not linked'}</p>
+                        <p><strong>Wallets:</strong> ${wallets.length} connected</p>
+                        <p><strong>Created:</strong> ${new Date(user.createdAt).toLocaleDateString()}</p>
+                    `;
+
+                    // Fetch token balance
+                    fetchTokenBalance();
+                }
+
+                if (error) {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = `Error: ${error}`;
+                }
+            }, [ready, authenticated, user, wallets, error]);
+
+            const fetchTokenBalance = async () => {
+                if (!user) return;
+                
+                try {
+                    const response = await fetch(`/api/tokens/balance?privy_user_id=${user.id}`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        setTokenBalance(data.balance);
+                        const tokenDetailsEl = document.getElementById('token-details');
+                        tokenDetailsEl.innerHTML = `
+                            <p><strong>Balance:</strong> ₹${(data.balance.balance / 100).toFixed(0)} (${data.balance.balance} tokens)</p>
+                            <p><strong>Total Earned:</strong> ₹${(data.balance.total_earned / 100).toFixed(0)}</p>
+                            <p><strong>Total Spent:</strong> ₹${(data.balance.total_spent / 100).toFixed(0)}</p>
+                        `;
+                    } else {
+                        setError(`Token balance error: ${data.error}`);
+                    }
+                } catch (error) {
+                    setError(`Failed to fetch balance: ${error.message}`);
+                }
+            };
+
+            // Event handlers
+            useEffect(() => {
+                const loginBtn = document.getElementById('login-btn');
+                const logoutBtn = document.getElementById('logout-btn');
+                const refreshBtn = document.getElementById('refresh-balance-btn');
+
+                if (loginBtn) loginBtn.onclick = login;
+                if (logoutBtn) logoutBtn.onclick = logout;
+                if (refreshBtn) refreshBtn.onclick = fetchTokenBalance;
+            }, [login, logout]);
+
+            return null; // We're manipulating DOM directly
+        }
+
+        // Wrapper with Privy Provider
+        function App() {
+            const appId = '{appId}' || 'cmeaj35yf006oic0cyhhppt65';
+            
+            return React.createElement(PrivyProvider, {
+                appId: appId,
+                config: {
+                    loginMethods: ['email', 'wallet', 'google'],
+                    appearance: {
+                        theme: 'dark',
+                        accentColor: '#06b6d4',
+                    },
+                    embeddedWallets: {
+                        createOnLogin: 'users-without-wallets',
+                        requireUserPasswordOnCreate: false,
+                    }
+                },
+                onSuccess: (user) => {
+                    console.log('✅ Privy login successful:', user);
+                },
+                onError: (error) => {
+                    console.error('❌ Privy error:', error);
+                    document.getElementById('auth-status').className = 'status error';
+                    document.getElementById('auth-status').textContent = `Privy Error: ${error.message}`;
+                }
+            }, React.createElement(PrivyTest));
+        }
+
+        // Mount the app
+        const container = document.getElementById('auth-status').parentElement;
+        const mountPoint = document.createElement('div');
+        container.appendChild(mountPoint);
+        
+        const root = createRoot(mountPoint);
+        root.render(React.createElement(App));
+    </script>
+</body>
+</html>

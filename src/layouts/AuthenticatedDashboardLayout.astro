@@ -1,0 +1,20 @@
+---
+// src/layouts/AuthenticatedDashboardLayout.astro - Production Dashboard with Hybrid Auth
+import Layout from './Layout.astro';
+import ProductionPrivyAuth from '../components/auth/ProductionPrivyAuth.tsx';
+import DashboardContent from '../components/dashboard/DashboardContent.tsx';
+
+export interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<Layout title={title}>
+  <ProductionPrivyAuth client:load>
+    <DashboardContent>
+      <slot />
+    </DashboardContent>
+  </ProductionPrivyAuth>
+</Layout>

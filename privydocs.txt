@@ -1,0 +1,182 @@
+### Overview of Privy for Auth and Wallet Integration
+Privy is a platform for simplifying user authentication and embedded wallet management in web apps, especially for web3-like experiences. It supports login with email, phone, social providers (Google, Apple, Twitter, etc.), and wallets. For your token system, Privy can handle user auth (logging in users seamlessly) and provide an embedded wallet for a "user-friendly experience" as mentioned in the YAML, even though your tokens are off-chain in Supabase. The wallet can be used for future on-chain features or just for UX (e.g., displaying a wallet balance alongside tokens).
+
+Privy is not a full blockchain; it's an auth + wallet layer. Keys for embedded wallets are generated client-side, encrypted, and stored securely (e.g., in IndexedDB), with time-bound authorization keys for signing without constant prompts. Your tokens remain in Supabase—use Privy's user ID (DID) as the key to link users to their token balance.
+
+Key rules:
+- **Security**: Never expose your Privy app secret on the client-side. Use it only in backend code.
+- **Rate limits**: API calls are rate-limited; check dashboard for quotas.
+- **User data**: Privy users have a unique `id` (e.g., `did:privy:abc123`). Use this for Supabase lookups to avoid duplicate accounts.
+- **Compliance**: If using embedded wallets, inform users about key export options for non-custodial control. For Indian rupees (₹) in your system, ensure Stripe top-ups comply with local payment regs.
+- **Error handling**: Always handle auth errors (e.g., expired tokens) with retries or UI feedback. Use Privy's `onError` callbacks.
+- **Testing**: Use Privy's sandbox mode in the dashboard for dev. Test on multiple devices as SMS/email logins vary by region.
+- **Dependencies**: Privy works with React 18+, but ensure no conflicts with other auth libs (e.g., Supabase auth if you're using it—Privy can replace or integrate via custom JWT).
+- **No blockchain needed**: As per YAML, keep tokens off-chain; Privy wallet is just for UX, not token storage.
+
+### Getting Started
+1. **Dashboard Setup**:
+   - Sign up at console.privy.io.
+   - Create an app → Get `appId` (public) and `appSecret` (private).
+   - Configure allowed domains, login methods (enable email, wallet, etc.), and embedded wallets.
+   - For your system, enable "Create embedded wallet on login" for seamless UX.
+
+2. **Frontend Integration (React/Next.js)**
+   - **Installation**: Run `npm install @privy-io/react-auth`.
+   - **Setup PrivyProvider**: Wrap your root component (e.g., in `_app.tsx` or `index.tsx`).
+     ```tsx
+     import {PrivyProvider} from '@privy-io/react-auth';
+
+     function MyApp({ Component, pageProps }) {
+       return (
+         <PrivyProvider
+           appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID}  // Use env vars
+           config={{
+             loginMethods: ['email', 'wallet'],  // Add 'sms', 'google' as needed
+             appearance: { theme: 'light', accentColor: '#your-color' },
+             embeddedWallets: {
+               createOnLogin: true,  // Auto-create wallet on first login
+               requireUserPasswordOnCreate: false,  // For seamless UX
+               noPromptOnSignature: true,  // Use auth keys for silent signing
+             },
+           }}
+           onSuccess={(user) => {
+             // Sync with Supabase: e.g., upsert user_tokens with user.id as key, set initial 5000 tokens
+             console.log('Logged in:', user.id);
+           }}
+           onError={(error) => console.error('Privy error:', error)}
+         >
+           <Component {...pageProps} />
+         </PrivyProvider>
+       );
+     }
+     ```
+   - **Login Implementation**: Use hooks in components (e.g., in `src/components/LoginButton.tsx`).
+     ```tsx
+     import {usePrivy} from '@privy-io/react-auth';
+
+     function LoginButton() {
+       const {ready, authenticated, login, logout} = usePrivy();
+
+       if (!ready) return <div>Loading...</div>;
+
+       return authenticated ? (
+         <button onClick={logout}>Logout</button>
+       ) : (
+         <button onClick={login}>Login with Privy</button>  // Opens modal
+       );
+     }
+     ```
+     - This triggers a modal with configured methods. On success, user gets an access token (JWT) for backend calls.
+   - **User Data Access**: In any component:
+     ```tsx
+     const {user} = usePrivy();
+     if (user) {
+       // user.id: Privy DID for Supabase key
+       // user.linkedAccounts: Array of {type: 'email', address: '[email protected]'}, etc.
+       // Display in UI: e.g., link to token balance fetch
+     }
+     ```
+   - **Wallet Usage** (for YAML's "Privy wallet integration"):
+     - Enable in config as above.
+     - Use hook:
+       ```tsx
+       import {useWallets} from '@privy-io/react-auth';
+
+       function WalletInfo() {
+         const {wallets} = useWallets();
+         const embedded = wallets.find(w => w.walletClientType === 'privy');
+
+         if (embedded) {
+           // embedded.address: Wallet address
+           // To send tx (if needed for future on-chain):
+           const txHash = await embedded.sendTransaction({
+             chainId: 1,  // e.g., Ethereum
+             to: '0x...', value: 0n, data: '0x...'
+           });
+           // Or use useSendTransaction hook for simplicity
+         }
+
+         return <div>Wallet: {embedded?.address}</div>;
+       }
+       ```
+     - Rules: Embedded wallets support EVM chains (Ethereum, Polygon, etc.). For your off-chain tokens, display wallet alongside token balance in UI, but don't mix logics.
+
+3. **Backend Integration (Node.js/TS, e.g., for Supabase interactions)**
+   - **Installation**: `npm install @privy-io/server-auth`.
+   - **Setup Client**: In `src/lib/wallet/privy-integration.ts`:
+     ```ts
+     import {PrivyClient} from '@privy-io/server-auth';
+
+     const privy = new PrivyClient(
+       process.env.PRIVY_APP_ID,
+       process.env.PRIVY_APP_SECRET
+     );
+     export {privy};
+     ```
+   - **Verify User Token**: When frontend sends user.token to backend (e.g., for token deduction):
+     ```ts
+     async function verifyUser(req) {
+       const token = req.headers.authorization?.split(' ')[1];
+       try {
+         const claims = await privy.verifyAuthToken(token);
+         return claims.userId;  // Use this to query Supabase user_tokens
+       } catch (error) {
+         throw new Error('Invalid token');
+       }
+     }
+     ```
+     - Rules: Tokens expire (default 1h); refresh via frontend usePrivy().refresh().
+   - **User Management via API**: For creating/linking users if needed (e.g., migrate existing Supabase users).
+     - Example: Create user (POST /v1/users):
+       ```ts
+       const response = await fetch('https://auth.privy.io/api/v1/users', {
+         method: 'POST',
+         headers: {
+           'Authorization': `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+           'privy-app-id': appId,
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify({
+           linked_accounts: [{ type: 'email', address: '[email protected]' }],
+         }),
+       });
+       const user = await response.json();
+       ```
+     - Get user: `await privy.getUser(userId);`
+     - Link account: Use `putUser` or link methods to add wallets/emails.
+     - Rules: Use Basic Auth for API calls. Avoid direct creates if using SDK logins.
+
+4. **Integrating with Your Token System (from YAML)**
+   - **Database Link**: In Supabase, add `privy_id TEXT UNIQUE` to user_tokens table. On login success, upsert:
+     ```ts
+     // In onSuccess callback or backend endpoint
+     await supabase.from('user_tokens').upsert({
+       privy_id: user.id,
+       balance: 5000,  // Initial ₹500
+     });
+     ```
+   - **Token Deduction**: In `src/lib/tokens/usage-tracker.ts`, after chat session:
+     - Verify user via token.
+     - Calculate cost (e.g., based on AI usage).
+     - Batch deduct: `UPDATE user_tokens SET balance = balance - cost WHERE privy_id = userId;`
+     - Check balance before sessions: If < threshold, notify UI.
+   - **UI Display**: In `src/components/tokens/TokenBalance.tsx`:
+     - Use usePrivy() to get user.id.
+     - Fetch balance from Supabase (or backend endpoint).
+     - Show: "Balance: {balance / 10} ₹ ({balance} tokens)"
+     - Add low-balance notification: If balance < 1000, show alert.
+   - **Top-ups (Stripe later)**: On top-up, verify user, add tokens via backend to avoid fraud.
+   - **Usage History**: Add token_transactions table: Log deductions with timestamp, reason (e.g., "AI chat session").
+   - Rules: Batch deductions to minimize DB writes. Use Supabase realtime for live balance updates in UI. If using Privy wallet for top-ups (e.g., crypto), fund via Moonpay config in Privy, but since off-chain, stick to Stripe for ₹.
+
+### Common Pitfalls and Best Practices
+- **State Management**: Privy hooks require being inside PrivyProvider. Use `ready` flag before rendering auth-dependent UI.
+- **Multi-Account**: Users can link multiple logins/wallets; always use `user.id` as primary key.
+- **Logout**: Clears local state; ensure Supabase sessions are handled separately if needed.
+- **Performance**: Modal loads async; preload if possible.
+- **Customization**: Override modal appearance via config. For custom auth flow, use `useLoginWithParams` for programmatic login.
+- **Debugging**: Console logs + dashboard analytics for login failures.
+- **Scaling**: For high traffic, monitor API quotas; upgrade plan if needed.
+- **Off-chain Focus**: Don't use wallet for token storage—keep in DB as per design.
+
+This covers the essentials for coding the integration. Refer to docs.privy.io for edge cases (e.g., MFA, custom JWT). If you need specific code expansions, provide more details!

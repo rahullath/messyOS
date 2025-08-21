@@ -1,0 +1,19 @@
+---
+// src/layouts/AuthenticatedLayout.astro - Production Layout with Hybrid Authentication
+import Layout from './Layout.astro';
+import ProductionPrivyAuth from '../components/auth/ProductionPrivyAuth.tsx';
+
+export interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<Layout title={title}>
+  <ProductionPrivyAuth client:load>
+    <div class="min-h-screen bg-background">
+      <slot />
+    </div>
+  </ProductionPrivyAuth>
+</Layout>

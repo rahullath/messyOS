@@ -1,0 +1,314 @@
+---
+// src/pages/privy-demo-simple.astro - Simple Privy Demo
+// Basic demo page that won't throw errors
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privy Authentication Demo - meshOS</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+      min-height: 100vh;
+      color: white;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .card {
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, #06b6d4, #3b82f6);
+      color: white;
+    }
+
+    .btn:hover {
+      background: linear-gradient(135deg, #0891b2, #2563eb);
+      transform: translateY(-1px);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      background: rgba(251, 191, 36, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+
+    .status.success {
+      background: rgba(34, 197, 94, 0.2);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .info-item {
+      background: rgba(0,0,0,0.3);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+
+    .code {
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: monospace;
+      font-size: 0.875rem;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="card">
+      <h1 style="margin: 0 0 1rem 0; font-size: 2.5rem; background: linear-gradient(135deg, #06b6d4, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        🔐 Privy Authentication Demo
+      </h1>
+      <p style="margin: 0; opacity: 0.8; font-size: 1.125rem;">
+        Simple demonstration of Privy wallet authentication integration
+      </p>
+    </div>
+
+    <!-- Authentication Status -->
+    <div class="card">
+      <h2 style="margin: 0 0 1.5rem 0;">Authentication Status</h2>
+      
+      <div id="auth-status" class="status">
+        <span>⏳</span>
+        <span>Ready to test Privy authentication</span>
+      </div>
+
+      <div style="margin-top: 1.5rem;">
+        <button id="login-btn" class="btn">
+          <span>🔐</span>
+          <span>Simulate Privy Login</span>
+        </button>
+        <button id="logout-btn" class="btn hidden" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+          <span>🚪</span>
+          <span>Logout</span>
+        </button>
+      </div>
+
+      <div id="user-info" class="hidden" style="margin-top: 1.5rem;">
+        <div style="background: rgba(0,0,0,0.3); border-radius: 0.5rem; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem 0;">Mock User Information</h4>
+          <div class="code" id="user-data"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Token Balance -->
+    <div class="card">
+      <h2 style="margin: 0 0 1.5rem 0;">💎 Token Balance</h2>
+      <div id="token-info">
+        <p style="text-align: center; opacity: 0.6; padding: 2rem;">
+          Login to view token balance
+        </p>
+      </div>
+    </div>
+
+    <!-- Implementation Info -->
+    <div class="card">
+      <h2 style="margin: 0 0 1.5rem 0;">🛠️ Implementation Status</h2>
+      
+      <div class="info-grid">
+        <div class="info-item">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div>
+          <h4 style="margin: 0 0 0.5rem 0;">Database Schema</h4>
+          <p style="margin: 0; font-size: 0.875rem; opacity: 0.8;">
+            Privy migration completed
+          </p>
+        </div>
+        
+        <div class="info-item">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div>
+          <h4 style="margin: 0 0 0.5rem 0;">Auth Service</h4>
+          <p style="margin: 0; font-size: 0.875rem; opacity: 0.8;">
+            Privy integration ready
+          </p>
+        </div>
+        
+        <div class="info-item">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div>
+          <h4 style="margin: 0 0 0.5rem 0;">Token System</h4>
+          <p style="margin: 0; font-size: 0.875rem; opacity: 0.8;">
+            Messy Tokens compatible
+          </p>
+        </div>
+        
+        <div class="info-item">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+          <h4 style="margin: 0 0 0.5rem 0;">Real Privy</h4>
+          <p style="margin: 0; font-size: 0.875rem; opacity: 0.8;">
+            Needs API keys setup
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div class="card">
+      <h2 style="margin: 0 0 1.5rem 0;">🚀 Next Steps</h2>
+      
+      <ol style="padding-left: 1.5rem; line-height: 1.6;">
+        <li><strong>Add Privy API Keys:</strong> Set PRIVY_APP_ID and PRIVY_APP_SECRET in your .env file</li>
+        <li><strong>Replace Mock Components:</strong> Update PrivyProvider.tsx with real @privy-io/react-auth</li>
+        <li><strong>Test Real Authentication:</strong> Verify login flow with actual Privy integration</li>
+        <li><strong>Update UI Components:</strong> Replace mock login buttons with real Privy components</li>
+        <li><strong>Deploy and Test:</strong> Verify everything works in production</li>
+      </ol>
+
+      <div style="margin-top: 2rem;">
+        <a href="/ai-dashboard" class="btn">
+          <span>🤖</span>
+          <span>Go to AI Dashboard</span>
+        </a>
+        <a href="https://docs.privy.io" class="btn" style="margin-left: 1rem; background: rgba(255,255,255,0.1);">
+          <span>📖</span>
+          <span>Privy Docs</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple mock authentication demo
+    let isAuthenticated = false;
+    let mockUser = null;
+
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const authStatus = document.getElementById('auth-status');
+    const userInfo = document.getElementById('user-info');
+    const userData = document.getElementById('user-data');
+    const tokenInfo = document.getElementById('token-info');
+
+    function updateUI() {
+      if (isAuthenticated) {
+        // Authenticated state
+        authStatus.className = 'status success';
+        authStatus.innerHTML = '<span>✅</span><span>Mock authentication successful</span>';
+        
+        loginBtn.classList.add('hidden');
+        logoutBtn.classList.remove('hidden');
+        userInfo.classList.remove('hidden');
+        
+        userData.textContent = JSON.stringify(mockUser, null, 2);
+        
+        tokenInfo.innerHTML = `
+          <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 0.75rem; padding: 1.5rem;">
+            <div style="text-align: center; margin-bottom: 1rem;">
+              <h3 style="margin: 0; color: #06b6d4;">Welcome Bonus Applied! 🎉</h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+              <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #06b6d4;">5,000</div>
+                <div style="font-size: 0.875rem; opacity: 0.8;">Total Tokens</div>
+              </div>
+              
+              <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #22c55e;">₹500</div>
+                <div style="font-size: 0.875rem; opacity: 0.8;">Credit Value</div>
+              </div>
+              
+              <div style="text-align: center;">
+                <div style="font-size: 1.5rem; font-weight: bold; color: #8b5cf6;">Ready</div>
+                <div style="font-size: 0.875rem; opacity: 0.8;">Status</div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 0.5rem; font-size: 0.875rem; text-align: center;">
+              <strong>🎯 You're ready to use AI features!</strong><br>
+              Start chatting to earn more tokens through various activities.
+            </div>
+          </div>
+        `;
+      } else {
+        // Not authenticated state
+        authStatus.className = 'status';
+        authStatus.innerHTML = '<span>⏳</span><span>Ready to test Privy authentication</span>';
+        
+        loginBtn.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+        userInfo.classList.add('hidden');
+        
+        tokenInfo.innerHTML = '<p style="text-align: center; opacity: 0.6; padding: 2rem;">Login to view token balance</p>';
+      }
+    }
+
+    loginBtn.addEventListener('click', function() {
+      // Simulate login
+      mockUser = {
+        id: 'did:privy:demo' + Math.random().toString(36).substring(2, 8),
+        email: 'demo@meshos.dev',
+        walletAddress: '0x' + Math.random().toString(16).substring(2, 42),
+        linkedAccounts: [
+          { type: 'email', address: 'demo@meshos.dev', verified: true },
+          { type: 'wallet', address: '0x' + Math.random().toString(16).substring(2, 42), verified: true }
+        ],
+        hasEmbeddedWallet: true,
+        createdAt: new Date().toISOString()
+      };
+      
+      isAuthenticated = true;
+      updateUI();
+    });
+
+    logoutBtn.addEventListener('click', function() {
+      // Simulate logout
+      isAuthenticated = false;
+      mockUser = null;
+      updateUI();
+    });
+
+    // Initialize UI
+    updateUI();
+  </script>
+</body>
+</html>
