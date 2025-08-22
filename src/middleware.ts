@@ -3,7 +3,7 @@ import { createServerAuth } from './lib/auth/simple-multi-user';
 
 const PUBLIC_ROUTES = [
   '/', '/landing', '/login', '/auth/callback', '/auth/exchange', 
-  '/test-auth', '/onboarding', '/debug-session', '/reset-password'
+  '/test-auth', '/onboarding', '/debug-session', '/reset-password', '/test-privy'
 ];
 
 export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, next) => {

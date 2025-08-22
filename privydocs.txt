@@ -1,182 +1,780 @@
-### Overview of Privy for Auth and Wallet Integration
-Privy is a platform for simplifying user authentication and embedded wallet management in web apps, especially for web3-like experiences. It supports login with email, phone, social providers (Google, Apple, Twitter, etc.), and wallets. For your token system, Privy can handle user auth (logging in users seamlessly) and provide an embedded wallet for a "user-friendly experience" as mentioned in the YAML, even though your tokens are off-chain in Supabase. The wallet can be used for future on-chain features or just for UX (e.g., displaying a wallet balance alongside tokens).
+# Quickstart
 
-Privy is not a full blockchain; it's an auth + wallet layer. Keys for embedded wallets are generated client-side, encrypted, and stored securely (e.g., in IndexedDB), with time-bound authorization keys for signing without constant prompts. Your tokens remain in Supabase—use Privy's user ID (DID) as the key to link users to their token balance.
+> Learn how to authenticate users, create embedded wallets, and send transactions in your React app
 
-Key rules:
-- **Security**: Never expose your Privy app secret on the client-side. Use it only in backend code.
-- **Rate limits**: API calls are rate-limited; check dashboard for quotas.
-- **User data**: Privy users have a unique `id` (e.g., `did:privy:abc123`). Use this for Supabase lookups to avoid duplicate accounts.
-- **Compliance**: If using embedded wallets, inform users about key export options for non-custodial control. For Indian rupees (₹) in your system, ensure Stripe top-ups comply with local payment regs.
-- **Error handling**: Always handle auth errors (e.g., expired tokens) with retries or UI feedback. Use Privy's `onError` callbacks.
-- **Testing**: Use Privy's sandbox mode in the dashboard for dev. Test on multiple devices as SMS/email logins vary by region.
-- **Dependencies**: Privy works with React 18+, but ensure no conflicts with other auth libs (e.g., Supabase auth if you're using it—Privy can replace or integrate via custom JWT).
-- **No blockchain needed**: As per YAML, keep tokens off-chain; Privy wallet is just for UX, not token storage.
+## 0. Prerequisites
 
-### Getting Started
-1. **Dashboard Setup**:
-   - Sign up at console.privy.io.
-   - Create an app → Get `appId` (public) and `appSecret` (private).
-   - Configure allowed domains, login methods (enable email, wallet, etc.), and embedded wallets.
-   - For your system, enable "Create embedded wallet on login" for seamless UX.
+This guide assumes that you have completed the [Setup](/basics/react/setup) guide.
 
-2. **Frontend Integration (React/Next.js)**
-   - **Installation**: Run `npm install @privy-io/react-auth`.
-   - **Setup PrivyProvider**: Wrap your root component (e.g., in `_app.tsx` or `index.tsx`).
-     ```tsx
-     import {PrivyProvider} from '@privy-io/react-auth';
+## 1. Enable a user to log in via email
 
-     function MyApp({ Component, pageProps }) {
-       return (
-         <PrivyProvider
-           appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID}  // Use env vars
-           config={{
-             loginMethods: ['email', 'wallet'],  // Add 'sms', 'google' as needed
-             appearance: { theme: 'light', accentColor: '#your-color' },
-             embeddedWallets: {
-               createOnLogin: true,  // Auto-create wallet on first login
-               requireUserPasswordOnCreate: false,  // For seamless UX
-               noPromptOnSignature: true,  // Use auth keys for silent signing
-             },
-           }}
-           onSuccess={(user) => {
-             // Sync with Supabase: e.g., upsert user_tokens with user.id as key, set initial 5000 tokens
-             console.log('Logged in:', user.id);
-           }}
-           onError={(error) => console.error('Privy error:', error)}
-         >
-           <Component {...pageProps} />
-         </PrivyProvider>
-       );
-     }
-     ```
-   - **Login Implementation**: Use hooks in components (e.g., in `src/components/LoginButton.tsx`).
-     ```tsx
-     import {usePrivy} from '@privy-io/react-auth';
+<Tip>
+  This quickstart guide will demonstrate how to authenticate a user with a one time password as an
+  example, but Privy supports many authentication methods. Explore our [Authentication
+  docs](/authentication/overview) to learn about other methods such as socials, passkeys, and
+  external wallets to authenticate users in your app.
+</Tip>
 
-     function LoginButton() {
-       const {ready, authenticated, login, logout} = usePrivy();
+**To authenticate a user via their email address, use the React SDK's `useLoginWithEmail` hook.**
 
-       if (!ready) return <div>Loading...</div>;
+```tsx
+import {useLoginWithEmail} from '@privy-io/react-auth';
+...
+const {sendCode, loginWithCode} = useLoginWithEmail();
+```
 
-       return authenticated ? (
-         <button onClick={logout}>Logout</button>
-       ) : (
-         <button onClick={login}>Login with Privy</button>  // Opens modal
-       );
-     }
-     ```
-     - This triggers a modal with configured methods. On success, user gets an access token (JWT) for backend calls.
-   - **User Data Access**: In any component:
-     ```tsx
-     const {user} = usePrivy();
-     if (user) {
-       // user.id: Privy DID for Supabase key
-       // user.linkedAccounts: Array of {type: 'email', address: '[email protected]'}, etc.
-       // Display in UI: e.g., link to token balance fetch
-     }
-     ```
-   - **Wallet Usage** (for YAML's "Privy wallet integration"):
-     - Enable in config as above.
-     - Use hook:
-       ```tsx
-       import {useWallets} from '@privy-io/react-auth';
+Ensure that this hook is mounted in a component that is wrapped by the [PrivyProvider](/basics/react/setup#initializing-privy).
+You can use the returned methods **`sendCode`** and **`loginWithCode`** to authenticate your user per the instructions below.
 
-       function WalletInfo() {
-         const {wallets} = useWallets();
-         const embedded = wallets.find(w => w.walletClientType === 'privy');
+### Send an OTP
 
-         if (embedded) {
-           // embedded.address: Wallet address
-           // To send tx (if needed for future on-chain):
-           const txHash = await embedded.sendTransaction({
-             chainId: 1,  // e.g., Ethereum
-             to: '0x...', value: 0n, data: '0x...'
-           });
-           // Or use useSendTransaction hook for simplicity
-         }
+Send a one-time passcode (OTP) to the user's **email** by passing their email address to the **`sendCode`** method returned from `useLoginWithEmail`:
 
-         return <div>Wallet: {embedded?.address}</div>;
-       }
-       ```
-     - Rules: Embedded wallets support EVM chains (Ethereum, Polygon, etc.). For your off-chain tokens, display wallet alongside token balance in UI, but don't mix logics.
+```tsx
+import {useState} from 'react';
+import {useLoginWithEmail} from '@privy-io/react-auth';
 
-3. **Backend Integration (Node.js/TS, e.g., for Supabase interactions)**
-   - **Installation**: `npm install @privy-io/server-auth`.
-   - **Setup Client**: In `src/lib/wallet/privy-integration.ts`:
-     ```ts
-     import {PrivyClient} from '@privy-io/server-auth';
+export default function LoginWithEmail() {
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const {sendCode, loginWithCode} = useLoginWithEmail();
 
-     const privy = new PrivyClient(
-       process.env.PRIVY_APP_ID,
-       process.env.PRIVY_APP_SECRET
-     );
-     export {privy};
-     ```
-   - **Verify User Token**: When frontend sends user.token to backend (e.g., for token deduction):
-     ```ts
-     async function verifyUser(req) {
-       const token = req.headers.authorization?.split(' ')[1];
-       try {
-         const claims = await privy.verifyAuthToken(token);
-         return claims.userId;  // Use this to query Supabase user_tokens
-       } catch (error) {
-         throw new Error('Invalid token');
-       }
-     }
-     ```
-     - Rules: Tokens expire (default 1h); refresh via frontend usePrivy().refresh().
-   - **User Management via API**: For creating/linking users if needed (e.g., migrate existing Supabase users).
-     - Example: Create user (POST /v1/users):
-       ```ts
-       const response = await fetch('https://auth.privy.io/api/v1/users', {
-         method: 'POST',
-         headers: {
-           'Authorization': `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
-           'privy-app-id': appId,
-           'Content-Type': 'application/json',
-         },
-         body: JSON.stringify({
-           linked_accounts: [{ type: 'email', address: '[email protected]' }],
-         }),
-       });
-       const user = await response.json();
-       ```
-     - Get user: `await privy.getUser(userId);`
-     - Link account: Use `putUser` or link methods to add wallets/emails.
-     - Rules: Use Basic Auth for API calls. Avoid direct creates if using SDK logins.
+  return (
+    <div>
+      <input onChange={(e) => setEmail(e.currentTarget.value)} value={email} />
+      <button onClick={() => sendCode({email})}>Send Code</button>
+      <input onChange={(e) => setCode(e.currentTarget.value)} value={code} />
+      <button onClick={() => loginWithCode({code})}>Login</button>
+    </div>
+  );
+}
+```
 
-4. **Integrating with Your Token System (from YAML)**
-   - **Database Link**: In Supabase, add `privy_id TEXT UNIQUE` to user_tokens table. On login success, upsert:
-     ```ts
-     // In onSuccess callback or backend endpoint
-     await supabase.from('user_tokens').upsert({
-       privy_id: user.id,
-       balance: 5000,  // Initial ₹500
-     });
-     ```
-   - **Token Deduction**: In `src/lib/tokens/usage-tracker.ts`, after chat session:
-     - Verify user via token.
-     - Calculate cost (e.g., based on AI usage).
-     - Batch deduct: `UPDATE user_tokens SET balance = balance - cost WHERE privy_id = userId;`
-     - Check balance before sessions: If < threshold, notify UI.
-   - **UI Display**: In `src/components/tokens/TokenBalance.tsx`:
-     - Use usePrivy() to get user.id.
-     - Fetch balance from Supabase (or backend endpoint).
-     - Show: "Balance: {balance / 10} ₹ ({balance} tokens)"
-     - Add low-balance notification: If balance < 1000, show alert.
-   - **Top-ups (Stripe later)**: On top-up, verify user, add tokens via backend to avoid fraud.
-   - **Usage History**: Add token_transactions table: Log deductions with timestamp, reason (e.g., "AI chat session").
-   - Rules: Batch deductions to minimize DB writes. Use Supabase realtime for live balance updates in UI. If using Privy wallet for top-ups (e.g., crypto), fund via Moonpay config in Privy, but since off-chain, stick to Stripe for ₹.
+## 2. Create an embedded wallet for the user
 
-### Common Pitfalls and Best Practices
-- **State Management**: Privy hooks require being inside PrivyProvider. Use `ready` flag before rendering auth-dependent UI.
-- **Multi-Account**: Users can link multiple logins/wallets; always use `user.id` as primary key.
-- **Logout**: Clears local state; ensure Supabase sessions are handled separately if needed.
-- **Performance**: Modal loads async; preload if possible.
-- **Customization**: Override modal appearance via config. For custom auth flow, use `useLoginWithParams` for programmatic login.
-- **Debugging**: Console logs + dashboard analytics for login failures.
-- **Scaling**: For high traffic, monitor API quotas; upgrade plan if needed.
-- **Off-chain Focus**: Don't use wallet for token storage—keep in DB as per design.
+Your app can configure Privy to [**automatically** create wallets](/basics/react/advanced/automatic-wallet-creation) for your users as part of their **login** flow. The embedded wallet will be generated and linked to the user object upon authentication.
 
-This covers the essentials for coding the integration. Refer to docs.privy.io for edge cases (e.g., MFA, custom JWT). If you need specific code expansions, provide more details!
+Alternatively your app can [**manually** create wallets](/wallets/wallets/create/create-a-wallet) for users when required.
+
+<Info>Privy can provision wallets for your users on both **Ethereum** and **Solana**.</Info>
+
+## 3. Send a transaction with the embedded wallet
+
+<Tabs>
+  <Tab title="EVM">
+    With the users' embedded wallet, your application can now prompt the user to sign and send transactions.
+
+    ```tsx
+    import {useSendTransaction} from '@privy-io/react-auth';
+    export default function SendTransactionButton() {
+      const {sendTransaction} = useSendTransaction();
+      const onSendTransaction = async () => {
+        sendTransaction({
+          to: '0xE3070d3e4309afA3bC9a6b057685743CF42da77C',
+          value: 100000
+        });
+      };
+
+      return <button onClick={onSendTransaction}>Send Transaction</button>;
+    }
+    ```
+
+    <Tip>
+      [Learn more](/wallets/using-wallets/ethereum/send-a-transaction) about sending transactions with
+      the embedded wallet. Privy enables you to take many actions on the embedded wallet, including
+      [sign a message](/wallets/using-wallets/ethereum/sign-a-message), [sign typed
+      data](/wallets/using-wallets/ethereum/sign-typed-data), and [sign a
+      transaction](/wallets/using-wallets/ethereum/sign-a-transaction).
+    </Tip>
+  </Tab>
+
+  <Tab title="Solana">
+    With the users' embedded wallet, your application can now prompt the user to sign and send transactions.
+
+    ```tsx
+    import {useSendTransaction} from '@privy-io/react-auth/solana';
+    import {Connection, Transaction, VersionedTransaction, SystemProgram, LAMPORTS_PER_SOL} from '@solana/web3.js';
+
+    export default function SendTransactionButton() {
+      const {sendTransaction} = useSendTransaction();
+      const connection = new Connection('https://api.mainnet-beta.solana.com');
+
+      // Create a new transaction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: new PublicKey('RECIPIENT_ADDRESS_HERE'),
+          lamports: 0.1 * LAMPORTS_PER_SOL
+        })
+      );
+
+      const onSendTransaction = async () => {
+        sendTransaction({
+          transaction,
+          connection
+        });
+      }
+
+      return <button onClick={onSendTransaction}>Send Transaction</button>;
+
+    }
+    ```
+
+    <Tip>
+      [Learn more](/wallets/using-wallets/solana/send-a-transaction) about sending transactions with
+      the embedded wallet. Privy enables you to take many actions on the embedded wallet, including [send a transaction](/wallets/using-wallets/solana/send-a-transaction), [sign a message](/wallets/using-wallets/solana/sign-a-message), and [sign a
+      transaction](/wallets/using-wallets/solana/sign-a-transaction).
+    </Tip>
+  </Tab>
+</Tabs>
+
+Congratulations, you have successfully been able to integrate Privy authentication and wallet into your React application!
+# null
+
+## Prerequisites
+
+Before you begin, make sure you have [set up your Privy app and obtained your app ID](/basics/get-started/dashboard/create-new-app) from the Privy Dashboard.
+
+<Tip>
+  Deploying your app across multiple domains or environments? Learn how to use [app
+  clients](/basics/get-started/dashboard/app-clients) to customize Privy's behavior for different
+  environments.
+</Tip>
+
+## Initializing Privy
+
+In your project, **import the `PrivyProvider` component and wrap your app with it**.
+The `PrivyProvider` must wrap *any* component or page that will use the Privy React SDK, and it is generally recommended to render it as close to the root of your application as possible.
+
+<Tip>
+  If you're new to React and using contexts, check out
+  [these](https://react.dev/learn/thinking-in-react)
+  [resources](https://react.dev/learn/passing-data-deeply-with-context)!
+</Tip>
+
+<Tabs>
+  <Tab title="Ethereum">
+    <CodeGroup>
+      ```tsx NextJS
+      'use client';
+
+      import {PrivyProvider} from '@privy-io/react-auth';
+
+      export default function Providers({children}: {children: React.ReactNode}) {
+        return (
+          <PrivyProvider
+            appId="your-privy-app-id"
+            clientId="your-app-client-id"
+            config={{
+              // Create embedded wallets for users who don't have a wallet
+              embeddedWallets: {
+                ethereum: {
+                  createOnLogin: 'users-without-wallets'
+                }
+              }
+            }}
+          >
+            {children}
+          </PrivyProvider>
+        );
+      }
+      ```
+
+      ```tsx Create React App
+      import React from 'react';
+      import ReactDOM from 'react-dom/client';
+
+      import './index.css';
+
+      import {PrivyProvider} from '@privy-io/react-auth';
+
+      import App from './App';
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+
+      root.render(
+        <React.StrictMode>
+          <PrivyProvider
+            appId="your-privy-app-id"
+            clientId="your-app-client-id"
+            config={{
+              // Create embedded wallets for users who don't have a wallet
+              embeddedWallets: {
+                ethereum: {
+                  createOnLogin: 'users-without-wallets'
+                }
+              }
+            }}
+          >
+            <App />
+          </PrivyProvider>
+        </React.StrictMode>
+      );
+      ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Solana">
+    <CodeGroup>
+      ```tsx NextJS
+      'use client';
+
+      import {PrivyProvider} from '@privy-io/react-auth';
+
+      export default function Providers({children}: {children: React.ReactNode}) {
+        return (
+          <PrivyProvider
+            appId="your-privy-app-id"
+            clientId="your-app-client-id"
+            config={{
+              // Create embedded wallets for users who don't have a wallet
+              embeddedWallets: {
+                solana: {
+                  createOnLogin: 'users-without-wallets'
+                }
+              }
+            }}
+          >
+            {children}
+          </PrivyProvider>
+        );
+      }
+      ```
+
+      ```tsx Create React App
+      import React from 'react';
+      import ReactDOM from 'react-dom/client';
+
+      import './index.css';
+
+      import {PrivyProvider} from '@privy-io/react-auth';
+
+      import App from './App';
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+
+      root.render(
+        <React.StrictMode>
+          <PrivyProvider
+            appId="your-privy-app-id"
+            clientId="your-app-client-id"
+            config={{
+              // Create embedded wallets for users who don't have a wallet
+              embeddedWallets: {
+                solana: {
+                  createOnLogin: 'users-without-wallets'
+                }
+              }
+            }}
+          >
+            <App />
+          </PrivyProvider>
+        </React.StrictMode>
+      );
+      ```
+    </CodeGroup>
+
+    <Info>
+      {' '}
+
+      To use external Solana wallets, you must pass `toSolanaWalletConnectors()` to the
+      `externalWallets` prop in your `PrivyProvider` config. Learn more
+      [here](/wallets/connectors/setup/configuring-external-connector-chains).
+    </Info>
+  </Tab>
+</Tabs>
+
+## Configuration
+
+The `PrivyProvider` component accepts the following props:
+
+<ParamField path="appId" type="string" required>
+  Your Privy App ID. You can find this in the Privy Dashboard.
+</ParamField>
+
+<ParamField path="clientId" type="string">
+  (Optional) A client ID to be used for this app client. Learn more about app clients
+  [here](/basics/get-started/dashboard/app-clients).
+</ParamField>
+
+<ParamField path="config" type="Object">
+  Configuration options for the Privy SDK.
+</ParamField>
+
+<Info>
+  For more information on the `config` object, look under **React > Advanced** for guides like
+  [customizing appearance](/basics/react/advanced/configuring-appearance) for our UI components and
+  [configuring networks](/basics/react/advanced/configuring-evm-networks).
+</Info>
+
+## Waiting for Privy to be ready
+
+When the `PrivyProvider` is first rendered on your page, the Privy SDK will initialize some state about the current user. This might include checking if the user has a wallet connected, refreshing expired auth tokens, fetching up-to-date user data, and more.
+
+**It's important to wait until the `PrivyProvider` has finished initializing *before* you consume Privy's state and interfaces**, to ensure that the state you consume is accurate and not stale.
+
+To determine whether the Privy SDK has fully initialized on your page, **check the `ready` Boolean returned by the `usePrivy` hook.** When `ready` is true, Privy has completed initialization, and your app can consume Privy's state and interfaces.
+
+```tsx
+import {usePrivy} from '@privy-io/react-auth';
+
+function YourComponent() {
+  const {ready} = usePrivy();
+
+  if (!ready) {
+    return <div>Loading...</div>;
+  }
+
+  // Now it's safe to use other Privy hooks and state
+  return <div>Privy is ready!</div>;
+}
+```
+
+<Info>
+  **Using wallets?** Use the [ready](/wallets/wallets/get-a-wallet/get-connected-wallet) indicator
+  from the `useWallets` hook to wait for wallets to complete loading.
+</Info>
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/basics/react/quickstart">
+    Learn how to log users in and transact with embedded wallets
+  </Card>
+
+  <Card title="NextJS starter repo" icon="code" href="https://github.com/privy-io/create-next-app">
+    Check out the NextJS app starter repo for a complete example integration
+  </Card>
+
+  <Card title="React starter repo" icon="code" href="https://github.com/privy-io/create-react-app">
+    Check out the React app starter repo for a complete example integration
+  </Card>
+
+  <Card title="Whitelabel starter repo" icon="code" href="https://github.com/privy-io/whitelabel-starter">
+    Check out the whitelabel starter for a complete whitelabel example integration
+  </Card>
+</CardGroup>
+# Configuring Solana networks
+
+Privy supports [Solana clusters](https://solana.com/docs/core/clusters) such as Mainnet Beta, Devnet, and Testnet.
+
+To configure the Solana clusters to use in your application and custom RPC URLs for it, pass an array of clusters to the `config.solanaClusters` prop of the `PrivyProvider`:
+
+```tsx
+<PrivyProvider
+  appId="your-privy-app-id"
+  config={{
+    ...theRestOfYourConfig,
+    // Replace this with your required clusters and custom RPC URLs
+    solanaClusters: [{name: 'mainnet-beta', rpcUrl: 'https://api.mainnet-beta.solana.com'}]
+  }}
+>
+  {/* your app's content */}
+</PrivyProvider>
+```
+
+Each cluster in the array should be an object with the following fields:
+
+| Field    | Type                                      | Description                                                                                                                                |
+| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`   | `'mainnet-beta' \| 'devnet' \| 'testnet'` | Name of the Solana cluster.                                                                                                                |
+| `rpcUrl` | `string`                                  | Custom RPC URL for the cluster. We strongly recommend using a custom RPC URL in production to avoid rate limiting on public RPC endpoints. |
+
+# Custom Solana Virtual Machine (SVM) networks
+
+In addition to supporting transactions on Solana mainnet, devnet, and testnet, Privy also supports sending transactions on any blockchain that implements the [Solana Virtual Machine (SVM)](https://squads.so/blog/solana-svm-sealevel-virtual-machine).
+
+You can send a transaction on a custom SVM by initializing the `Connection` instance for your transaction with the RPC URL for the SVM, like so:
+
+```tsx
+// Initialize connection instance with custom SVM RPC URL
+let connection = new Connection('insert-custom-SVM-rpc-url');
+
+// Build out the transaction object for your desired program
+// https://solana-foundation.github.io/solana-web3.js/classes/Transaction.html
+let transaction = new Transaction();
+
+// Send transaction on custom SVM
+console.log(await wallet.sendTransaction!(transaction, connection));
+```
+# null
+
+If your app uses embedded wallets, you can configure Privy to create wallets **automatically** for your users as part of their **login** flow.
+
+<Warning>
+  Automatic embedded wallet creation is currently not supported if your app uses Privy's whitelabel
+  login interfaces. If this is the case for your app, you must [manually create embedded
+  wallets](/wallets/wallets/create/create-a-wallet) for your users at the desired point in your
+  onboarding flow.
+</Warning>
+
+<Note>
+  Automatic wallet creation only applies to login via the Privy modal and not from whitelabel login
+  methods. It does not trigger wallet creation for users who authenticate through direct login
+  methods like loginWithCode, useLoginWithOAuth, or similar custom flows.
+</Note>
+
+<Tabs>
+  <Tab title="Ethereum">
+    To configure Privy to automatically create embedded wallets for your user when they login, **set the `config.embeddedWallets.ethereum.createOnLogin`** property of your `PrivyProvider`:
+
+    ```tsx
+    <PrivyProvider
+        appId="your-privy-app-id"
+        config={{
+            embeddedWallets: {
+                ethereum: {
+                    createOnLogin: "users-without-wallets",
+                },
+            },
+        }}
+    >
+        {children}
+    </PrivyProvider>
+    ```
+
+    <ParamField path="createOnLogin" type="'all-users' | 'users-without-wallets' | 'off'" default="off">
+      Determines when to create a wallet for the user.
+
+      * `'all-users'`: Create a wallet for all users on login.
+      * `'users-without-wallets'`: Create a wallet for users who do not have a wallet on login.
+      * `'off'`: Do not create a wallet on login.
+    </ParamField>
+  </Tab>
+
+  <Tab title="Solana">
+    To configure Privy to automatically create embedded wallets for your user when they login, **set the `config.embeddedWallets.solana.createOnLogin`** property of your `PrivyProvider`:
+
+    ```tsx
+    <PrivyProvider
+        appId="your-privy-app-id"
+        config={{
+            embeddedWallets: {
+                solana: {
+                    createOnLogin: 'users-without-wallets',
+                },
+            },
+        }}
+    >
+        {children}
+    </PrivyProvider>
+    ```
+
+    <ParamField path="createOnLogin" type="'all-users' | 'users-without-wallets' | 'off'" default="off">
+      Determines when to create a wallet for the user.
+
+      * `'all-users'`: Create a wallet for all users on login.
+      * `'users-without-wallets'`: Create a wallet for users who do not have a wallet on login.
+      * `'off'`: Do not create a wallet on login.
+    </ParamField>
+  </Tab>
+
+  <Tab title="Ethereum & Solana">
+    To configure Privy to automatically create embedded wallets for your user when they login, **set the `config.embeddedWallets.ethereum.createOnLogin`** and `config.embeddedWallets.solana.createOnLogin` properties of your `PrivyProvider`:
+
+    ```tsx
+    <PrivyProvider
+        appId="your-privy-app-id"
+        config={{
+            embeddedWallets: {
+                ethereum: {
+                    createOnLogin: 'users-without-wallets',
+                },
+                solana: {
+                    createOnLogin: 'users-without-wallets',
+                },
+            },
+        }}
+    >
+        {children}
+    </PrivyProvider>
+    ```
+  </Tab>
+</Tabs>
+# Migrating to 2.0
+
+This guide will help you migrate your Privy React SDK from v1.x.x to v2.0.0.
+
+To install the latest version, install the package from the `latest` tag:
+
+```bash
+npm i @privy-io/react-auth@latest
+```
+
+## New features and improvements 🎉
+
+* Removed ethers v5 dependency, allowing developers to more easily use ethers v6
+* Added support for submitting transactions without waiting for confirmation
+* Added UIs for Ethereum signTransaction
+
+For the full set of changes check out our [changelog](/changelogs/react-auth).
+
+## Breaking changes
+
+### Authentication
+
+* Guaranteed that `user.wallet` is the first linked wallet on the user object. To maintain state of the latest connected wallet, interact with the wallets array directly.
+
+* Removed the `forkSession` method. This feature was experimental and has been removed.
+
+* Removed the `PrivyProvider`'s deprecated `onSuccess` prop - use the `onSuccess` callback registered via the `useLogin` hook instead.
+
+### Embedded wallets
+
+* Apps using [custom auth providers](/authentication/user-authentication/jwt-based-auth/overview) must now explicitly configure wallet UIs in the dashboard, or use the updated `showWalletUIs` option.
+
+* Removed the `PrivyProvider`'s deprecated `createPrivyWalletOnLogin` prop. Use `config.embeddedWallets.createOnLogin` instead.
+
+```tsx
+<PrivyProvider
+  createPrivyWalletOnLogin={true} // Remove
+  config={{
+    embeddedWallets: {createOnLogin: 'users-without-wallets'} // Add
+  }}
+>
+  ...
+</PrivyProvider>
+```
+
+* Removed the deprecated `additionalChains` and `rpcConfig` props from `PrivyProvider` config, please configure these via the `supportedChains`
+
+```tsx
+<PrivyProvider
+  config={{
+    additionalChains: [], // Remove
+    rpcConfig: {}, // Remove
+    supportedChains: [] // Add
+  }}
+>
+  ...
+</PrivyProvider>
+```
+
+* Removed the deprecated `noPromptOnSignature` configuration option. Configure wallet UIs in the dashboard, or use the updated `showWalletUIs` option.
+
+```tsx
+<PrivyProvider
+  config={{
+    embeddedWallets: {
+      noPromptOnSignature: true, // Remove
+      showWalletUIs: false // Add
+    }
+  }}
+>
+  ...
+</PrivyProvider>
+```
+
+#### EVM
+
+* Removed the deprecated `getEthersProvider` and `getWeb3jsProvider` from the `ConnectedWallet` class. Use `getEthereumProvider` instead.
+
+```ts
+const provider = await wallet.getEthersProvider(); // Remove
+const privyProvider = await wallet.getEthereumProvider(); // Add
+const provider = new ethers.providers.Web3Provider(privyProvider); // Add
+
+const provider = await wallet.getWeb3jsProvider(); // Remove
+const privyProvider = await wallet.getEthereumProvider(); // Add
+const provider = new Web3(privyProvider); // Add
+```
+
+* Ethereum `sendTransaction` method now returns a `Promise<{hash: string}>` instead of a `Promise<TransactionReceipt>`. To get the full details of the submitted transaction, use a library like [viem](https://viem.sh/docs/actions/public/getTransactionReceipt).
+
+```tsx
+const receipt = await sendTransaction({...}); // Remove
+const {hash} = await sendTransaction({...}); // Add
+const receipt = await publicClient.waitForTransactionReceipt({hash}); // Add
+```
+
+* Removed the experimental `waitForTransactionConfirmation` config option as it is the default behavior.
+
+```tsx
+<PrivyProvider
+  config={{
+    embeddedWallets: {
+      waitForTransactionConfirmation: false // Remove
+    }
+  }}
+>
+  ...
+</PrivyProvider>
+```
+
+* Updated `signMessage`, `signTypedData`, `sendTransaction`, and `signTransaction` methods:
+
+<Tabs>
+  <Tab title="signMessage">
+    ```tsx
+    const {signMessage} = usePrivy();
+    // `uiOptions` and `address` are optional
+    const signature = await signMessage(message, uiOptions, address); // Remove
+    // the first argument should be formatted `{message: string}`
+    const {signature} = await signMessage({message}, {uiOptions, address}); // Add
+    ```
+  </Tab>
+
+  <Tab title="signTypedData">
+    ```tsx
+    const {signTypedData} = usePrivy();
+    // `uiOptions` and `address` are optional
+    const signature = await signTypedData(typedData, uiOptions, address); // Remove
+    const {signature} = await signTypedData(typedData, {uiOptions, address}); // Add
+    ```
+  </Tab>
+
+  <Tab title="sendTransaction">
+    ```tsx
+    const {sendTransaction} = usePrivy();
+    // `uiOptions`, `fundWalletConfig`, and `address` are optional
+    const receipt = await sendTransaction(transaction, uiOptions, fundWalletConfig, address); // Remove
+    const {hash} = await sendTransaction(transaction, {uiOptions, fundWalletConfig, address}); // Add
+    ```
+  </Tab>
+
+  <Tab title="signTransaction">
+    ```tsx
+    const {signTransaction} = usePrivy();
+    // `uiOptions`, and `address` are optional
+    const signature = await signTransaction(transaction, uiOptions, fundWalletConfig, address); // Remove
+    const {signature} = await signTransaction(transaction, {uiOptions, address}); // Add
+    ```
+  </Tab>
+</Tabs>
+
+#### Smart Wallets
+
+* Updated `signMessage`, `signTypedData`, and `sendTransaction` methods of the smart wallet client:
+
+<Tabs>
+  <Tab title="signMessage">
+    ```tsx
+    import {useSmartWallets} from '@privy-io/react-auth/smart-wallets';
+
+    const {client} = useSmartWallets();
+    // `uiOptions` and `address` are optional
+    const signature = await client.signMessage({message}, uiOptions, address); // Remove
+    const signature = await client.signMessage({message}, {uiOptions, address}); // Add
+    ```
+  </Tab>
+
+  <Tab title="signTypedData">
+    ```tsx
+    import {useSmartWallets} from '@privy-io/react-auth/smart-wallets';
+
+    const {client} = useSmartWallets();
+    // `uiOptions` and `address` are optional
+    const signature = await client.signTypedData(typedData, uiOptions, address); // Remove
+    const signature = await client.signTypedData(typedData, {uiOptions, address}); // Add
+    ```
+  </Tab>
+
+  <Tab title="sendTransaction">
+    ```tsx
+    import {useSmartWallets} from '@privy-io/react-auth/smart-wallets';
+
+    const {client} = useSmartWallets();
+    // `uiOptions`, `fundWalletConfig`, and `address` are optional
+    const hash = await client.sendTransaction(transaction, uiOptions, fundWalletConfig, address); // Remove
+    const hash = await client.sendTransaction(transaction, {uiOptions, fundWalletConfig, address}); // Add
+    ```
+  </Tab>
+</Tabs>
+
+#### Solana
+
+* Migrated `useSendSolanaTransaction` from `@privy-io/react-auth` to `useSendTransaction` from `@privy-io/react-auth/solana` (Solana-specific export path)
+
+```tsx
+import {useSendSolanaTransaction} from '@privy-io/react-auth'; // Remove
+import {useSendTransaction} from '@privy-io/react-auth/solana'; // Add
+
+...
+
+const {sendSolanaTransaction} = useSendSolanaTransaction(); // Remove
+const {sendTransaction} = useSendTransaction(); // Add
+```
+
+* Removed `sendSolanaTransaction` from `usePrivy` in favor of exporting `sendTransaction` from `useSendTransaction` from `@privy-io/react-auth/solana`
+
+```tsx
+import {usePrivy} from '@privy-io/react-auth'; // Remove
+import {useSendTransaction} from '@privy-io/react-auth/solana'; // Add
+
+...
+
+const {sendSolanaTransaction} = usePrivy(); // Remove
+const {sendTransaction} = useSendTransaction(); // Add
+```
+
+* Removed `delegateWalletAction` from `useSolanaWallets`. Use `delegateWallet` from `useDelegatedActions` instead.
+
+```tsx
+import {useSolanaWallets} from '@privy-io/react-auth/solana'; // Remove
+import {useDelegatedActions} from '@privy-io/react-auth'; // Add
+
+...
+
+const {delegateWalletAction} = useSolanaWallets(); // Remove
+delegateWalletAction(); // Remove
+
+const {delegateWallet} = useDelegatedActions(); // Add
+await delegateWallet({  // Add
+  address: '<wallet to delegate>', // Add
+  chainType: 'solana', // Add
+}); // Add
+```
+
+* Removed rpcUrl from `fundWallet` from `useSolanaWallets`. Set rpcUrl in `config.solanaClusters` prop of the `PrivyProvider` instead
+
+```tsx
+import {useSolanaWallets} from '@privy-io/react-auth/solana';
+
+const {fundWallet} = useSolanaWallets();
+fundWallet({
+  address: '<wallet to fund>',
+  cluster: {name: 'mainnet-beta', rpcUrl: 'https://api.mainnet-beta.solana.com'}, // Remove
+  cluster: {name: 'mainnet-beta'} // Add
+});
+
+<PrivyProvider
+  appId="your-privy-app-id"
+  config={{
+    ...theRestOfYourConfig,
+    // Replace this with your required clusters and custom RPC URLs
+    solanaClusters: [{name: 'mainnet-beta', rpcUrl: 'https://api.mainnet-beta.solana.com'}] // Add
+  }}
+>
+  {/* your app's content */}
+</PrivyProvider>;
+```
+
+### Connectors
+
+* Removed the `setActiveWallet` method - use the `wallets` array directly to interact with wallets.
+
+### Callbacks
+
+* Updated all non-error [callbacks](/authentication/user-authentication/login-methods/email) to use named arguments instead of positional arguments.
+
+```tsx
+const {login} = useLogin({
+  onComplete: (user, isNewUser, wasAlreadyAuthenticated, loginMethod, linkedAccount) => { // Remove
+  onComplete: ({user, isNewUser, wasAlreadyAuthenticated, loginMethod, linkedAccount}) => { // Add
+
+    console.log(user, isNewUser, wasAlreadyAuthenticated, loginMethod, linkedAccount);
+    // Any logic you'd like to execute if the user is/becomes authenticated while this
+    // component is mounted
+  },
+  ...
+  onError: (error) => { // onError will continue to stay as a singular error argument
+    console.log(error)
+  }})
+
+...
+ const {reauthorize} = useOAuthTokens({
+  onOAuthTokenGrant: (tokens: OAuthTokens, {user}: {user: User}) => {  // Remove
+  onOAuthTokenGrant: ({tokens, user}) => {  // Add
+    const oAuthToken = tokens.accessToken
+
+  ...
+  }})
+```

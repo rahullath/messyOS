@@ -10,7 +10,12 @@
       "Bash(npm run build:*)",
       "Bash(powershell:*)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.privy.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(taskkill:*)"
     ],
     "deny": []
   }

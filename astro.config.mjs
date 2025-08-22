@@ -15,4 +15,27 @@ export default defineConfig({
   // Middleware is now automatically detected from src/middleware.ts
   // See: https://docs.astro.build/en/guides/middleware/
   scopedStyleStrategy: 'where', // Or 'attribute'
+  vite: {
+    define: {
+      global: 'globalThis',
+    },
+    resolve: {
+      alias: {
+        buffer: 'buffer',
+      },
+    },
+    optimizeDeps: {
+      include: ['buffer'],
+    },
+    build: {
+      rollupOptions: {
+        external: ['buffer'],
+        output: {
+          globals: {
+            buffer: 'Buffer'
+          }
+        }
+      }
+    }
+  },
 });

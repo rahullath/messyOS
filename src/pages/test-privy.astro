@@ -1,0 +1,88 @@
+---
+import WorkingPrivyProvider from '../components/auth/WorkingPrivyProvider.tsx';
+import EmailLoginComponent from '../components/auth/EmailLoginComponent.tsx';
+import PrivyTest from '../components/auth/PrivyTest.tsx';
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privy Test - meshOS</title>
+</head>
+<body>
+  <div class="min-h-screen bg-gray-900 p-8">
+    <div class="max-w-4xl mx-auto">
+      <h1 class="text-3xl font-bold text-white mb-8">🧪 Privy Integration Test</h1>
+      
+      <!-- Environment Check -->
+      <div class="bg-gray-800 p-6 rounded-lg mb-6">
+        <h2 class="text-xl font-bold text-white mb-4">Environment Status</h2>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-300">PUBLIC_PRIVY_APP_ID:</span>
+            <span class={import.meta.env.PUBLIC_PRIVY_APP_ID ? "text-green-400" : "text-red-400"}>
+              {import.meta.env.PUBLIC_PRIVY_APP_ID ? '✅ Configured' : '❌ NOT SET'}
+            </span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Environment:</span>
+            <span class="text-blue-400">{import.meta.env.MODE}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-300">Development:</span>
+            <span class="text-blue-400">{import.meta.env.DEV ? 'Yes' : 'No'}</span>
+          </div>
+        </div>
+        {!import.meta.env.PUBLIC_PRIVY_APP_ID && (
+          <div class="mt-4 p-3 bg-red-900/20 border border-red-500 rounded">
+            <p class="text-red-300 text-sm">
+              ⚠️ Add your Privy App ID to the .env file:
+            </p>
+            <code class="block mt-2 bg-gray-900 p-2 rounded text-green-400 text-xs">
+              PUBLIC_PRIVY_APP_ID=your-privy-app-id-here
+            </code>
+          </div>
+        )}
+      </div>
+
+      <!-- Privy Test Components -->
+      <WorkingPrivyProvider client:load>
+        <div class="grid md:grid-cols-2 gap-6">
+          <!-- Debug Panel -->
+          <div class="bg-gray-800 p-6 rounded-lg">
+            <h2 class="text-xl font-bold text-white mb-4">Debug Information</h2>
+            <PrivyTest client:load />
+          </div>
+          
+          <!-- Email Login Test -->
+          <div class="bg-gray-800 p-6 rounded-lg">
+            <h2 class="text-xl font-bold text-white mb-4">Email Authentication</h2>
+            <EmailLoginComponent client:load />
+          </div>
+        </div>
+      </WorkingPrivyProvider>
+      
+      <!-- Instructions -->
+      <div class="mt-8 bg-blue-900/20 border border-blue-500 p-6 rounded-lg">
+        <h3 class="text-lg font-bold text-blue-300 mb-4">📋 Test Instructions</h3>
+        <ol class="text-blue-200 text-sm space-y-2 list-decimal list-inside">
+          <li>Ensure your .env file contains a valid PUBLIC_PRIVY_APP_ID</li>
+          <li>Check the debug panel shows "Ready: ✅" status</li>
+          <li>Try the email authentication flow</li>
+          <li>Monitor the browser console for detailed logs</li>
+          <li>If issues occur, check the network tab for API calls</li>
+        </ol>
+      </div>
+
+      <!-- Navigation -->
+      <div class="mt-6 text-center">
+        <a href="/login" class="text-cyan-400 hover:text-cyan-300 underline">
+          ← Back to Login Page
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

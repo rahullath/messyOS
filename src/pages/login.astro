@@ -1,33 +1,54 @@
 ---
-// src/pages/login.astro - Debug Privy Login Page
-import Layout from '../layouts/Layout.astro';
-import MinimalPrivyProvider from '../components/auth/MinimalPrivyProvider.tsx';
-import SimpleLoginButton from '../components/auth/SimpleLoginButton.tsx';
+import WorkingPrivyProvider from '../components/auth/WorkingPrivyProvider.tsx';
+import EmailLoginComponent from '../components/auth/EmailLoginComponent.tsx';
 ---
 
-<Layout title="Sign In - messyOS">
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In - meshOS</title>
+</head>
+<body>
   <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-6">
     <div class="max-w-md w-full space-y-8">
       
       <!-- Header -->
       <div class="text-center">
         <h1 class="text-4xl font-bold text-white mb-2">
-          <span class="text-cyan-400">messy</span>OS
+          <span class="text-cyan-400">mesh</span>OS
         </h1>
         <p class="text-gray-300 mb-8">Your AI-powered life optimization system</p>
       </div>
 
-      <!-- Minimal Privy Login -->
-      <MinimalPrivyProvider client:load>
-        <SimpleLoginButton client:load />
-      </MinimalPrivyProvider>
+      <!-- Updated Privy Setup -->
+      <WorkingPrivyProvider client:load>
+        <EmailLoginComponent client:load />
+      </WorkingPrivyProvider>
+      
+      <!-- Debug Info -->
+      <div class="text-center">
+        <details class="text-xs text-gray-500">
+          <summary class="cursor-pointer hover:text-gray-400">Debug Info</summary>
+          <div class="mt-2 p-2 bg-gray-800/50 rounded text-left">
+            <p>Privy App ID: {import.meta.env.PUBLIC_PRIVY_APP_ID ? '✅ Set' : '❌ Missing'}</p>
+            <p>Environment: {import.meta.env.MODE}</p>
+          </div>
+        </details>
+      </div>
       
       <!-- Links -->
       <div class="text-center space-y-2">
         <a href="/" class="text-sm text-gray-400 hover:text-white">
           ← Back to home
         </a>
+        <br>
+        <a href="/test-privy" class="text-xs text-gray-500 hover:text-gray-400">
+          🧪 Debug Privy Integration
+        </a>
       </div>
     </div>
   </div>
-</Layout>
+</body>
+</html>
