@@ -1,6 +1,6 @@
 ---
 import WorkingPrivyProvider from '../components/auth/WorkingPrivyProvider.tsx';
-import EmailLoginComponent from '../components/auth/EmailLoginComponent.tsx';
+import ProperEmailLogin from '../components/auth/ProperEmailLogin.tsx';
 ---
 
 <!doctype html>
@@ -22,9 +22,9 @@ import EmailLoginComponent from '../components/auth/EmailLoginComponent.tsx';
         <p class="text-gray-300 mb-8">Your AI-powered life optimization system</p>
       </div>
 
-      <!-- Updated Privy Setup -->
+      <!-- Proper Email Login -->
       <WorkingPrivyProvider client:load>
-        <EmailLoginComponent client:load />
+        <ProperEmailLogin client:load />
       </WorkingPrivyProvider>
       
       <!-- Debug Info -->
@@ -44,8 +44,8 @@ import EmailLoginComponent from '../components/auth/EmailLoginComponent.tsx';
           ← Back to home
         </a>
         <br>
-        <a href="/test-privy" class="text-xs text-gray-500 hover:text-gray-400">
-          🧪 Debug Privy Integration
+        <a href="/debug-privy" class="text-xs text-gray-500 hover:text-gray-400">
+          🧪 Advanced Privy Debug
         </a>
       </div>
     </div>

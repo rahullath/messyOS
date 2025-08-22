@@ -1,0 +1,83 @@
+---
+import WorkingPrivyProvider from '../components/auth/WorkingPrivyProvider.tsx';
+import PrivyDebugComponent from '../components/auth/PrivyDebugComponent.tsx';
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Working Privy Test - meshOS</title>
+</head>
+<body class="bg-gray-900 min-h-screen">
+  <div class="container mx-auto p-8 max-w-4xl">
+    <h1 class="text-3xl font-bold text-white mb-8">🧪 Working Privy Test</h1>
+    
+    <!-- Environment Status -->
+    <div class="bg-gray-800 p-6 rounded-lg mb-6">
+      <h2 class="text-xl font-bold text-white mb-4">Environment Status</h2>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="text-gray-300">App ID:</span>
+          <span class={import.meta.env.PUBLIC_PRIVY_APP_ID ? "text-green-400 ml-2" : "text-red-400 ml-2"}>
+            {import.meta.env.PUBLIC_PRIVY_APP_ID ? '✅ Configured' : '❌ Missing'}
+          </span>
+        </div>
+        <div>
+          <span class="text-gray-300">Environment:</span>
+          <span class="text-blue-400 ml-2">{import.meta.env.MODE}</span>
+        </div>
+        <div>
+          <span class="text-gray-300">Development:</span>
+          <span class="text-blue-400 ml-2">{import.meta.env.DEV ? 'Yes' : 'No'}</span>
+        </div>
+        <div>
+          <span class="text-gray-300">Timestamp:</span>
+          <span class="text-gray-400 ml-2">{new Date().toLocaleTimeString()}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Privy Test -->
+    {import.meta.env.PUBLIC_PRIVY_APP_ID ? (
+      <WorkingPrivyProvider client:load>
+        <PrivyDebugComponent client:load />
+      </WorkingPrivyProvider>
+    ) : (
+      <div class="bg-red-900/20 border border-red-500 p-6 rounded-lg">
+        <h2 class="text-red-400 font-bold text-xl mb-4">❌ Configuration Error</h2>
+        <p class="text-red-300 mb-4">
+          PUBLIC_PRIVY_APP_ID is missing from your environment variables.
+        </p>
+        <p class="text-red-200 text-sm mb-4">
+          Add the following to your .env file:
+        </p>
+        <pre class="bg-gray-900 p-3 rounded text-green-400 text-sm">PUBLIC_PRIVY_APP_ID=your-privy-app-id-here</pre>
+      </div>
+    )}
+
+    <!-- Instructions -->
+    <div class="mt-8 bg-blue-900/20 border border-blue-500 p-6 rounded-lg">
+      <h3 class="text-blue-300 font-bold text-lg mb-4">📋 How This Works</h3>
+      <div class="text-blue-200 text-sm space-y-2">
+        <p>✅ <strong>Proper Astro Integration:</strong> Uses client:load directives for React components</p>
+        <p>✅ <strong>Single Provider Instance:</strong> Only one PrivyProvider to avoid conflicts</p>
+        <p>✅ <strong>Real-time Debug Info:</strong> Shows Privy state changes with timestamps</p>
+        <p>✅ <strong>Error Detection:</strong> 15-second timeout to catch initialization failures</p>
+        <p>✅ <strong>Live Console Logs:</strong> All Privy events logged and displayed</p>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="mt-6 text-center space-x-4">
+      <a href="/login" class="text-cyan-400 hover:text-cyan-300 underline">
+        ← Back to Login
+      </a>
+      <a href="/debug-privy" class="text-gray-400 hover:text-gray-300 underline">
+        Old Debug Page
+      </a>
+    </div>
+  </div>
+</body>
+</html>

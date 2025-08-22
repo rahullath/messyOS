@@ -9,6 +9,31 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+// Export function for creating Supabase client
+export const createSupabaseClient = () => createClient<Database>(supabaseUrl, supabaseKey, {
+  auth: {
+    flowType: 'pkce',
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    persistSession: true,
+    storage: {
+      // Custom storage that syncs localStorage with cookies for SSR compatibility
+      getItem: (key: string) => {
+        if (typeof window === 'undefined') return null;
+        return window.localStorage.getItem(key);
+      },
+      setItem: (key: string, value: string) => {
+        if (typeof window === 'undefined') return;
+        window.localStorage.setItem(key, value);
+      },
+      removeItem: (key: string) => {
+        if (typeof window === 'undefined') return;
+        window.localStorage.removeItem(key);
+      },
+    },
+  },
+});
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     flowType: 'pkce',

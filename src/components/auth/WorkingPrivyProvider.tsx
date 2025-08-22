@@ -8,11 +8,18 @@ interface WorkingPrivyProviderProps {
 export const WorkingPrivyProvider: React.FC<WorkingPrivyProviderProps> = ({ children }) => {
   const appId = import.meta.env.PUBLIC_PRIVY_APP_ID;
   
-  console.log('🔧 Working Privy Provider:', {
-    appId: appId ? `${appId.substring(0, 10)}...` : 'NOT SET',
-    fullAppId: appId, // Show full ID for debugging
-    env: import.meta.env.MODE
-  });
+  // Use useRef to prevent multiple initializations
+  const initRef = React.useRef(false);
+  
+  React.useEffect(() => {
+    if (!initRef.current) {
+      initRef.current = true;
+      console.log('🔧 Privy Provider SINGLE INIT:', {
+        appId: appId ? `${appId.substring(0, 10)}...` : 'NOT SET',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [appId]);
 
   if (!appId) {
     return (
@@ -33,23 +40,17 @@ export const WorkingPrivyProvider: React.FC<WorkingPrivyProviderProps> = ({ chil
     <PrivyProvider
       appId={appId}
       config={{
-        // Authentication methods - only email for simplicity
+        // Minimal config - just email login
         loginMethods: ['email'],
-        // UI appearance
         appearance: {
           theme: 'dark',
-          accentColor: '#06b6d4', // Cyan color to match your theme
         },
-        // Embedded wallet configuration - completely disabled
-        embeddedWallets: {
-          createOnLogin: 'off',
-        },
-        // External wallet configuration - disabled to avoid wallet errors
-        externalWallets: {
-          metamask: false,
-          walletConnect: false,
-          coinbaseWallet: false,
-        },
+      }}
+      onSuccess={(user) => {
+        console.log('🎉 Privy onSuccess callback:', user.id);
+      }}
+      onError={(error) => {
+        console.error('💥 Privy onError callback:', error);
       }}
     >
       {children}

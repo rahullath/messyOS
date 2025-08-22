@@ -47,3 +47,5 @@ export const PrivyTest: React.FC = () => {
     </div>
   );
 };
+
+export default PrivyTest;

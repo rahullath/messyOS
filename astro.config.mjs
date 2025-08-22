@@ -6,9 +6,7 @@ import vercel from '@astrojs/vercel';
 export default defineConfig({
   integrations: [
     react(),
-    tailwind({
-      applyBaseStyles: false, // We'll handle our own base styles
-    }),
+    tailwind(),
   ],
   output: 'server',
   adapter: vercel(),
@@ -25,7 +23,7 @@ export default defineConfig({
       },
     },
     optimizeDeps: {
-      include: ['buffer'],
+      include: ['buffer', '@privy-io/react-auth'],
     },
     build: {
       rollupOptions: {

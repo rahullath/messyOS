@@ -1,0 +1,33 @@
+---
+import SimpleReactTest from '../components/SimpleReactTest.tsx';
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>React Test - meshOS</title>
+</head>
+<body class="bg-gray-900 text-white p-8">
+  <h1 class="text-2xl font-bold mb-4">🧪 React Hydration Test</h1>
+  
+  <p class="mb-4">If React is working properly, you should see a green box below with a working button:</p>
+  
+  <SimpleReactTest client:load />
+  
+  <div class="mt-8 space-y-2">
+    <p><strong>Expected behavior:</strong></p>
+    <ul class="list-disc list-inside space-y-1 text-sm">
+      <li>Box should turn green when React hydrates</li>
+      <li>Status should show "✅ Hydrated"</li>
+      <li>Button should increment the counter</li>
+      <li>Console should show "✅ SimpleReactTest mounted"</li>
+    </ul>
+  </div>
+  
+  <div class="mt-4">
+    <a href="/working-privy" class="text-blue-400 underline">Back to Privy Test</a>
+  </div>
+</body>
+</html>
