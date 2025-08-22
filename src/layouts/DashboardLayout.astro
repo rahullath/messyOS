@@ -1,6 +1,7 @@
 ---
 // src/layouts/DashboardLayout.astro
 import Layout from './Layout.astro';
+import TokenBalance from '../components/dashboard/TokenBalance.tsx';
 
 export interface Props {
   title: string;
@@ -116,6 +117,9 @@ const { title, user } = Astro.props;
             </div>
 
             <div class="flex items-center space-x-4">
+              <!-- Token Balance -->
+              <TokenBalance client:load />
+
               <!-- Quick Add Button -->
               <button class="flex items-center px-3 py-2 text-sm font-medium bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

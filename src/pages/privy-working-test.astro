@@ -1,18 +1,15 @@
 ---
 // src/pages/privy-working-test.astro - Working Privy Test
 import Layout from '../layouts/Layout.astro';
-import { PrivyWrapper } from '../components/auth/PrivyProvider.tsx';
-import PrivyTestComponent from '../components/auth/PrivyTestComponent.tsx';
+import MinimalPrivyTest from '../components/auth/MinimalPrivyTest.tsx';
 ---
 
 <Layout title="Privy Working Test">
   <div style="padding: 2rem; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%); min-height: 100vh; color: white;">
     <div style="max-width: 800px; margin: 0 auto;">
-      <h1 style="color: #06b6d4; margin-bottom: 2rem;">🔐 Privy Authentication Test</h1>
+      <h1 style="color: #06b6d4; margin-bottom: 2rem;">🧪 Minimal Privy Test</h1>
       
-      <PrivyWrapper client:load>
-        <PrivyTestComponent client:load />
-      </PrivyWrapper>
+      <MinimalPrivyTest client:load />
     </div>
   </div>
 </Layout>

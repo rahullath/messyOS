@@ -25,15 +25,5 @@ export default defineConfig({
     optimizeDeps: {
       include: ['buffer', '@privy-io/react-auth'],
     },
-    build: {
-      rollupOptions: {
-        external: ['buffer'],
-        output: {
-          globals: {
-            buffer: 'Buffer'
-          }
-        }
-      }
-    }
   },
 });

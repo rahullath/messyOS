@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privy Diagnostic - meshOS</title>
+</head>
+<body>
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
+    <div class="max-w-4xl mx-auto space-y-6">
+      <div class="text-center">
+        <h1 class="text-3xl font-bold text-white mb-2">
+          <span class="text-cyan-400">🔍 Privy</span> Diagnostic
+        </h1>
+        <p class="text-gray-300">Deep diagnosis of Privy initialization</p>
+      </div>
+      
+      <div id="diagnostic-root">
+        <div class="bg-yellow-900/20 border border-yellow-500 p-4 rounded text-center">
+          <p class="text-yellow-300">Loading diagnostic tool...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script type="module">
+    import PrivyDiagnostic from '/src/components/auth/PrivyDiagnostic.tsx';
+    import React from 'react';
+    import ReactDOM from 'react-dom/client';
+    
+    const root = ReactDOM.createRoot(document.getElementById('diagnostic-root'));
+    root.render(React.createElement(PrivyDiagnostic));
+  </script>
+</body>
+</html>

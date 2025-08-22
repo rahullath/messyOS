@@ -15,7 +15,12 @@
       "WebFetch(domain:docs.privy.io)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:api.privy.io)",
+      "WebFetch(domain:auth.privy.io)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }
