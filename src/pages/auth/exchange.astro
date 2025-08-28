@@ -36,8 +36,13 @@
     <p id="status" style="color: #64748b; font-size: 14px;">Initializing...</p>
   </div>
 
-  <script>
-    import { supabase } from '../../lib/supabase/client';
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    
+    const supabase = createClient(
+      'https://mdhtpjpwwbuepsytgrva.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kaHRwanB3d2J1ZXBzeXRncnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgyMTQ0NTQsImV4cCI6MjA2Mzc5MDQ1NH0.T5eIZsKrpivj9Q4QniFhqOBGF_QU3f32wc0rcz4S-fA'
+    );
     
     async function handleAuthExchange() {
       const status = document.getElementById('status');
@@ -52,55 +57,51 @@
           throw new Error('No auth code received');
         }
         
-        console.log('🔄 Exchanging auth code for session...');
-        status.textContent = 'Exchanging authentication code...';
+        console.log('🔄 Attempting to get session...');
+        status.textContent = 'Checking authentication session...';
         
-        // This will use the code verifier from localStorage
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        // First, let Supabase handle the callback automatically
+        // The session should already be set by the time we reach this page
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('❌ Exchange error:', error);
-          status.textContent = 'Authentication failed. Redirecting...';
+        if (session && session.user) {
+          console.log('✅ Session found:', session.user.email);
+          status.textContent = 'Authentication successful! Redirecting to dashboard...';
+          
+          // Simple redirect to dashboard
           setTimeout(() => {
-            window.location.href = '/login?error=exchange_failed';
-          }, 2000);
+            console.log('🔄 Redirecting to dashboard');
+            window.location.href = '/dashboard';
+          }, 1000);
           return;
         }
         
-        status.textContent = 'Authentication successful! Setting up your account...';
-        console.log('✅ Successfully exchanged code for session:', data.user?.email);
+        console.log('🔄 No session found, trying manual code exchange...');
+        status.textContent = 'Exchanging authentication code...';
         
-        // Check if this is a new user and complete signup process
         try {
-          const signupResponse = await fetch('/api/auth/complete-signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
+          // Try manual code exchange as fallback
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           
-          const signupResult = await signupResponse.json();
-          
-          if (signupResult.success) {
-            const redirectTo = signupResult.redirectTo || '/';
-            const message = signupResult.isNewUser ? 'Welcome to meshOS!' : 'Welcome back!';
-            
-            status.textContent = `${message} Redirecting...`;
-            
-            setTimeout(() => {
-              console.log('🔄 Redirecting to:', redirectTo);
-              window.history.replaceState(null, '', '/');
-              window.location.href = redirectTo;
-            }, 1000);
-          } else {
-            throw new Error(signupResult.error || 'Signup completion failed');
+          if (error) {
+            console.error('❌ Manual exchange error:', error);
+            throw error;
           }
-        } catch (signupError) {
-          console.error('❌ Signup completion error:', signupError);
-          // Fallback to normal redirect
+          
+          status.textContent = 'Authentication successful! Redirecting to dashboard...';
+          console.log('✅ Manual exchange successful:', data.user?.email);
+          
           setTimeout(() => {
-            console.log('🔄 Fallback redirect to home page');
-            window.history.replaceState(null, '', '/');
-            window.location.href = '/';
+            console.log('🔄 Redirecting to dashboard');
+            window.location.href = '/dashboard';
           }, 1000);
+          
+        } catch (exchangeError) {
+          console.error('❌ Both automatic and manual auth failed:', exchangeError);
+          status.textContent = 'Authentication failed. Redirecting...';
+          setTimeout(() => {
+            window.location.href = '/login?error=auth_failed';
+          }, 2000);
         }
         
       } catch (error) {

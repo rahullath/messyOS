@@ -20,7 +20,8 @@
       "WebFetch(domain:api.privy.io)",
       "WebFetch(domain:auth.privy.io)",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:localhost)"
     ],
     "deny": []
   }

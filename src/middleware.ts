@@ -3,7 +3,7 @@ import { createServerAuth } from './lib/auth/simple-multi-user';
 
 const PUBLIC_ROUTES = [
   '/', '/landing', '/login', '/auth/callback', '/auth/exchange', 
-  '/test-auth', '/onboarding', '/debug-session', '/reset-password', '/test-privy', '/debug-privy', '/working-privy', '/react-test', '/minimal-privy', '/privy-working-test'
+  '/test-auth', '/onboarding', '/debug-session', '/reset-password', '/test-privy', '/debug-privy', '/working-privy', '/react-test', '/minimal-privy', '/privy-working-test', '/google-oauth-debug', '/privy-simple-test', '/privy-demo', '/privy-status'
 ];
 
 export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, next) => {
@@ -39,7 +39,7 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
     return redirect('/login');
   }
 
-  console.log(`👤 User found: ${user.email}`);
+  console.log(`👤 User found: ${user.email || user.id}`);
 
   // Check onboarding status for authenticated users
   try {

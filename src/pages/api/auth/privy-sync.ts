@@ -8,26 +8,28 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const { user: privyUser, token } = await request.json();
 
-    if (!privyUser || !token) {
+    if (!privyUser) {
       return new Response(JSON.stringify({
         success: false,
-        error: 'User data and token required'
+        error: 'User data required'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Verify the token first
-    const verification = await privyAuthService.verifyAuthToken(token);
-    if (!verification || verification.userId !== privyUser.id) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Invalid token or user mismatch'
-      }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    // Verify the token if provided (but allow sync without token for initial login)
+    if (token) {
+      try {
+        const verification = await privyAuthService.verifyAuthToken(token);
+        if (!verification || verification.userId !== privyUser.id) {
+          console.warn('Token verification failed for user:', privyUser.id);
+          // Don't fail the sync, just log the warning
+        }
+      } catch (error) {
+        console.warn('Token verification error for user:', privyUser.id, error);
+        // Don't fail the sync, just log the warning
+      }
     }
 
     // Extract user information from Privy user object

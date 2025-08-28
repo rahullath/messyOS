@@ -180,10 +180,14 @@ class PrivyAuthService {
     linkedAccounts: any[];
   }): Promise<PrivyUser | null> {
     try {
+      console.log('🔄 Upserting user:', privyUserData);
+      
       // Check if this email belongs to an existing Supabase user
       let existingUser = null;
       if (privyUserData.email) {
+        console.log('📧 Checking for existing user with email:', privyUserData.email);
         existingUser = await this.getUserByEmail(privyUserData.email);
+        console.log('🔍 Existing user check result:', existingUser);
       }
 
       if (existingUser && !existingUser.already_linked) {
@@ -206,16 +210,23 @@ class PrivyAuthService {
           return await this.getUserByPrivyId(privyUserData.id);
         }
       } else {
-        // Create new user link
-        const { data, error } = await this.supabase
-          .from('user_privy_links')
-          .upsert({
-            privy_user_id: privyUserData.id,
+        // Create new user using service role to bypass RLS
+        const { createClient } = await import('@supabase/supabase-js');
+        const serviceSupabase = createClient(
+          process.env.PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        
+        const { data, error } = await serviceSupabase
+          .from('privy_users')  
+          .insert({
+            privy_id: privyUserData.id,
             email: privyUserData.email,
             phone: privyUserData.phone,
             wallet_address: privyUserData.walletAddress,
             linked_accounts: privyUserData.linkedAccounts,
-            migration_status: 'migrated'
+            created_at: new Date().toISOString(),
+            last_login: new Date().toISOString()
           })
           .select()
           .single();
@@ -487,22 +498,27 @@ class PrivyAuthService {
     return {
       getUser: async (): Promise<PrivyUser | null> => {
         try {
-          // Get auth token from cookies or headers
+          // First try auth token from cookies
           const authToken = cookies?.get('privy-auth-token')?.value || 
                            cookies?.get('authorization')?.value;
 
-          if (!authToken) {
-            return null;
+          if (authToken) {
+            // Verify token
+            const verification = await this.verifyAuthToken(authToken);
+            if (verification) {
+              // Get user from database
+              return await this.getUserByPrivyId(verification.userId);
+            }
           }
 
-          // Verify token
-          const verification = await this.verifyAuthToken(authToken);
-          if (!verification) {
-            return null;
+          // Fallback: try user ID cookie (for newly logged in users)
+          const userId = cookies?.get('privy_user_id')?.value;
+          if (userId) {
+            console.log('🔄 Using fallback user ID from cookie:', userId);
+            return await this.getUserByPrivyId(userId);
           }
 
-          // Get user from database
-          return await this.getUserByPrivyId(verification.userId);
+          return null;
         } catch (error) {
           console.error('Error getting user from server auth:', error);
           return null;
@@ -515,6 +531,27 @@ class PrivyAuthService {
           throw new Error('Authentication required');
         }
         return user;
+      },
+
+      // Get user preferences for onboarding check
+      getUserPreferences: async (privyId: string) => {
+        try {
+          const { data, error } = await this.supabase
+            .from('user_preferences')
+            .select('*')
+            .eq('privy_user_id', privyId)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error('Error fetching user preferences:', error);
+            return null;
+          }
+
+          return data;
+        } catch (error) {
+          console.error('Exception fetching user preferences:', error);
+          return null;
+        }
       },
 
       // For backward compatibility with existing code

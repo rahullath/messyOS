@@ -35,8 +35,8 @@ export const PrivyWrapper: React.FC<PrivyWrapperProps> = ({ children }) => {
     <PrivyProvider
       appId={appId}
       config={{
-        // Login methods - prioritize email and social, wallets optional
-        loginMethods: ['email', 'google'],
+        // Login methods - email and Google OAuth, wallets optional
+        loginMethods: ['email', 'google', 'wallet'],
         
         // Appearance
         appearance: {
@@ -44,9 +44,15 @@ export const PrivyWrapper: React.FC<PrivyWrapperProps> = ({ children }) => {
           accentColor: '#06b6d4',
         },
         
-        // Embedded wallets - optional, created only if user requests
+        // Embedded wallets - create for users without wallets
         embeddedWallets: {
-          createOnLogin: 'off', // Don't auto-create wallets
+          createOnLogin: 'users-without-wallets',
+          requireUserPasswordOnCreate: false,
+        },
+        
+        // Additional Google OAuth configuration
+        googleOauth: {
+          // Add any specific Google OAuth configuration if needed
         },
       }}
       onSuccess={(user) => {

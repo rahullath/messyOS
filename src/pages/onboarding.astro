@@ -1,8 +1,6 @@
 ---
-// src/pages/onboarding.astro - User Onboarding Flow
-import Layout from '../layouts/Layout.astro';
-import { createServerAuth } from '../lib/auth/simple-multi-user';
-import OnboardingFlow from '../components/onboarding/OnboardingFlow.tsx';
+// src/pages/onboarding.astro - User Onboarding Flow (Privy)
+import { createServerAuth } from '../lib/auth/privy-auth';
 
 // Require authentication
 const serverAuth = createServerAuth(Astro.cookies);
@@ -15,26 +13,115 @@ if (!user) {
 // Note: Middleware will handle redirecting users who have already completed onboarding
 ---
 
-<Layout title="Welcome to messyOS - Setup">
-  <div class="container mx-auto max-w-2xl py-12">
-    <h1 class="text-3xl font-bold mb-4 text-center">Welcome to messyOS</h1>
-    <p class="text-center mb-8">Let's get your workspace set up.</p>
-    <OnboardingFlow client:load />
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to meshOS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 min-h-screen">
+  <div class="container mx-auto px-6 py-12">
+    <div class="max-w-2xl mx-auto text-center">
+      
+      <!-- Header -->
+      <div class="mb-8">
+        <h1 class="text-4xl font-bold text-white mb-4">
+          Welcome to <span class="text-cyan-400">mesh</span>OS! 🎉
+        </h1>
+        <p class="text-xl text-gray-300">
+          Your AI-powered life optimization system is ready
+        </p>
+      </div>
+
+      <!-- Free Trial Banner -->
+      <div class="bg-gradient-to-r from-cyan-900/30 to-blue-900/30 border border-cyan-400/30 rounded-xl p-6 mb-8">
+        <h2 class="text-2xl font-bold text-cyan-300 mb-2">🎁 Free Trial Activated!</h2>
+        <p class="text-cyan-100 text-lg mb-4">
+          You've received <strong>5,000 tokens</strong> (₹500 value) to explore all meshOS features
+        </p>
+        <div class="bg-cyan-900/20 rounded-lg p-4">
+          <p class="text-cyan-200">
+            <strong>Your trial expires in 30 days</strong><br>
+            Use your tokens to try AI workflows, integrations, and automation
+          </p>
+        </div>
+      </div>
+
+      <!-- Features Preview -->
+      <div class="grid md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-slate-800/50 border border-slate-600 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-2">🤖 AI Assistant</h3>
+          <p class="text-gray-300 text-sm">
+            Smart automation for your daily tasks and workflows
+          </p>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-600 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-2">🔗 Integrations</h3>
+          <p class="text-gray-300 text-sm">
+            Connect your favorite apps and services seamlessly
+          </p>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-600 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-2">📊 Analytics</h3>
+          <p class="text-gray-300 text-sm">
+            Track your productivity and optimization metrics
+          </p>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-600 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-2">⚡ Automation</h3>
+          <p class="text-gray-300 text-sm">
+            Set up intelligent workflows to save time
+          </p>
+        </div>
+      </div>
+
+      <!-- Get Started Button -->
+      <div class="mb-8">
+        <button
+          onclick="completeOnboarding()"
+          class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-colors transform hover:scale-105"
+        >
+          Start Using meshOS →
+        </button>
+      </div>
+
+      <!-- Support -->
+      <div class="text-center text-sm text-gray-400">
+        <p>Need help getting started?</p>
+        <a href="/help" class="text-cyan-400 hover:text-cyan-300 underline">
+          View Help Center
+        </a>
+      </div>
+    </div>
   </div>
-</Layout>
+</body>
+</html>
 
 <script>
-  // Listen for onboarding completion and redirect
-  window.addEventListener('onboardingComplete', () => {
-    console.log('🎉 Onboarding completed, redirecting to dashboard...');
-    window.location.href = '/';
-  });
-  
-  // Add debugging for page load
-  console.log('📄 Onboarding page loaded');
-  
-  // Check if user is authenticated
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔍 Checking authentication status...');
-  });
+  async function completeOnboarding() {
+    try {
+      // Call API to mark onboarding as complete
+      const response = await fetch('/api/user/complete-onboarding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        // Redirect to dashboard
+        window.location.href = '/dashboard';
+      } else {
+        console.error('Failed to complete onboarding');
+        // Still redirect to dashboard as fallback
+        window.location.href = '/dashboard';
+      }
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      // Still redirect to dashboard as fallback
+      window.location.href = '/dashboard';
+    }
+  }
 </script>

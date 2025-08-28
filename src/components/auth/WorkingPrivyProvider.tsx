@@ -40,11 +40,20 @@ export const WorkingPrivyProvider: React.FC<WorkingPrivyProviderProps> = ({ chil
     <PrivyProvider
       appId={appId}
       config={{
-        // Minimal config - just email login
-        loginMethods: ['email'],
+        // Updated config - include Google OAuth
+        loginMethods: ['email', 'google', 'wallet'],
         appearance: {
           theme: 'dark',
+          accentColor: '#06b6d4',
         },
+        embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
+          requireUserPasswordOnCreate: false,
+        },
+        // Google OAuth specific configuration
+        googleOauth: {
+          // Let Privy handle the OAuth flow with default settings
+        }
       }}
       onSuccess={(user) => {
         console.log('🎉 Privy onSuccess callback:', user.id);
