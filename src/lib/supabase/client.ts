@@ -34,12 +34,23 @@ export const createSupabaseClient = () => createClient<Database>(supabaseUrl, su
   },
 });
 
+// Get current environment and URL
+const isDev = import.meta.env.DEV || (typeof window !== 'undefined' && window.location.hostname === 'localhost');
+const getRedirectURL = () => {
+  if (typeof window === 'undefined') return undefined;
+  if (isDev) {
+    return window.location.origin + '/auth/callback';
+  }
+  return 'https://messy-os.vercel.app/auth/callback';
+};
+
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {
     flowType: 'pkce',
     autoRefreshToken: true,
     detectSessionInUrl: true,
     persistSession: true,
+    redirectTo: getRedirectURL(),
     storage: {
       // Custom storage that syncs localStorage with cookies for SSR compatibility
       getItem: (key: string) => {

@@ -1,14 +1,20 @@
-// src/hooks/useAuth.ts - Unified auth hook for production
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+// src/hooks/useAuth.ts - Supabase auth hook
 import { useState, useEffect } from 'react';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+import { supabase } from '../lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 export interface AuthUser {
   id: string;
-  email?: string;
-  phone?: string;
-  walletAddress?: string;
-  hasEmbeddedWallet: boolean;
-  linkedAccounts: any[];
+  email: string;
+  profile: {
+    id: string;
+    email: string;
+    full_name: string;
+    avatar_url: string;
+    simulated_wallet_address?: string;
+    wallet_created_at?: string;
+  };
   tokenBalance?: {
     balance: number;
     total_earned: number;
@@ -17,46 +23,59 @@ export interface AuthUser {
 }
 
 export function useAuth() {
-  const { 
-    ready, 
-    authenticated, 
-    user, 
-    login, 
-    logout, 
-    getAccessToken,
-    linkEmail,
-    linkGoogle,
-    createWallet 
-  } = usePrivy();
-  
-  const { wallets } = useWallets();
+  const [user, setUser] = useState<User | null>(null);
   const [tokenBalance, setTokenBalance] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Transform Privy user to our AuthUser format
-  const authUser: AuthUser | null = user ? {
-    id: user.id,
-    email: user.linkedAccounts?.find(account => account.type === 'email')?.address,
-    phone: user.linkedAccounts?.find(account => account.type === 'phone')?.address,
-    walletAddress: wallets[0]?.address,
-    hasEmbeddedWallet: wallets.some(wallet => wallet.walletClientType === 'privy'),
-    linkedAccounts: user.linkedAccounts || [],
-    tokenBalance
-  } : null;
-
-  // Load token balance when user is authenticated
+  // Initialize auth state
   useEffect(() => {
-    if (ready && authenticated && user) {
-      loadTokenBalance();
+    checkAuthState();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        await loadUser();
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setTokenBalance(null);
+        setIsAuthenticated(false);
+      }
       setIsLoading(false);
-    } else if (ready) {
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const checkAuthState = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+        await loadTokenBalance(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error checking auth state:', error);
+    } finally {
       setIsLoading(false);
     }
-  }, [ready, authenticated, user]);
+  };
 
-  const loadTokenBalance = async () => {
-    if (!user) return;
+  const loadUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+        await loadTokenBalance(session.user.id);
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
 
+  const loadTokenBalance = async (userId: string) => {
     try {
       // First try from localStorage for quick loading
       const cached = localStorage.getItem('meshOS_tokenBalance');
@@ -64,86 +83,144 @@ export function useAuth() {
         setTokenBalance(JSON.parse(cached));
       }
 
-      // Then fetch fresh data
-      const response = await fetch(`/api/tokens/balance?privy_user_id=${user.id}`);
-      const data = await response.json();
-      
-      if (data.success && data.balance) {
-        setTokenBalance(data.balance);
-        localStorage.setItem('meshOS_tokenBalance', JSON.stringify(data.balance));
+      // Create a client-side auth instance to get token balance
+      const response = await fetch('/api/user/balance');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success !== false) {
+          const balance = {
+            balance: data.balance,
+            total_earned: data.total_earned,
+            total_spent: data.total_spent
+          };
+          setTokenBalance(balance);
+          localStorage.setItem('meshOS_tokenBalance', JSON.stringify(balance));
+        }
       }
     } catch (error) {
       console.error('Error loading token balance:', error);
     }
   };
 
-  const refreshTokenBalance = async () => {
-    await loadTokenBalance();
-  };
-
-  // Enhanced login that handles migration
-  const loginWithMigration = async () => {
+  const signIn = async (email: string, password: string) => {
     try {
-      await login();
-      // Migration is handled automatically by ProductionPrivyAuth component
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
-
-  // Create wallet for user (optional)
-  const createEmbeddedWallet = async () => {
-    try {
-      await createWallet();
-    } catch (error) {
-      console.error('Error creating wallet:', error);
-      throw error;
-    }
-  };
-
-  // Link additional authentication methods
-  const linkAdditionalAuth = async (method: 'email' | 'google') => {
-    try {
-      if (method === 'email') {
-        await linkEmail();
-      } else if (method === 'google') {
-        await linkGoogle();
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      if (data.user) {
+        setUser(data.user);
+        setIsAuthenticated(true);
+        await loadTokenBalance(data.user.id);
       }
+      return data.user;
     } catch (error) {
-      console.error(`Error linking ${method}:`, error);
+      console.error('Sign in error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string, fullName?: string) => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName || email.split('@')[0] } }
+      });
+      if (error) throw error;
+      if (data.user) {
+        setUser(data.user);
+        setIsAuthenticated(true);
+        await loadTokenBalance(data.user.id);
+      }
+      return data.user;
+    } catch (error) {
+      console.error('Sign up error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setTokenBalance(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem('meshOS_tokenBalance');
+    } catch (error) {
+      console.error('Sign out error:', error);
       throw error;
     }
   };
+
+  const signInWithOAuth = async (provider: 'google' | 'github') => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      if (error) throw error;
+      if (data.url) {
+        window.location.href = data.url;
+      }
+      return data;
+    } catch (error) {
+      console.error('OAuth error:', error);
+      throw error;
+    }
+  };
+
+  const refreshTokenBalance = async () => {
+    if (user) {
+      await loadTokenBalance(user.id);
+    }
+  };
+
+  // Transform to our AuthUser format for backwards compatibility
+  const authUser: AuthUser | null = user ? {
+    id: user.id,
+    email: user.email!,
+    profile: {
+      id: user.id,
+      email: user.email!,
+      full_name: user.user_metadata?.full_name || '',
+      avatar_url: user.user_metadata?.avatar_url || '',
+      simulated_wallet_address: user.user_metadata?.simulated_wallet_address,
+      wallet_created_at: user.user_metadata?.wallet_created_at,
+    },
+    tokenBalance
+  } : null;
 
   return {
     // Auth state
-    isReady: ready,
-    isAuthenticated: authenticated,
+    isReady: !isLoading,
+    isAuthenticated,
     isLoading,
     user: authUser,
     
     // Auth actions
-    login: loginWithMigration,
-    logout,
-    getAccessToken,
-    
-    // Additional features
-    createWallet: createEmbeddedWallet,
-    linkEmail: () => linkAdditionalAuth('email'),
-    linkGoogle: () => linkAdditionalAuth('google'),
+    signIn,
+    signUp,
+    signOut,
+    signInWithOAuth,
     
     // Token management
     tokenBalance,
     refreshTokenBalance,
     
-    // Wallet info
-    wallets,
-    hasWallet: wallets.length > 0,
-    embeddedWallet: wallets.find(wallet => wallet.walletClientType === 'privy'),
+    // Wallet info (simulated)
+    hasWallet: !!user?.profile.simulated_wallet_address,
+    walletAddress: user?.profile.simulated_wallet_address,
     
-    // Migration status (could be expanded)
-    isMigrated: !!user?.linkedAccounts?.length
+    // Backwards compatibility
+    login: () => signInWithOAuth('google'),
+    logout: signOut
   };
 }
 

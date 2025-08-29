@@ -1,0 +1,243 @@
+/* MessyOS Dashboard Theme - OLED Optimized */
+
+:root {
+  /* OLED-Optimized Color Palette */
+  --messy-bg: #0a0a0a;
+  --messy-card-bg: #1a1a1a;
+  --messy-card-hover: #2a2a2a;
+  --messy-border: #2a2a2a;
+  
+  /* Accent Colors */
+  --messy-primary: #00d4ff;
+  --messy-secondary: #7c3aed;
+  --messy-success: #10b981;
+  --messy-warning: #f59e0b;
+  --messy-error: #ef4444;
+  
+  /* Text Colors */
+  --messy-text-primary: #ffffff;
+  --messy-text-secondary: #a1a1aa;
+  --messy-text-muted: #71717a;
+  
+  /* Glass Effects */
+  --messy-glass-bg: rgba(26, 26, 26, 0.8);
+  --messy-glass-border: rgba(255, 255, 255, 0.1);
+  
+  /* Gradients */
+  --messy-gradient-primary: linear-gradient(135deg, var(--messy-primary), var(--messy-secondary));
+  --messy-gradient-card: linear-gradient(135deg, var(--messy-card-bg), rgba(42, 42, 42, 0.5));
+  
+  /* Shadows for depth */
+  --messy-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --messy-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --messy-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+  --messy-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.5);
+  
+  /* Animation timings */
+  --messy-transition-fast: 0.15s ease-out;
+  --messy-transition-normal: 0.3s ease-out;
+  --messy-transition-slow: 0.5s ease-out;
+}
+
+/* Tailwind Custom Classes */
+
+.bg-messy-bg { background-color: var(--messy-bg); }
+.bg-messy-card-bg { background-color: var(--messy-card-bg); }
+.bg-messy-card-hover { background-color: var(--messy-card-hover); }
+.bg-messy-primary { background-color: var(--messy-primary); }
+.bg-messy-secondary { background-color: var(--messy-secondary); }
+.bg-messy-success { background-color: var(--messy-success); }
+.bg-messy-warning { background-color: var(--messy-warning); }
+.bg-messy-error { background-color: var(--messy-error); }
+
+.text-messy-primary { color: var(--messy-text-primary); }
+.text-messy-secondary { color: var(--messy-text-secondary); }
+.text-messy-muted { color: var(--messy-text-muted); }
+.text-messy-accent-primary { color: var(--messy-primary); }
+.text-messy-accent-secondary { color: var(--messy-secondary); }
+.text-messy-success { color: var(--messy-success); }
+.text-messy-warning { color: var(--messy-warning); }
+.text-messy-error { color: var(--messy-error); }
+
+.border-messy-border { border-color: var(--messy-border); }
+.border-messy-primary { border-color: var(--messy-primary); }
+
+/* Dashboard Card Styles */
+.messy-card {
+  @apply bg-messy-card-bg border border-messy-border rounded-xl p-4 transition-all duration-300 hover:bg-messy-card-hover hover:border-opacity-50;
+  box-shadow: var(--messy-shadow-sm);
+}
+
+.messy-card:hover {
+  box-shadow: var(--messy-shadow-md);
+  transform: translateY(-1px);
+}
+
+.messy-card-glass {
+  background: var(--messy-glass-bg);
+  border: 1px solid var(--messy-glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Progress Elements */
+.messy-progress-ring {
+  transform: rotate(-90deg);
+  transition: stroke-dasharray var(--messy-transition-normal);
+}
+
+.messy-progress-bar {
+  background: linear-gradient(90deg, var(--messy-primary), var(--messy-secondary));
+  transition: width var(--messy-transition-normal);
+}
+
+/* Button Styles */
+.messy-btn-primary {
+  @apply bg-messy-primary text-black font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:shadow-lg;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.messy-btn-primary:hover {
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.messy-btn-secondary {
+  @apply bg-messy-card-bg border border-messy-border text-messy-primary font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:bg-messy-card-hover hover:border-messy-primary;
+}
+
+.messy-btn-ghost {
+  @apply text-messy-secondary hover:text-messy-primary bg-transparent hover:bg-messy-card-bg px-3 py-2 rounded-lg transition-all duration-200;
+}
+
+/* Interactive Elements */
+.messy-input {
+  @apply bg-messy-card-bg border border-messy-border text-messy-primary placeholder-messy-muted px-4 py-2 rounded-lg focus:border-messy-primary focus:outline-none transition-colors duration-200;
+}
+
+.messy-checkbox {
+  @apply appearance-none w-5 h-5 border-2 border-messy-border rounded bg-transparent relative cursor-pointer transition-all duration-200;
+}
+
+.messy-checkbox:checked {
+  @apply bg-messy-primary border-messy-primary;
+}
+
+.messy-checkbox:checked::after {
+  content: '✓';
+  @apply absolute inset-0 flex items-center justify-center text-black text-sm font-bold;
+}
+
+/* Status Indicators */
+.messy-status-active {
+  @apply w-3 h-3 bg-messy-success rounded-full animate-pulse;
+}
+
+.messy-status-processing {
+  @apply w-3 h-3 bg-messy-warning rounded-full animate-spin;
+}
+
+.messy-status-idle {
+  @apply w-3 h-3 bg-messy-muted rounded-full;
+}
+
+/* Habit Streak Animation */
+.messy-streak-fire {
+  animation: messy-fire 0.6s ease-in-out;
+}
+
+@keyframes messy-fire {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1); }
+}
+
+/* Energy Level Indicator */
+.messy-energy-low { color: var(--messy-error); }
+.messy-energy-medium { color: var(--messy-warning); }
+.messy-energy-high { color: var(--messy-success); }
+
+/* Nutrition Ring Chart */
+.messy-nutrition-ring {
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.3));
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  .messy-card {
+    @apply p-3;
+  }
+  
+  .messy-mobile-padding {
+    @apply pb-20; /* Account for bottom navigation */
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  :root {
+    --messy-card-bg: #000000;
+    --messy-border: #ffffff;
+    --messy-text-secondary: #ffffff;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .messy-card,
+  .messy-btn-primary,
+  .messy-btn-secondary,
+  .messy-progress-ring,
+  .messy-progress-bar {
+    transition: none;
+  }
+  
+  .messy-streak-fire {
+    animation: none;
+  }
+}
+
+/* Focus Styles for Accessibility */
+.messy-card:focus-within,
+.messy-btn-primary:focus,
+.messy-btn-secondary:focus,
+.messy-input:focus {
+  outline: 2px solid var(--messy-primary);
+  outline-offset: 2px;
+}
+
+/* Scrollbar Styling */
+.messy-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messy-scrollbar::-webkit-scrollbar-track {
+  background: var(--messy-card-bg);
+  border-radius: 3px;
+}
+
+.messy-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--messy-border);
+  border-radius: 3px;
+}
+
+.messy-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--messy-text-muted);
+}
+
+/* Loading Shimmer Effect */
+.messy-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--messy-card-bg) 25%,
+    var(--messy-card-hover) 50%,
+    var(--messy-card-bg) 75%
+  );
+  background-size: 200% 100%;
+  animation: messy-shimmer 1.5s infinite;
+}
+
+@keyframes messy-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}

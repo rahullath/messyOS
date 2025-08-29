@@ -1,8 +1,7 @@
 ---
-// src/layouts/AuthenticatedDashboardLayout.astro - Production Dashboard with Hybrid Auth
+// src/layouts/AuthenticatedDashboardLayout.astro - Supabase Dashboard Layout
 import Layout from './Layout.astro';
-import ProductionPrivyAuth from '../components/auth/ProductionPrivyAuth.tsx';
-import DashboardContent from '../components/dashboard/DashboardContent.tsx';
+import { SupabaseWalletDemo } from '../components/auth/SupabaseWalletDemo.tsx';
 
 export interface Props {
   title: string;
@@ -12,9 +11,5 @@ const { title } = Astro.props;
 ---
 
 <Layout title={title}>
-  <ProductionPrivyAuth client:load>
-    <DashboardContent>
-      <slot />
-    </DashboardContent>
-  </ProductionPrivyAuth>
+  <SupabaseWalletDemo client:load />
 </Layout>

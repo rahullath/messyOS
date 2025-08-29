@@ -1,7 +1,7 @@
 ---
-// src/layouts/AuthenticatedLayout.astro - Production Layout with Hybrid Authentication
+// src/layouts/AuthenticatedLayout.astro - Supabase Authentication Layout
 import Layout from './Layout.astro';
-import ProductionPrivyAuth from '../components/auth/ProductionPrivyAuth.tsx';
+import { SupabaseAuth } from '../components/auth/SupabaseAuth.tsx';
 
 export interface Props {
   title: string;
@@ -11,9 +11,5 @@ const { title } = Astro.props;
 ---
 
 <Layout title={title}>
-  <ProductionPrivyAuth client:load>
-    <div class="min-h-screen bg-background">
-      <slot />
-    </div>
-  </ProductionPrivyAuth>
+  <SupabaseAuth client:load />
 </Layout>

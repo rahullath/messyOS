@@ -1,0 +1,550 @@
+---
+// src/pages/dashboard-demo.astro - MessyOS Dashboard Demo
+---
+
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>messyOS Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Messy Theme CSS -->
+    <style>
+        /* MessyOS Dashboard Theme - OLED Optimized */
+        :root {
+          /* OLED-Optimized Color Palette */
+          --messy-bg: #0a0a0a;
+          --messy-card-bg: #1a1a1a;
+          --messy-card-hover: #2a2a2a;
+          --messy-border: #2a2a2a;
+          
+          /* Accent Colors */
+          --messy-primary: #00d4ff;
+          --messy-secondary: #7c3aed;
+          --messy-success: #10b981;
+          --messy-warning: #f59e0b;
+          --messy-error: #ef4444;
+          
+          /* Text Colors */
+          --messy-text-primary: #ffffff;
+          --messy-text-secondary: #a1a1aa;
+          --messy-text-muted: #71717a;
+          
+          /* Glass Effects */
+          --messy-glass-bg: rgba(26, 26, 26, 0.8);
+          --messy-glass-border: rgba(255, 255, 255, 0.1);
+          
+          /* Gradients */
+          --messy-gradient-primary: linear-gradient(135deg, var(--messy-primary), var(--messy-secondary));
+          --messy-gradient-card: linear-gradient(135deg, var(--messy-card-bg), rgba(42, 42, 42, 0.5));
+          
+          /* Shadows for depth */
+          --messy-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+          --messy-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+          --messy-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+          --messy-shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.5);
+          
+          /* Animation timings */
+          --messy-transition-fast: 0.15s ease-out;
+          --messy-transition-normal: 0.3s ease-out;
+          --messy-transition-slow: 0.5s ease-out;
+        }
+
+        .bg-messy-bg { background-color: var(--messy-bg); }
+        .bg-messy-card-bg { background-color: var(--messy-card-bg); }
+        .bg-messy-card-hover { background-color: var(--messy-card-hover); }
+        .bg-messy-primary { background-color: var(--messy-primary); }
+        .bg-messy-secondary { background-color: var(--messy-secondary); }
+        .bg-messy-success { background-color: var(--messy-success); }
+        .bg-messy-warning { background-color: var(--messy-warning); }
+        .bg-messy-error { background-color: var(--messy-error); }
+
+        .text-messy-primary { color: var(--messy-text-primary); }
+        .text-messy-secondary { color: var(--messy-text-secondary); }
+        .text-messy-muted { color: var(--messy-text-muted); }
+        .text-messy-accent-primary { color: var(--messy-primary); }
+        .text-messy-accent-secondary { color: var(--messy-secondary); }
+        .text-messy-success { color: var(--messy-success); }
+        .text-messy-warning { color: var(--messy-warning); }
+        .text-messy-error { color: var(--messy-error); }
+
+        .border-messy-border { border-color: var(--messy-border); }
+        .border-messy-primary { border-color: var(--messy-primary); }
+
+        /* Dashboard Card Styles */
+        .messy-card {
+          background-color: var(--messy-card-bg);
+          border: 1px solid var(--messy-border);
+          border-radius: 12px;
+          padding: 16px;
+          transition: all 0.3s ease;
+          box-shadow: var(--messy-shadow-sm);
+        }
+
+        .messy-card:hover {
+          background-color: var(--messy-card-hover);
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow: var(--messy-shadow-md);
+          transform: translateY(-1px);
+        }
+
+        .messy-card-glass {
+          background: var(--messy-glass-bg);
+          border: 1px solid var(--messy-glass-border);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+
+        .messy-btn-primary {
+          background-color: var(--messy-primary);
+          color: black;
+          font-weight: 500;
+          padding: 8px 16px;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+          box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .messy-btn-primary:hover {
+          box-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+          transform: translateY(-1px);
+        }
+
+        .messy-btn-secondary {
+          background-color: var(--messy-card-bg);
+          border: 1px solid var(--messy-border);
+          color: var(--messy-primary);
+          font-weight: 500;
+          padding: 8px 16px;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+        }
+
+        .messy-btn-secondary:hover {
+          background-color: var(--messy-card-hover);
+          border-color: var(--messy-primary);
+        }
+
+        .messy-btn-ghost {
+          color: var(--messy-secondary);
+          background: transparent;
+          padding: 8px 12px;
+          border-radius: 8px;
+          transition: all 0.2s ease;
+        }
+
+        .messy-btn-ghost:hover {
+          color: var(--messy-primary);
+          background-color: var(--messy-card-bg);
+        }
+
+        .messy-input {
+          background-color: var(--messy-card-bg);
+          border: 1px solid var(--messy-border);
+          color: var(--messy-text-primary);
+          padding: 8px 16px;
+          border-radius: 8px;
+          transition: border-color 0.2s ease;
+        }
+
+        .messy-input:focus {
+          border-color: var(--messy-primary);
+          outline: none;
+        }
+
+        .messy-input::placeholder {
+          color: var(--messy-text-muted);
+        }
+
+        .messy-status-active {
+          width: 8px;
+          height: 8px;
+          background-color: var(--messy-success);
+          border-radius: 50%;
+          animation: pulse 2s infinite;
+        }
+
+        .messy-status-processing {
+          width: 8px;
+          height: 8px;
+          background-color: var(--messy-warning);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        .messy-status-idle {
+          width: 8px;
+          height: 8px;
+          background-color: var(--messy-text-muted);
+          border-radius: 50%;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .messy-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .messy-scrollbar::-webkit-scrollbar-track {
+          background: var(--messy-card-bg);
+          border-radius: 3px;
+        }
+
+        .messy-scrollbar::-webkit-scrollbar-thumb {
+          background: var(--messy-border);
+          border-radius: 3px;
+        }
+
+        .messy-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: var(--messy-text-muted);
+        }
+    </style>
+</head>
+
+<body class="bg-messy-bg text-messy-primary">
+    <!-- Dashboard Container -->
+    <div id="dashboard-root" class="min-h-screen">
+        <!-- Loading Skeleton -->
+        <div class="animate-pulse p-6">
+            <div class="h-6 bg-messy-card-bg rounded mb-6"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-3 h-32 bg-messy-card-bg rounded-xl"></div>
+                <div class="lg:col-span-6 h-32 bg-messy-card-bg rounded-xl"></div>
+                <div class="lg:col-span-3 h-32 bg-messy-card-bg rounded-xl"></div>
+                <div class="lg:col-span-4 h-48 bg-messy-card-bg rounded-xl"></div>
+                <div class="lg:col-span-4 h-48 bg-messy-card-bg rounded-xl"></div>
+                <div class="lg:col-span-4 h-48 bg-messy-card-bg rounded-xl"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- React Scripts -->
+    <script type="module">
+        import React from 'https://esm.sh/react@18';
+        import ReactDOM from 'https://esm.sh/react-dom@18/client';
+        
+        // Simple Dashboard Demo Component
+        function DashboardDemo() {
+            return React.createElement('div', { className: 'min-h-screen bg-messy-bg text-messy-primary' }, [
+                // Header
+                React.createElement('header', { 
+                    key: 'header',
+                    className: 'fixed top-0 left-0 right-0 h-16 messy-card-glass border-b border-messy-border z-50' 
+                }, [
+                    React.createElement('div', { 
+                        key: 'header-content',
+                        className: 'flex items-center justify-between h-full px-6' 
+                    }, [
+                        React.createElement('div', { 
+                            key: 'left',
+                            className: 'flex items-center space-x-4' 
+                        }, [
+                            React.createElement('div', { 
+                                key: 'logo',
+                                className: 'flex items-center space-x-2' 
+                            }, [
+                                React.createElement('div', { 
+                                    key: 'logo-icon',
+                                    className: 'w-8 h-8 bg-gradient-to-br from-messy-primary to-messy-secondary rounded-lg flex items-center justify-center' 
+                                }, React.createElement('span', { className: 'text-black font-bold text-sm' }, 'M')),
+                                React.createElement('span', { 
+                                    key: 'logo-text',
+                                    className: 'text-messy-accent-primary font-bold text-xl' 
+                                }, 'messyOS')
+                            ]),
+                            React.createElement('div', { 
+                                key: 'ai-status',
+                                className: 'flex items-center space-x-2 bg-messy-card-bg px-3 py-1.5 rounded-full border border-messy-border' 
+                            }, [
+                                React.createElement('div', { 
+                                    key: 'status-dot',
+                                    className: 'messy-status-active' 
+                                }),
+                                React.createElement('span', { 
+                                    key: 'status-text',
+                                    className: 'text-messy-accent-secondary text-sm' 
+                                }, '🧠 Active')
+                            ])
+                        ]),
+                        React.createElement('div', { 
+                            key: 'right',
+                            className: 'flex items-center space-x-3' 
+                        }, [
+                            React.createElement('div', { 
+                                key: 'token-balance',
+                                className: 'bg-messy-card-bg border border-messy-border rounded-lg px-3 py-1.5' 
+                            }, React.createElement('span', { className: 'text-messy-accent-primary font-medium' }, '₹350')),
+                            React.createElement('div', { 
+                                key: 'avatar',
+                                className: 'w-8 h-8 bg-gradient-to-br from-messy-secondary to-messy-primary rounded-full flex items-center justify-center' 
+                            }, React.createElement('span', { className: 'text-white font-medium text-sm' }, 'R'))
+                        ])
+                    ])
+                ]),
+                
+                // Main Content
+                React.createElement('main', { 
+                    key: 'main',
+                    className: 'pt-16 p-6' 
+                }, [
+                    React.createElement('div', { 
+                        key: 'grid',
+                        className: 'grid grid-cols-1 lg:grid-cols-12 gap-6' 
+                    }, [
+                        // Row 1: Critical Metrics
+                        React.createElement('div', { 
+                            key: 'row1',
+                            className: 'lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-6' 
+                        }, [
+                            // Health Pulse
+                            React.createElement('div', { 
+                                key: 'health',
+                                className: 'lg:col-span-3 messy-card h-32' 
+                            }, [
+                                React.createElement('div', { 
+                                    key: 'health-header',
+                                    className: 'flex items-center space-x-2 mb-3' 
+                                }, [
+                                    React.createElement('span', { key: 'icon' }, '💓'),
+                                    React.createElement('h3', { className: 'text-messy-accent-primary font-medium' }, 'Health Pulse')
+                                ]),
+                                React.createElement('div', { 
+                                    key: 'health-metrics',
+                                    className: 'space-y-2' 
+                                }, [
+                                    React.createElement('div', { 
+                                        key: 'energy',
+                                        className: 'flex justify-between' 
+                                    }, [
+                                        React.createElement('span', { className: 'text-messy-secondary text-sm' }, 'Energy'),
+                                        React.createElement('span', { className: 'font-bold text-messy-success' }, '7/10')
+                                    ]),
+                                    React.createElement('div', { 
+                                        key: 'sleep',
+                                        className: 'flex justify-between' 
+                                    }, [
+                                        React.createElement('span', { className: 'text-messy-secondary text-sm' }, 'Sleep'),
+                                        React.createElement('span', { className: 'font-bold text-messy-success' }, '7.5h')
+                                    ]),
+                                    React.createElement('div', { 
+                                        key: 'stress',
+                                        className: 'flex justify-between' 
+                                    }, [
+                                        React.createElement('span', { className: 'text-messy-secondary text-sm' }, 'Stress'),
+                                        React.createElement('span', { className: 'font-bold text-messy-success' }, '3/10')
+                                    ])
+                                ])
+                            ]),
+                            
+                            // Today's Progress
+                            React.createElement('div', { 
+                                key: 'progress',
+                                className: 'lg:col-span-6 messy-card h-32' 
+                            }, [
+                                React.createElement('div', { 
+                                    key: 'progress-content',
+                                    className: 'flex items-center justify-between h-full' 
+                                }, [
+                                    React.createElement('div', { 
+                                        key: 'habits-ring',
+                                        className: 'flex items-center space-x-4' 
+                                    }, [
+                                        React.createElement('div', { 
+                                            key: 'ring',
+                                            className: 'relative w-12 h-12' 
+                                        }, [
+                                            React.createElement('svg', { 
+                                                width: '48', 
+                                                height: '48',
+                                                className: 'transform -rotate-90'
+                                            }, [
+                                                React.createElement('circle', { 
+                                                    cx: '24', 
+                                                    cy: '24', 
+                                                    r: '20',
+                                                    stroke: 'var(--messy-border)',
+                                                    strokeWidth: '3',
+                                                    fill: 'transparent'
+                                                }),
+                                                React.createElement('circle', { 
+                                                    cx: '24', 
+                                                    cy: '24', 
+                                                    r: '20',
+                                                    stroke: 'var(--messy-success)',
+                                                    strokeWidth: '3',
+                                                    fill: 'transparent',
+                                                    strokeDasharray: '125.6',
+                                                    strokeDashoffset: '50.2'
+                                                })
+                                            ]),
+                                            React.createElement('div', { 
+                                                className: 'absolute inset-0 flex items-center justify-center' 
+                                            }, React.createElement('span', { className: 'text-messy-accent-primary font-bold text-sm' }, '60%'))
+                                        ]),
+                                        React.createElement('div', null, [
+                                            React.createElement('div', { 
+                                                key: 'title',
+                                                className: 'text-messy-accent-primary font-medium' 
+                                            }, 'Habits'),
+                                            React.createElement('div', { 
+                                                key: 'status',
+                                                className: 'text-messy-secondary text-sm' 
+                                            }, '3/5 complete')
+                                        ])
+                                    ]),
+                                    React.createElement('div', { 
+                                        key: 'nutrition',
+                                        className: 'text-center' 
+                                    }, [
+                                        React.createElement('div', { 
+                                            key: 'calories',
+                                            className: 'text-messy-accent-primary font-bold text-lg' 
+                                        }, '1,420'),
+                                        React.createElement('div', { 
+                                            key: 'target',
+                                            className: 'text-messy-secondary text-sm' 
+                                        }, 'of 2,100 cal')
+                                    ])
+                                ])
+                            ]),
+                            
+                            // Quick Actions
+                            React.createElement('div', { 
+                                key: 'actions',
+                                className: 'lg:col-span-3 messy-card h-32' 
+                            }, [
+                                React.createElement('h3', { 
+                                    key: 'title',
+                                    className: 'text-messy-accent-primary font-medium mb-3' 
+                                }, 'Quick Actions'),
+                                React.createElement('div', { 
+                                    key: 'buttons',
+                                    className: 'space-y-2' 
+                                }, [
+                                    React.createElement('button', { 
+                                        key: 'log',
+                                        className: 'w-full messy-btn-primary text-sm py-2 rounded-lg' 
+                                    }, '✨ Log Something'),
+                                    React.createElement('button', { 
+                                        key: 'workout',
+                                        className: 'w-full messy-btn-secondary text-sm py-2 rounded-lg' 
+                                    }, '💪 Start Workout')
+                                ])
+                            ])
+                        ]),
+                        
+                        // Row 2: Core Modules
+                        React.createElement('div', { 
+                            key: 'row2',
+                            className: 'lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6' 
+                        }, [
+                            React.createElement('div', { 
+                                key: 'habits-detail',
+                                className: 'lg:col-span-4 messy-card h-48' 
+                            }, [
+                                React.createElement('h3', { 
+                                    key: 'title',
+                                    className: 'text-messy-accent-primary font-medium mb-3' 
+                                }, '🎯 Habits Overview'),
+                                React.createElement('div', { 
+                                    key: 'habit-list',
+                                    className: 'space-y-3' 
+                                }, [
+                                    React.createElement('div', { 
+                                        key: 'habit1',
+                                        className: 'flex items-center space-x-3' 
+                                    }, [
+                                        React.createElement('div', { className: 'w-5 h-5 bg-messy-success rounded border-2 border-messy-success flex items-center justify-center' }, 
+                                            React.createElement('span', { className: 'text-white text-xs' }, '✓')
+                                        ),
+                                        React.createElement('span', { className: 'text-messy-secondary text-sm' }, '🏋️ Morning Workout'),
+                                        React.createElement('span', { className: 'text-messy-warning text-xs ml-auto' }, '5🔥')
+                                    ]),
+                                    React.createElement('div', { 
+                                        key: 'habit2',
+                                        className: 'flex items-center space-x-3' 
+                                    }, [
+                                        React.createElement('div', { className: 'w-5 h-5 border-2 border-messy-border rounded' }),
+                                        React.createElement('span', { className: 'text-messy-secondary text-sm' }, '📚 Read'),
+                                        React.createElement('span', { className: 'text-messy-warning text-xs ml-auto' }, '12🔥')
+                                    ])
+                                ])
+                            ]),
+                            
+                            React.createElement('div', { 
+                                key: 'nutrition-detail',
+                                className: 'lg:col-span-4 messy-card h-48' 
+                            }, [
+                                React.createElement('h3', { 
+                                    key: 'title',
+                                    className: 'text-messy-accent-primary font-medium mb-3' 
+                                }, '🥗 Nutrition Dashboard'),
+                                React.createElement('div', { 
+                                    key: 'macros',
+                                    className: 'text-center' 
+                                }, [
+                                    React.createElement('div', { 
+                                        key: 'calories-left',
+                                        className: 'text-2xl font-bold text-messy-accent-primary mb-2' 
+                                    }, '680 left'),
+                                    React.createElement('div', { 
+                                        key: 'last-meal',
+                                        className: 'text-messy-secondary text-sm' 
+                                    }, 'Last: Chicken curry (450 cal)')
+                                ])
+                            ]),
+                            
+                            React.createElement('div', { 
+                                key: 'tasks-detail',
+                                className: 'lg:col-span-4 messy-card h-48' 
+                            }, [
+                                React.createElement('h3', { 
+                                    key: 'title',
+                                    className: 'text-messy-accent-primary font-medium mb-3' 
+                                }, '📋 Tasks & Focus'),
+                                React.createElement('div', { 
+                                    key: 'task-list',
+                                    className: 'space-y-3' 
+                                }, [
+                                    React.createElement('div', { 
+                                        key: 'task1',
+                                        className: 'flex items-center space-x-3' 
+                                    }, [
+                                        React.createElement('div', { className: 'w-2 h-2 bg-messy-error rounded-full' }),
+                                        React.createElement('span', { className: 'text-messy-secondary text-sm' }, 'Review nutrition system'),
+                                        React.createElement('span', { className: 'text-messy-muted text-xs ml-auto' }, '30m')
+                                    ]),
+                                    React.createElement('div', { 
+                                        key: 'task2',
+                                        className: 'flex items-center space-x-3' 
+                                    }, [
+                                        React.createElement('div', { className: 'w-2 h-2 bg-messy-warning rounded-full' }),
+                                        React.createElement('span', { className: 'text-messy-secondary text-sm' }, 'Plan weekend routine'),
+                                        React.createElement('span', { className: 'text-messy-muted text-xs ml-auto' }, '15m')
+                                    ])
+                                ])
+                            ])
+                        ])
+                    ])
+                ])
+            ]);
+        }
+        
+        // Render the dashboard
+        const root = ReactDOM.createRoot(document.getElementById('dashboard-root'));
+        root.render(React.createElement(DashboardDemo));
+    </script>
+</body>
+</html>

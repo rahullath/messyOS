@@ -126,6 +126,223 @@ export class ServerAuth {
       console.log('ℹ️ Could not activate from waitlist (user may not be on waitlist):', email);
     }
   }
+
+  // ==================== TOKEN & WALLET FUNCTIONALITY ====================
+
+  /**
+   * Initialize new user with starting tokens and simulated wallet
+   */
+  async initializeNewUser(userId: string): Promise<void> {
+    try {
+      // Generate a simulated wallet address (looks like Ethereum address)
+      const simulatedWalletAddress = '0x' + Array.from(
+        { length: 40 }, 
+        () => Math.floor(Math.random() * 16).toString(16)
+      ).join('');
+
+      // Update profile with simulated wallet
+      await this.supabase
+        .from('profiles')
+        .update({
+          simulated_wallet_address: simulatedWalletAddress,
+          wallet_created_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      // Initialize token balance (₹500 = 5000 tokens)
+      await this.supabase
+        .from('user_tokens')
+        .insert({
+          user_id: userId,
+          balance: 5000,
+          total_earned: 5000,
+          total_spent: 0,
+          wallet_type: 'simulated'
+        });
+
+      // Log welcome bonus transaction
+      await this.supabase
+        .from('token_transactions')
+        .insert({
+          user_id: userId,
+          transaction_type: 'bonus',
+          amount: 5000,
+          description: 'Welcome to meshOS! ₹500 starting credit',
+          balance_before: 0,
+          balance_after: 5000,
+          metadata: {
+            bonus_type: 'welcome',
+            amount_inr: 500,
+            wallet_address: simulatedWalletAddress
+          }
+        });
+
+      console.log('New user initialized with simulated wallet:', simulatedWalletAddress);
+    } catch (error) {
+      console.error('Error initializing new user:', error);
+    }
+  }
+
+  /**
+   * Get user's token balance
+   */
+  async getUserTokenBalance(userId: string): Promise<{
+    balance: number;
+    total_earned: number;
+    total_spent: number;
+  } | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from('user_tokens')
+        .select('balance, total_earned, total_spent')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // User not found, initialize
+        await this.initializeNewUser(userId);
+        return {
+          balance: 5000,
+          total_earned: 5000,
+          total_spent: 0
+        };
+      }
+
+      if (error || !data) {
+        console.error('Error getting token balance:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error getting user token balance:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Deduct tokens for service usage
+   */
+  async deductTokens(userId: string, amount: number, description: string, metadata?: any): Promise<boolean> {
+    try {
+      // Get current balance
+      const balance = await this.getUserTokenBalance(userId);
+      if (!balance || balance.balance < amount) {
+        console.error('Insufficient tokens for deduction');
+        return false;
+      }
+
+      const newBalance = balance.balance - amount;
+      const newTotalSpent = balance.total_spent + amount;
+
+      // Update token balance
+      const { error: updateError } = await this.supabase
+        .from('user_tokens')
+        .update({
+          balance: newBalance,
+          total_spent: newTotalSpent
+        })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('Error updating token balance:', updateError);
+        return false;
+      }
+
+      // Log transaction
+      await this.supabase
+        .from('token_transactions')
+        .insert({
+          user_id: userId,
+          transaction_type: 'deduction',
+          amount: -amount, // Negative for deduction
+          description,
+          balance_before: balance.balance,
+          balance_after: newBalance,
+          metadata: {
+            ...metadata,
+            deduction_reason: description
+          }
+        });
+
+      return true;
+    } catch (error) {
+      console.error('Error deducting tokens:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Add tokens (for bonuses, refunds, etc.)
+   */
+  async addTokens(userId: string, amount: number, description: string, metadata?: any): Promise<boolean> {
+    try {
+      const balance = await this.getUserTokenBalance(userId);
+      if (!balance) return false;
+
+      const newBalance = balance.balance + amount;
+      const newTotalEarned = balance.total_earned + amount;
+
+      // Update token balance
+      const { error: updateError } = await this.supabase
+        .from('user_tokens')
+        .update({
+          balance: newBalance,
+          total_earned: newTotalEarned
+        })
+        .eq('user_id', userId);
+
+      if (updateError) {
+        console.error('Error updating token balance:', updateError);
+        return false;
+      }
+
+      // Log transaction
+      await this.supabase
+        .from('token_transactions')
+        .insert({
+          user_id: userId,
+          transaction_type: 'credit',
+          amount,
+          description,
+          balance_before: balance.balance,
+          balance_after: newBalance,
+          metadata: {
+            ...metadata,
+            credit_reason: description
+          }
+        });
+
+      return true;
+    } catch (error) {
+      console.error('Error adding tokens:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get user's transaction history
+   */
+  async getTransactionHistory(userId: string, limit: number = 20): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('token_transactions')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error getting transaction history:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error getting transaction history:', error);
+      return [];
+    }
+  }
 }
 
 export function createServerAuth(cookies: any) {

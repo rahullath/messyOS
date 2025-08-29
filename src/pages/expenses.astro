@@ -1,0 +1,23 @@
+---
+// src/pages/expenses.astro - Global Expense Tracking Dashboard
+import AuthenticatedDashboardLayout from '../layouts/AuthenticatedDashboardLayout.astro';
+---
+
+<AuthenticatedDashboardLayout title="Expense Tracking">
+  <!-- Import messy theme styles -->
+  <link rel="stylesheet" href="/src/styles/messy-theme.css">
+  
+  <div id="expense-dashboard"></div>
+  
+  <script>
+    import ExpenseDashboard from '../components/expenses/ExpenseDashboard.tsx';
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
+
+    const container = document.getElementById('expense-dashboard');
+    if (container) {
+      const root = createRoot(container);
+      root.render(React.createElement(ExpenseDashboard));
+    }
+  </script>
+</AuthenticatedDashboardLayout>

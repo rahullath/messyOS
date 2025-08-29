@@ -21,7 +21,12 @@
       "WebFetch(domain:auth.privy.io)",
       "WebFetch(domain:www.npmjs.com)",
       "Bash(curl:*)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(supabase db push:*)",
+      "Bash(psql:*)",
+      "Bash(copy supabase-clean-migration.sql supabasemigrations20250128000000_clean_auth_migration.sql)",
+      "Bash(del \"src\\pages\\api\\auth\\privy-sync.ts\")",
+      "WebFetch(domain:supabase.com)"
     ],
     "deny": []
   }

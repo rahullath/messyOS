@@ -1,25 +1,35 @@
 import type { APIRoute } from 'astro';
-import { privyAuthService } from '../../../lib/auth/privy-auth';
+import { authService } from '../../../lib/auth/supabase-auth';
 
-export const GET: APIRoute = async ({ url }) => {
-  const privyId = url.searchParams.get('id');
+export const GET: APIRoute = async ({ url, cookies }) => {
+  const userId = url.searchParams.get('id');
   
-  if (!privyId) {
-    return new Response('Missing privy ID', { status: 400 });
+  if (!userId) {
+    return new Response('Missing user ID', { status: 400 });
   }
 
   try {
-    console.log('🔍 Looking up user:', privyId);
+    console.log('🔍 Looking up user:', userId);
     
-    // Try to find user
-    const user = await privyAuthService.getUserByPrivyId(privyId);
+    // Check if current user is authenticated (security check for debug endpoint)
+    const auth = authService.createServerAuth(cookies);
+    const currentUser = await auth.getUser();
     
-    console.log('📊 User lookup result:', user);
+    if (!currentUser) {
+      return new Response('Authentication required for debug endpoint', { status: 401 });
+    }
+    
+    // Get user token balance and other info
+    const tokenBalance = await authService.getUserTokenBalance(userId);
+    const integrations = await authService.getUserIntegrations(userId);
+    
+    console.log('📊 User lookup result:', { userId, tokenBalance, integrations });
     
     return new Response(JSON.stringify({
-      privyId,
-      user,
-      found: !!user
+      userId,
+      tokenBalance,
+      integrations,
+      found: !!tokenBalance
     }, null, 2), {
       headers: { 'Content-Type': 'application/json' }
     });
@@ -27,7 +37,7 @@ export const GET: APIRoute = async ({ url }) => {
     console.error('❌ User lookup error:', error);
     return new Response(JSON.stringify({
       error: error.message,
-      privyId
+      userId
     }, null, 2), { status: 500 });
   }
 };

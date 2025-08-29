@@ -1,36 +1,16 @@
-// src/components/dashboard/DashboardContent.tsx - Authenticated dashboard UI
+// src/components/dashboard/DashboardContent.tsx - Supabase authenticated dashboard UI
 import React from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useAuth } from '../../hooks/useAuth';
 
 interface DashboardContentProps {
   children: React.ReactNode;
 }
 
 export const DashboardContent: React.FC<DashboardContentProps> = ({ children }) => {
-  const { ready, authenticated, user, login, logout } = usePrivy();
-  const { wallets } = useWallets();
-  const [tokenBalance, setTokenBalance] = React.useState<any>(null);
+  const { isReady, isAuthenticated, user, tokenBalance, signInWithOAuth, signOut } = useAuth();
 
-  // Fetch token balance when user is authenticated
-  React.useEffect(() => {
-    if (authenticated && user) {
-      const fetchBalance = async () => {
-        try {
-          const response = await fetch(`/api/tokens/balance?privy_user_id=${user.id}`);
-          const data = await response.json();
-          if (data.success) {
-            setTokenBalance(data.balance);
-          }
-        } catch (error) {
-          console.error('Error fetching token balance:', error);
-        }
-      };
-      fetchBalance();
-    }
-  }, [authenticated, user]);
-
-  // Show loading while Privy initializes
-  if (!ready) {
+  // Show loading while auth initializes
+  if (!isReady) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 flex items-center justify-center">
         <div className="text-center">
@@ -42,7 +22,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ children }) 
   }
 
   // Show login if not authenticated
-  if (!authenticated) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 flex items-center justify-center">
         <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-8 max-w-md w-full mx-4">
@@ -51,19 +31,28 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ children }) 
               <span className="text-2xl font-bold text-white">M</span>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">Welcome to MeshOS</h1>
-            <p className="text-white/60">Connect your wallet to get started</p>
+            <p className="text-white/60">Sign in to access your dashboard</p>
           </div>
           
-          <button
-            onClick={login}
-            className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold py-3 px-6 rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
-          >
-            Connect Wallet
-          </button>
+          <div className="space-y-3">
+            <button
+              onClick={() => signInWithOAuth('google')}
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold py-3 px-6 rounded-lg hover:from-cyan-600 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
+            >
+              Sign in with Google
+            </button>
+            
+            <button
+              onClick={() => signInWithOAuth('github')}
+              className="w-full bg-gradient-to-r from-gray-600 to-gray-700 text-white font-semibold py-3 px-6 rounded-lg hover:from-gray-700 hover:to-gray-800 transition-all duration-200 transform hover:scale-105"
+            >
+              Sign in with GitHub
+            </button>
+          </div>
           
           <div className="mt-6 text-center">
             <p className="text-sm text-white/40">
-              Sign in with email, wallet, or social account
+              Or use <a href="/login" className="text-cyan-400 hover:underline">email & password</a>
             </p>
           </div>
         </div>
@@ -161,7 +150,7 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ children }) 
                     {tokenBalance ? `₹${(tokenBalance.balance / 100).toFixed(0)}` : 'Loading...'}
                   </p>
                   <button
-                    onClick={logout}
+                    onClick={signOut}
                     className="text-xs text-accent-error hover:text-accent-error/80 transition-colors"
                   >
                     Logout

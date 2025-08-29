@@ -39,6 +39,7 @@
     "date-fns": "^4.1.0",
     "langchain": "^0.3.29",
     "lucide-react": "^0.513.0",
+    "postgres": "^3.4.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "recharts": "^2.15.3",
@@ -52,6 +53,7 @@
     "astro": "^5.0.0",
     "dotenv": "^16.5.0",
     "prettier": "^3.5.3",
-    "prettier-plugin-astro": "^0.14.1"
+    "prettier-plugin-astro": "^0.14.1",
+    "supabase": "^2.39.2"
   }
 }

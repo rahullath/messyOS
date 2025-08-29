@@ -38,12 +38,79 @@
     <p style="color: #64748b; font-size: 14px;">Please wait...</p>
   </div>
 
-  <script>
-    // Simple redirect after a brief delay to let Supabase process the callback
-    console.log('🔄 OAuth callback received, redirecting to dashboard...');
-    setTimeout(() => {
-      window.location.href = '/dashboard';
-    }, 2000);
+  <script type="module">
+    import { supabase } from '/src/lib/supabase/client.js';
+    
+    console.log('🔄 OAuth callback received, processing session...');
+    
+    // Handle the auth callback
+    async function handleAuthCallback() {
+      try {
+        // Let Supabase automatically handle the session from URL params
+        console.log('🔍 Waiting for Supabase to process auth state...');
+        
+        // Wait a bit for auth state changes to process
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Check for session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Auth callback error:', error);
+          window.location.href = '/login?error=callback_failed';
+          return;
+        }
+        
+        if (session) {
+          console.log('✅ Auth callback successful, user:', session.user.email);
+          
+          // Stay on localhost in development
+          const isDev = window.location.hostname === 'localhost';
+          const redirectUrl = isDev ? '/dashboard' : '/dashboard';
+          
+          console.log('🏠 Redirecting to:', redirectUrl);
+          window.location.href = redirectUrl;
+        } else {
+          console.log('⚠️ No session found in callback, checking auth state changes...');
+          
+          // Listen for auth state change
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+              console.log('✅ Auth state change detected, redirecting...');
+              subscription.unsubscribe();
+              
+              // Stay on localhost in development
+              const isDev = window.location.hostname === 'localhost';
+              const redirectUrl = isDev ? '/dashboard' : '/dashboard';
+              
+              console.log('🏠 Redirecting to:', redirectUrl);
+              window.location.href = redirectUrl;
+            } else if (event === 'SIGNED_OUT') {
+              console.log('❌ Sign out detected during callback');
+              subscription.unsubscribe();
+              window.location.href = '/login?error=signed_out';
+            }
+          });
+          
+          // Fallback timeout
+          setTimeout(() => {
+            subscription.unsubscribe();
+            console.log('⚠️ Auth timeout, redirecting to login');
+            window.location.href = '/login?error=timeout';
+          }, 10000);
+        }
+      } catch (error) {
+        console.error('❌ Callback processing error:', error);
+        window.location.href = '/login?error=processing_failed';
+      }
+    }
+    
+    // Process the callback when DOM is loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', handleAuthCallback);
+    } else {
+      handleAuthCallback();
+    }
   </script>
 </body>
 </html>

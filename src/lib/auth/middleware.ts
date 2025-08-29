@@ -1,16 +1,20 @@
-// src/lib/auth/middleware.ts - Hybrid Authentication Middleware
-// Supports both Supabase and Privy authentication
+// src/lib/auth/middleware.ts - Pure Supabase Authentication Middleware
+// Simple, clean Supabase-only authentication
 
 import type { APIContext } from 'astro';
-import { privyAuthService } from './privy-auth';
-// Temporarily removed Supabase SSR import to avoid compatibility issues
+import { authService } from './supabase-auth';
 
 export interface AuthUser {
   id: string;
-  email?: string;
-  provider: 'supabase' | 'privy';
-  privyUserId?: string;
-  supabaseUserId?: string;
+  email: string;
+  profile: {
+    id: string;
+    email: string;
+    full_name: string;
+    avatar_url: string;
+    simulated_wallet_address?: string;
+    wallet_created_at?: string;
+  };
 }
 
 export class AuthError extends Error {
@@ -21,24 +25,28 @@ export class AuthError extends Error {
 }
 
 /**
- * Hybrid authentication middleware that supports both Supabase and Privy
+ * Pure Supabase authentication middleware
  */
 export async function authenticateRequest(context: APIContext): Promise<AuthUser | null> {
-  const { request, cookies } = context;
+  const { cookies } = context;
 
-  // Try Privy authentication first
-  const privyUser = await authenticatePrivy(request, cookies);
-  if (privyUser) {
-    return privyUser;
+  try {
+    const auth = authService.createServerAuth(cookies);
+    const user = await auth.getUser();
+    
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      profile: user.profile
+    };
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return null;
   }
-
-  // Fallback to Supabase authentication
-  const supabaseUser = await authenticateSupabase(context);
-  if (supabaseUser) {
-    return supabaseUser;
-  }
-
-  return null;
 }
 
 /**
@@ -52,63 +60,6 @@ export async function requireAuth(context: APIContext): Promise<AuthUser> {
   return user;
 }
 
-/**
- * Authenticate using Privy token
- */
-async function authenticatePrivy(request: Request, cookies: any): Promise<AuthUser | null> {
-  try {
-    // Get token from Authorization header or cookies
-    let token = request.headers.get('authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      token = cookies.get('privy-auth-token')?.value;
-    }
-
-    if (!token) {
-      return null;
-    }
-
-    // Verify token
-    const verification = await privyAuthService.verifyAuthToken(token);
-    if (!verification) {
-      return null;
-    }
-
-    // Get user data
-    const privyUser = await privyAuthService.getUserByPrivyId(verification.userId);
-    if (!privyUser) {
-      return null;
-    }
-
-    // Set Privy user context for RLS
-    // This is used by the database RLS policies
-    process.env.APP_CURRENT_USER_PRIVY_ID = verification.userId;
-
-    return {
-      id: verification.userId,
-      email: privyUser.email,
-      provider: 'privy',
-      privyUserId: verification.userId
-    };
-  } catch (error) {
-    console.error('Privy authentication error:', error);
-    return null;
-  }
-}
-
-/**
- * Authenticate using Supabase session (simplified for compatibility)
- */
-async function authenticateSupabase(context: APIContext): Promise<AuthUser | null> {
-  try {
-    // For now, skip Supabase auth in middleware to avoid import issues
-    // This will be handled by the old auth system during transition
-    return null;
-  } catch (error) {
-    console.error('Supabase authentication error:', error);
-    return null;
-  }
-}
 
 /**
  * Middleware factory for API routes
@@ -163,26 +114,8 @@ export function withOptionalAuth(handler: (context: APIContext, user?: AuthUser)
 }
 
 /**
- * Get user ID for database queries (handles both auth systems)
+ * Get user ID for database queries (Supabase-only)
  */
 export function getUserIdForDb(user: AuthUser): string {
-  if (user.provider === 'privy') {
-    return user.privyUserId!;
-  } else {
-    return user.supabaseUserId!;
-  }
-}
-
-/**
- * Set database context for RLS policies
- */
-export async function setDbContext(user: AuthUser, supabase: any) {
-  if (user.provider === 'privy') {
-    // Set Privy user context for RLS
-    await supabase.rpc('set_config', {
-      parameter: 'app.current_user_privy_id',
-      value: user.privyUserId
-    });
-  }
-  // Supabase context is automatically set via auth.uid()
+  return user.id;
 }

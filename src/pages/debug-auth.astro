@@ -1,0 +1,112 @@
+---
+// Debug auth state
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+
+console.log('=== AUTH DEBUG PAGE ===');
+console.log('Cookies:', Astro.cookies.getAll());
+
+const serverAuth = createServerAuth(Astro.cookies);
+let user = null;
+let error = null;
+
+try {
+  user = await serverAuth.getUser();
+  console.log('Server user:', user);
+} catch (e) {
+  error = e;
+  console.error('Server auth error:', e);
+}
+
+const cookieCount = Astro.cookies.getAll().length;
+console.log(`Found ${cookieCount} cookies`);
+---
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Auth Debug</title>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: monospace; padding: 20px; line-height: 1.6; }
+    .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+    .success { background: #d4edda; }
+    .error { background: #f8d7da; }
+    .info { background: #d1ecf1; }
+  </style>
+</head>
+<body>
+  <h1>🔍 Auth Debug Page</h1>
+
+  <div class={`section ${user ? 'success' : 'error'}`}>
+    <h2>Server-side Auth Status</h2>
+    {user ? (
+      <div>
+        <p>✅ <strong>User authenticated</strong></p>
+        <p>ID: {user.id}</p>
+        <p>Email: {user.email}</p>
+        <p>Created: {user.created_at}</p>
+      </div>
+    ) : (
+      <div>
+        <p>❌ <strong>No user found on server</strong></p>
+        {error && <p>Error: {error.message}</p>}
+      </div>
+    )}
+  </div>
+
+  <div class="section info">
+    <h2>Cookies</h2>
+    <p>Total cookies: <strong>{cookieCount}</strong></p>
+    <ul>
+      {Astro.cookies.getAll().map((cookie) => (
+        <li>
+          <strong>{cookie.name}</strong>: {cookie.value?.substring(0, 50)}{cookie.value?.length > 50 ? '...' : ''}
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <div class="section info">
+    <h2>Client-side Test</h2>
+    <button onclick="testClientAuth()">Test Client Auth</button>
+    <div id="clientResult"></div>
+  </div>
+
+  <div class="section info">
+    <h2>Actions</h2>
+    <a href="/login">← Go to Login</a> |
+    <a href="/dashboard">Go to Dashboard →</a> |
+    <button onclick="location.reload()">Refresh</button>
+  </div>
+
+  <script type="module">
+    import { supabase } from '/src/lib/supabase/client.js';
+    
+    window.testClientAuth = async function() {
+      const result = document.getElementById('clientResult');
+      result.innerHTML = 'Testing...';
+      
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          result.innerHTML = `<p style="color: red;">❌ Error: ${error.message}</p>`;
+        } else if (session) {
+          result.innerHTML = `
+            <p style="color: green;">✅ Client session found</p>
+            <p>User: ${session.user.email}</p>
+            <p>Expires: ${new Date(session.expires_at * 1000).toLocaleString()}</p>
+          `;
+        } else {
+          result.innerHTML = `<p style="color: orange;">⚠️ No client session</p>`;
+        }
+      } catch (error) {
+        result.innerHTML = `<p style="color: red;">❌ Exception: ${error.message}</p>`;
+      }
+    };
+
+    // Auto-test on load
+    window.testClientAuth();
+  </script>
+</body>
+</html>

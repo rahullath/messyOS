@@ -1,7 +1,7 @@
 // src/lib/tokens/usage-tracker.ts - Token Usage Tracking and Batch Deduction
 // Handles AI session tracking and batch token deduction logic
 
-import { privyWalletManager } from '../wallet/privy-integration';
+import { createServerAuth } from '../auth/simple-multi-user';
 import { createSupabaseClient } from '../supabase/client';
 
 export interface AISessionMetrics {
@@ -53,7 +53,7 @@ class TokenUsageTracker {
       }
 
       // Create new session
-      const sessionId = await privyWalletManager.createAISession(userId, sessionType);
+      const sessionId = await authService.createAISession(userId, sessionType);
       if (sessionId) {
         this.activeSessions.set(userId, sessionId);
         console.log(`Started AI session ${sessionId} for user ${userId}`);
@@ -97,7 +97,7 @@ class TokenUsageTracker {
         actions_executed: (session.actions_executed || 0) + actionsExecuted
       };
 
-      const success = await privyWalletManager.updateAISession(sessionId, updatedMetrics);
+      const success = await authService.updateAISession(sessionId, updatedMetrics);
       
       if (success) {
         console.log(`Updated session ${sessionId}: +1 message, +${responseTokens} tokens, +${actionsExecuted} actions`);
@@ -122,7 +122,7 @@ class TokenUsageTracker {
       }
 
       // Perform batch deduction
-      const success = await privyWalletManager.endAISession(targetSessionId, userId);
+      const success = await authService.endAISession(targetSessionId, userId);
       
       if (success) {
         this.activeSessions.delete(userId);
@@ -229,7 +229,7 @@ class TokenUsageTracker {
     estimatedActions: number = 2
   ): Promise<{ sufficient: boolean; currentBalance: number; estimatedCost: number }> {
     try {
-      const balance = await privyWalletManager.getTokenBalance(userId);
+      const balance = await authService.getUserTokenBalance(userId);
       if (!balance) {
         return { sufficient: false, currentBalance: 0, estimatedCost: 0 };
       }
@@ -355,7 +355,7 @@ class TokenUsageTracker {
 
       let cleanedCount = 0;
       for (const session of staleSessions || []) {
-        const success = await privyWalletManager.endAISession(session.id, session.user_id);
+        const success = await authService.endAISession(session.id, session.user_id);
         if (success) {
           this.activeSessions.delete(session.user_id);
           cleanedCount++;

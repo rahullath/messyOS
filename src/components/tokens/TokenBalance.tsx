@@ -2,8 +2,24 @@
 // Shows user's token balance, usage statistics, and transaction history
 
 import React, { useState, useEffect } from 'react';
-import { privyWalletManager, type TokenBalance, type WalletTransaction } from '../../lib/wallet/privy-integration';
+// TokenBalance now uses API endpoints instead of direct auth service calls
 import { tokenUsageTracker } from '../../lib/tokens/usage-tracker';
+
+interface TokenBalance {
+  balance: number;
+  total_earned: number;
+  total_spent: number;
+  last_transaction_at?: string;
+}
+
+interface WalletTransaction {
+  id: string;
+  amount: number;
+  type: string;
+  description: string;
+  created_at: string;
+  balance_after: number;
+}
 
 interface TokenBalanceProps {
   userId: string;
@@ -44,12 +60,15 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
     try {
       setError(null);
       
-      // Load balance and recent transactions in parallel
-      const [balanceData, transactionData, statsData] = await Promise.all([
-        privyWalletManager.getTokenBalance(userId),
-        privyWalletManager.getTransactionHistory(userId, 20),
+      // Load balance and recent transactions via API calls
+      const [balanceResponse, transactionResponse, statsData] = await Promise.all([
+        fetch('/api/user/balance'),
+        fetch(`/api/user/transactions?limit=20`),
         showDetailedStats ? tokenUsageTracker.getUserUsageStats(userId, 7) : null
       ]);
+      
+      const balanceData = balanceResponse.ok ? await balanceResponse.json() : null;
+      const transactionData = transactionResponse.ok ? await transactionResponse.json() : [];
 
       setBalance(balanceData);
       setTransactions(transactionData);

@@ -1,0 +1,20 @@
+---
+// src/pages/nutrition.astro - Main Nutrition Tracking Page
+import AuthenticatedDashboardLayout from '../layouts/AuthenticatedDashboardLayout.astro';
+---
+
+<AuthenticatedDashboardLayout title="Nutrition Tracking">
+  <div id="nutrition-tracker"></div>
+  
+  <script>
+    import NutritionTracker from '../components/nutrition/NutritionTracker.tsx';
+    import React from 'react';
+    import { createRoot } from 'react-dom/client';
+
+    const container = document.getElementById('nutrition-tracker');
+    if (container) {
+      const root = createRoot(container);
+      root.render(React.createElement(NutritionTracker));
+    }
+  </script>
+</AuthenticatedDashboardLayout>
