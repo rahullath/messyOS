@@ -1,0 +1,84 @@
+---
+// src/pages/test-landing.astro - Test page for landing components
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Test Landing Page">
+  <div id="test-root"></div>
+</Layout>
+
+<script>
+  // Simple test without React imports
+  document.addEventListener('DOMContentLoaded', () => {
+    const root = document.getElementById('test-root');
+    if (root) {
+      root.innerHTML = `
+        <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-8">
+          <div class="max-w-md mx-auto">
+            <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+              <h3 class="text-2xl font-semibold text-white mb-4">Join the Waitlist</h3>
+              <p class="text-gray-300 mb-6">Get 30 days free when we launch + priority access</p>
+              
+              <form id="waitlistForm" class="space-y-4">
+                <input 
+                  type="email" 
+                  name="email"
+                  placeholder="Enter your email" 
+                  required
+                  class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                />
+                <select name="interest_area" class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                  <option value="" disabled selected>What do you want to optimize most?</option>
+                  <option value="habits">Habits & Goals</option>
+                  <option value="health">Health & Wellness</option>
+                  <option value="finance">Finance & Investments</option>
+                  <option value="productivity">Tasks & Productivity</option>
+                  <option value="everything">Everything!</option>
+                </select>
+                <button 
+                  type="submit"
+                  class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Get Early Access
+                </button>
+              </form>
+              
+              <p class="text-sm text-gray-400 mt-4 text-center">
+                $1/month after free trial • Cancel anytime
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Add form handler
+      const form = document.getElementById('waitlistForm');
+      form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const email = formData.get('email');
+        const interest_area = formData.get('interest_area');
+        
+        try {
+          const response = await fetch('/api/waitlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, interest: interest_area })
+          });
+          
+          const result = await response.json();
+
+          if (response.ok) {
+            alert('🎉 Welcome to the waitlist! You will be redirected to sign up.');
+            window.location.href = '/login';
+          } else {
+            alert(`Error: ${result.error || 'Something went wrong. Please try again.'}`);
+          }
+        } catch (error) {
+          alert('Something went wrong. Please try again.');
+        }
+      });
+    }
+  });
+</script>
+</Layout>

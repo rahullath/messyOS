@@ -3,6 +3,7 @@
 
 import { createServerAuth } from '../auth/simple-multi-user';
 import { createSupabaseClient } from '../supabase/client';
+import { authService } from '../auth/service';
 
 export interface AISessionMetrics {
   sessionId: string;

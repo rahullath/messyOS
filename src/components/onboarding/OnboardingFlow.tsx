@@ -1,6 +1,7 @@
-// src/components/onboarding/OnboardingFlow.tsx
-import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase/client';
+// src/components/onboarding/OnboardingFlow.tsx - Enhanced onboarding flow
+import React, { useState, useEffect } from 'react';
+import ProfileForm, { type ProfileFormData } from './ProfileForm';
+import { onboardingService } from '../../lib/onboarding/service';
 
 interface OnboardingStep {
   id: string;
@@ -174,6 +175,8 @@ const INTEGRATIONS = [
 
 export default function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileFormData | null>(null);
   const [preferences, setPreferences] = useState({
     enabledModules: ['habits', 'tasks', 'health', 'finance'],
     theme: 'dark',
@@ -196,38 +199,61 @@ export default function OnboardingFlow() {
 // Update src/components/onboarding/OnboardingFlow.tsx
 // Replace the savePreferences function with this:
 
-const savePreferences = async () => {
-  try {
-    console.log('🔄 Starting to save preferences...');
-    
-    const response = await fetch('/api/auth/save-preferences', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(preferences)
-    });
+const handleProfileSubmit = (data: ProfileFormData) => {
+    setProfileData(data);
+    // Update preferences with profile data
+    setPreferences(prev => ({
+      ...prev,
+      enabledModules: data.preferredModules
+    }));
+    nextStep();
+  };
 
-    const result = await response.json();
-    
-    if (!result.success) {
-      console.error('❌ API error:', result.error);
-      alert(`Failed to save preferences: ${result.error}`);
+  const savePreferences = async () => {
+    if (!profileData) {
+      alert('Profile data is missing. Please go back and complete your profile.');
       return;
     }
-    
-    console.log('✅ Preferences saved successfully');
-    
-    // Dispatch completion event
-    const event = new CustomEvent('onboardingComplete');
-    window.dispatchEvent(event);
-    
-    console.log('📡 Event dispatched');
-  } catch (error) {
-    console.error('❌ Failed to save preferences:', error);
-    alert('Failed to save preferences. Please try again.');
-  }
-};
+
+    setIsLoading(true);
+    try {
+      console.log('🔄 Starting to save onboarding data...');
+      
+      const response = await fetch('/api/onboarding/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profile: profileData,
+          preferences: preferences
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        console.error('❌ API error:', result.error);
+        alert(`Failed to complete onboarding: ${result.error}`);
+        return;
+      }
+      
+      console.log('✅ Onboarding completed successfully');
+      
+      // Dispatch completion event
+      const event = new CustomEvent('onboardingComplete');
+      window.dispatchEvent(event);
+      
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
+      
+    } catch (error) {
+      console.error('❌ Failed to complete onboarding:', error);
+      alert('Failed to complete onboarding. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const nextStep = () => {
     if (currentStep < ONBOARDING_STEPS.length - 1) {
@@ -249,19 +275,11 @@ const savePreferences = async () => {
     switch (step.id) {
       case 'welcome':
         return (
-          <div className="text-center space-y-6">
-            <div className="text-6xl mb-4">🚀</div>
-            <h2 className="text-3xl font-bold text-white">Welcome to messyOS!</h2>
-            <p className="text-gray-300 text-lg max-w-md mx-auto">
-              You're about to experience the most comprehensive life optimization system ever built. 
-              Let's customize it to fit your unique needs.
-            </p>
-            <div className="bg-cyan-500/20 border border-cyan-500/30 rounded-lg p-4 max-w-md mx-auto">
-              <p className="text-cyan-200 text-sm">
-                ✨ You're in your <strong>30-day free trial</strong>. No credit card required!
-              </p>
-            </div>
-          </div>
+          <ProfileForm
+            onSubmit={handleProfileSubmit}
+            isLoading={isLoading}
+            initialData={profileData || undefined}
+          />
         );
 
       case 'modules':
@@ -525,9 +543,20 @@ const savePreferences = async () => {
           
           <button
             onClick={nextStep}
-            className="px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg transition-colors"
+            disabled={isLoading}
+            className="px-8 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
-            {currentStep === ONBOARDING_STEPS.length - 1 ? 'Complete Setup' : 'Continue →'}
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Setting up...
+              </>
+            ) : (
+              currentStep === ONBOARDING_STEPS.length - 1 ? 'Complete Setup' : 'Continue →'
+            )}
           </button>
         </div>
       </div>

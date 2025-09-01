@@ -527,45 +527,37 @@ class SupabaseAuthService {
         try {
           let serverSupabase = this.supabase;
 
-          // Use service client for server-side if available
-          if (cookies && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-            const { createClient } = await import('@supabase/supabase-js');
-            serverSupabase = createClient(
-              process.env.PUBLIC_SUPABASE_URL!,
-              process.env.SUPABASE_SERVICE_ROLE_KEY!
-            );
-          }
-
-          // Extract session from cookies
-          let session = null;
-          
+          // Use proper Supabase SSR client for server-side
           if (cookies) {
-            const accessToken = cookies.get('sb-access-token')?.value;
-            const refreshToken = cookies.get('sb-refresh-token')?.value;
-            
-            if (accessToken && refreshToken) {
-              const { data, error } = await serverSupabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-              });
-              session = data.session;
-            }
-          } else {
-            const { data } = await this.supabase.auth.getSession();
-            session = data.session;
+            const { createServerClient } = await import('../supabase/server');
+            serverSupabase = createServerClient(cookies);
+            console.log('🔄 Using Supabase SSR client for server auth');
           }
 
-          if (!session?.user) return null;
+          // Get session using proper SSR client
+          const { data: { session }, error } = await serverSupabase.auth.getSession();
+          
+          if (error) {
+            console.error('🚫 Server auth error:', error.message);
+            return null;
+          }
+
+          if (!session?.user) {
+            console.log('🚫 Server auth error: Auth session missing!');
+            return null;
+          }
+
+          console.log('✅ Server session found for:', session.user.email);
 
           // Get user profile
-          const { data: profile, error } = await serverSupabase
+          const { data: profile, error: profileError } = await serverSupabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
-          if (error) {
-            console.error('Error fetching user profile:', error);
+          if (profileError) {
+            console.error('Error fetching user profile:', profileError);
             return null;
           }
 

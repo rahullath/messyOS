@@ -1,16 +1,29 @@
 ---
-import { SupabaseAuth } from '../components/auth/SupabaseAuth.tsx';
+// src/pages/login.astro - Multi-method authentication page
+import Layout from '../layouts/Layout.astro';
+import { AuthPageContent } from '../components/auth/AuthPageContent.tsx';
 ---
 
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign In - meshOS</title>
-</head>
-<body>
-  <!-- Supabase Authentication -->
-  <SupabaseAuth client:load />
-</body>
-</html>
+<Layout title="Sign In - MessyOS">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+    <div class="max-w-md w-full">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-white mb-2">
+          <span class="text-cyan-400">messy</span>OS
+        </h1>
+        <p class="text-gray-400">Your AI-powered life optimizer</p>
+      </div>
+      
+      <!-- Authentication Form -->
+      <AuthPageContent client:load redirectTo="/dashboard" />
+      
+      <!-- Footer -->
+      <div class="text-center mt-6">
+        <a href="/" class="text-sm text-gray-400 hover:text-white transition-colors">
+          ← Back to Home
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>

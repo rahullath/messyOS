@@ -1,0 +1,92 @@
+---
+// src/pages/auth-status.astro - Simple auth status test page
+import Layout from '../layouts/Layout.astro';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+import { AuthStatusTest } from '../components/auth/AuthStatusTest.tsx';
+
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+---
+
+<Layout title="Auth Status - MessyOS">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div class="max-w-2xl mx-auto">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-white mb-2">
+          Authentication Status
+        </h1>
+        <p class="text-gray-400">Current authentication state</p>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Server-side Auth Status -->
+        <div class="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700 p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Server-side Auth Status</h3>
+          {user ? (
+            <div class="space-y-4">
+              <div class="flex items-center text-green-400">
+                <svg class="w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-xl font-semibold">Authenticated</span>
+              </div>
+              
+              <div class="space-y-2 text-gray-300">
+                <div><strong>User ID:</strong> {user.id}</div>
+                <div><strong>Email:</strong> {user.email}</div>
+                <div><strong>Created:</strong> {new Date(user.created_at).toLocaleDateString()}</div>
+              </div>
+              
+              <div class="pt-4 border-t border-slate-600">
+                <div class="space-x-4">
+                  <a href="/dashboard" class="inline-block bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Go to Dashboard
+                  </a>
+                  <a href="/onboarding" class="inline-block bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Onboarding
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div class="space-y-4">
+              <div class="flex items-center text-red-400">
+                <svg class="w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-xl font-semibold">Not Authenticated</span>
+              </div>
+              
+              <p class="text-gray-300">You are not currently signed in.</p>
+              
+              <div class="pt-4 border-t border-slate-600">
+                <div class="space-x-4">
+                  <a href="/login" class="inline-block bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Sign In
+                  </a>
+                  <a href="/" class="inline-block bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    Home
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <!-- Client-side Auth Context Test -->
+        <div class="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700 p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Client-side Auth Context</h3>
+          <AuthStatusTest client:load />
+        </div>
+      </div>
+      
+      <div class="mt-8 text-center">
+        <div class="space-x-4 text-sm">
+          <a href="/" class="text-gray-400 hover:text-white transition-colors">← Home</a>
+          <a href="/login" class="text-cyan-400 hover:text-cyan-300 transition-colors">Login</a>
+          <a href="/reset-password" class="text-cyan-400 hover:text-cyan-300 transition-colors">Reset Password</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
