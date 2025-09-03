@@ -6,6 +6,8 @@ import { OAuthButtons } from './OAuthButtons';
 import { LoadingSpinner } from './LoadingSpinner';
 import { ErrorMessage } from './ErrorMessage';
 import { SuccessMessage } from './SuccessMessage';
+import { PageTransition } from '../ui/LoadingStates';
+import { SuccessAnimation, Toast } from '../ui/SuccessAnimations';
 import { ErrorBoundary } from './ErrorBoundary';
 import { NetworkStatus } from './NetworkStatus';
 
@@ -18,6 +20,8 @@ export function AuthForm({ redirectTo = '/dashboard' }: AuthFormProps) {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [showToast, setShowToast] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -37,16 +41,19 @@ export function AuthForm({ redirectTo = '/dashboard' }: AuthFormProps) {
       setSuccessMessage(message);
     }
     setLocalError(null);
+    setShowSuccessAnimation(true);
+    setShowToast({ type: 'success', message: message || 'Authentication successful!' });
     
-    // Redirect after a brief delay to show success message
+    // Redirect after showing success animation
     setTimeout(() => {
       window.location.href = redirectTo;
-    }, 1500);
+    }, 2000);
   };
 
   const handleAuthError = (errorMessage: string) => {
     setLocalError(errorMessage);
     setSuccessMessage(null);
+    setShowToast({ type: 'error', message: errorMessage });
   };
 
   const displayError = localError || error;
@@ -62,7 +69,31 @@ export function AuthForm({ redirectTo = '/dashboard' }: AuthFormProps) {
   return (
     <ErrorBoundary>
       <NetworkStatus />
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700 p-4 sm:p-6 md:p-8 max-w-md mx-auto w-full touch-manipulation">
+      
+      {/* Toast Notifications */}
+      {showToast && (
+        <Toast
+          type={showToast.type}
+          message={showToast.message}
+          onClose={() => setShowToast(null)}
+          position="top-center"
+        />
+      )}
+      
+      {/* Success Animation Overlay */}
+      {showSuccessAnimation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+          <SuccessAnimation
+            type="checkmark"
+            size="lg"
+            message="Welcome to MessyOS!"
+            onComplete={() => setShowSuccessAnimation(false)}
+          />
+        </div>
+      )}
+      
+      <PageTransition isLoading={isLoading}>
+        <div className="bg-slate-800/50 backdrop-blur-sm rounded-lg border border-slate-700 p-4 sm:p-6 md:p-8 max-w-md mx-auto w-full touch-manipulation">
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 leading-tight">
@@ -146,7 +177,8 @@ export function AuthForm({ redirectTo = '/dashboard' }: AuthFormProps) {
           <a href="/privacy" className="text-cyan-400 hover:text-cyan-300 active:text-cyan-200 underline focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-800 rounded">Privacy Policy</a>
         </div>
       </div>
-      </div>
+        </div>
+      </PageTransition>
     </ErrorBoundary>
   );
 }

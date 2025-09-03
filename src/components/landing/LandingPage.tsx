@@ -1,7 +1,8 @@
 // src/components/landing/LandingPage.tsx - Enhanced landing page with Web3-inspired design
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { WaitlistForm } from './WaitlistForm';
 import type { WaitlistResponse } from '../../lib/waitlist/service';
+import { analytics } from '../../lib/analytics/tracking';
 
 interface LandingPageProps {
   onWaitlistSuccess?: (response: WaitlistResponse) => void;
@@ -12,6 +13,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onWaitlistSuccess }) =
     type: 'success' | 'error';
     message: string;
   } | null>(null);
+
+  // Track landing page view
+  useEffect(() => {
+    analytics.trackLandingPageView();
+  }, []);
 
   const handleWaitlistSuccess = (response: WaitlistResponse) => {
     setNotification({
@@ -66,14 +72,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onWaitlistSuccess }) =
             <span className="text-cyan-400">messy</span>OS
           </div>
           <div className="hidden sm:flex space-x-4">
-            <a href="#features" className="text-gray-300 hover:text-white active:text-gray-300 transition-colors px-3 py-2 rounded-lg hover:bg-slate-700/30 focus:outline-none focus:ring-2 focus:ring-cyan-500">Features</a>
-            <a href="#pricing" className="text-gray-300 hover:text-white active:text-gray-300 transition-colors px-3 py-2 rounded-lg hover:bg-slate-700/30 focus:outline-none focus:ring-2 focus:ring-cyan-500">Pricing</a>
-            <a href="/login" className="bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white px-4 py-2 rounded-lg transition-colors min-h-[44px] flex items-center focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+            <a 
+              href="#features" 
+              onClick={() => analytics.trackEngagement('nav_click', 'features')}
+              className="text-gray-300 hover:text-white active:text-gray-300 transition-colors px-3 py-2 rounded-lg hover:bg-slate-700/30 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              Features
+            </a>
+            <a 
+              href="#pricing" 
+              onClick={() => analytics.trackEngagement('nav_click', 'pricing')}
+              className="text-gray-300 hover:text-white active:text-gray-300 transition-colors px-3 py-2 rounded-lg hover:bg-slate-700/30 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              Pricing
+            </a>
+            <a 
+              href="/login" 
+              onClick={() => analytics.trackEngagement('nav_click', 'sign_in')}
+              className="bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white px-4 py-2 rounded-lg transition-colors min-h-[44px] flex items-center focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+            >
               Sign In
             </a>
           </div>
           <div className="sm:hidden">
-            <a href="/login" className="bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white px-4 py-2 rounded-lg transition-colors min-h-[44px] flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+            <a 
+              href="/login" 
+              onClick={() => analytics.trackEngagement('nav_click', 'sign_in_mobile')}
+              className="bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 text-white px-4 py-2 rounded-lg transition-colors min-h-[44px] flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+            >
               Sign In
             </a>
           </div>

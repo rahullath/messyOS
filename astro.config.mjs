@@ -25,18 +25,9 @@ export default defineConfig({
     optimizeDeps: {
       include: ['buffer', '@privy-io/react-auth'],
     },
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            // Vendor chunk for large dependencies
-            vendor: ['react', 'react-dom'],
-            // Auth chunk for authentication-related code
-            auth: ['@supabase/supabase-js', '@supabase/ssr'],
-            // Utils chunk for utility libraries
-            utils: ['date-fns', 'zod', 'clsx']
-          }
-        }
+    server: {
+      fs: {
+        strict: false
       }
     }
   },

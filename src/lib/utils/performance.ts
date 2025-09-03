@@ -196,13 +196,84 @@ export function getMemoryUsage(): any {
  */
 export function analyzeBundleSize(): Promise<BundleInfo> {
   return new Promise((resolve) => {
-    // This would typically integrate with webpack-bundle-analyzer
-    // For now, return mock data
-    resolve({
-      size: 0,
-      gzipSize: 0,
-      chunks: []
+    // Analyze current loaded resources
+    const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+    
+    let totalSize = 0;
+    const chunks: string[] = [];
+    
+    resources.forEach(resource => {
+      if (resource.name.includes('.js') || resource.name.includes('.css')) {
+        // Estimate size from transfer size
+        totalSize += resource.transferSize || 0;
+        chunks.push(resource.name.split('/').pop() || resource.name);
+      }
     });
+    
+    resolve({
+      size: totalSize,
+      gzipSize: Math.round(totalSize * 0.7), // Estimate gzip compression
+      chunks: chunks.slice(0, 10) // Top 10 chunks
+    });
+  });
+}
+
+/**
+ * Monitor bundle loading performance
+ */
+export function monitorBundleLoading(): void {
+  if (typeof window === 'undefined') return;
+
+  const observer = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      const resource = entry as PerformanceResourceTiming;
+      
+      if (resource.name.includes('.js') && resource.transferSize > 100000) {
+        console.warn(`Large JS bundle detected: ${resource.name} (${Math.round(resource.transferSize / 1024)}KB)`);
+      }
+      
+      if (resource.duration > 1000) {
+        console.warn(`Slow resource loading: ${resource.name} (${Math.round(resource.duration)}ms)`);
+      }
+    }
+  });
+  
+  observer.observe({ entryTypes: ['resource'] });
+}
+
+/**
+ * Optimize critical resource loading
+ */
+export function optimizeCriticalResources(): void {
+  if (typeof document === 'undefined') return;
+
+  // Preload critical fonts
+  const criticalFonts = [
+    '/fonts/inter-var.woff2'
+  ];
+  
+  criticalFonts.forEach(font => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = font;
+    link.as = 'font';
+    link.type = 'font/woff2';
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  });
+
+  // Preload critical images
+  const criticalImages = [
+    '/icons/icon-192x192.png',
+    '/favicon.svg'
+  ];
+  
+  criticalImages.forEach(image => {
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = image;
+    link.as = 'image';
+    document.head.appendChild(link);
   });
 }
 

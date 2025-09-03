@@ -4,6 +4,8 @@ import { useAuth } from '../../lib/auth/context';
 import { validateEmail, validatePassword, getPasswordStrength } from '../../lib/auth/validation';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import { LoadingSpinner } from './LoadingSpinner';
+import { LoadingButton, FormLoading } from '../ui/LoadingStates';
+import { analytics } from '../../lib/analytics/tracking';
 
 interface EmailPasswordFormProps {
   mode: 'signin' | 'signup';
@@ -100,13 +102,18 @@ export function EmailPasswordForm({ mode, onSuccess, onError, disabled }: EmailP
     }
 
     setIsSubmitting(true);
+    
+    // Track auth attempt
+    analytics.trackAuthStart('email');
 
     try {
       if (mode === 'signin') {
         const user = await signInWithEmail(formData.email, formData.password);
         if (user) {
+          analytics.trackAuthSuccess('email', false);
           onSuccess('Welcome back! Redirecting to your dashboard...');
         } else {
+          analytics.trackAuthError('email', 'Invalid credentials');
           onError('Invalid email or password. Please try again.');
         }
       } else {
@@ -116,8 +123,10 @@ export function EmailPasswordForm({ mode, onSuccess, onError, disabled }: EmailP
           formData.fullName.trim()
         );
         if (user) {
+          analytics.trackAuthSuccess('email', true);
           onSuccess('Account created successfully! Welcome to MessyOS!');
         } else {
+          analytics.trackAuthError('email', 'Account creation failed');
           onError('Account creation failed. Please check your email for verification.');
         }
       }
@@ -128,6 +137,7 @@ export function EmailPasswordForm({ mode, onSuccess, onError, disabled }: EmailP
       const { mapSupabaseError } = await import('../../lib/auth/errors');
       const authError = mapSupabaseError(error);
       
+      analytics.trackAuthError('email', authError.userMessage || authError.message);
       onError(authError.userMessage || authError.message);
     } finally {
       setIsSubmitting(false);
@@ -257,22 +267,15 @@ export function EmailPasswordForm({ mode, onSuccess, onError, disabled }: EmailP
       )}
 
       {/* Submit Button */}
-      <button
+      <LoadingButton
         type="submit"
+        isLoading={isSubmitting}
+        loadingText={mode === 'signin' ? 'Signing in...' : 'Creating account...'}
         disabled={isFormDisabled}
-        className="w-full px-4 py-3 sm:py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-base sm:text-sm min-h-[44px] flex items-center justify-center"
+        className="w-full px-4 py-3 sm:py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-base sm:text-sm min-h-[44px]"
       >
-        {isSubmitting ? (
-          <div className="flex items-center justify-center">
-            <LoadingSpinner size="sm" />
-            <span className="ml-2">
-              {mode === 'signin' ? 'Signing in...' : 'Creating account...'}
-            </span>
-          </div>
-        ) : (
-          mode === 'signin' ? 'Sign In' : 'Create Account'
-        )}
-      </button>
+        {mode === 'signin' ? 'Sign In' : 'Create Account'}
+      </LoadingButton>
     </form>
   );
 }

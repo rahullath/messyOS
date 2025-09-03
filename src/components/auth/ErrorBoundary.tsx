@@ -1,19 +1,19 @@
 // src/components/auth/ErrorBoundary.tsx - Error boundary for graceful failure handling
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component } from 'react';
 import { mapSupabaseError, getRecoverySuggestions } from '../../lib/auth/errors';
 import type { AuthError } from '../../lib/auth/errors';
 
 interface Props {
-  children: ReactNode;
-  fallback?: (error: AuthError, retry: () => void) => ReactNode;
-  onError?: (error: AuthError, errorInfo: ErrorInfo) => void;
+  children: React.ReactNode;
+  fallback?: (error: AuthError, retry: () => void) => React.ReactNode;
+  onError?: (error: AuthError, errorInfo: React.ErrorInfo) => void;
   showDetails?: boolean;
 }
 
 interface State {
   hasError: boolean;
   error: AuthError | null;
-  errorInfo: ErrorInfo | null;
+  errorInfo: React.ErrorInfo | null;
   retryCount: number;
 }
 
@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const authError = mapSupabaseError(error);
     
     this.setState({

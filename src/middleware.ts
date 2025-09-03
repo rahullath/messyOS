@@ -1,19 +1,32 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createServerAuth } from './lib/auth/simple-multi-user';
-
-const PUBLIC_ROUTES = [
-  '/', '/landing', '/login', '/auth/callback', '/auth/exchange', 
-  '/onboarding', '/reset-password', '/auth-status'
-];
+import { RouteClassifier } from './lib/utils/route-classifier';
 
 export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, next) => {
   const { pathname } = url;
 
-  console.log(`🌐 Request: ${pathname}`);
+  // Classify the route to determine how to handle it
+  const classification = RouteClassifier.classifyRoute(pathname);
 
-  // Always allow non-root public routes and API routes
-  if ((PUBLIC_ROUTES.includes(pathname) && pathname !== '/') || pathname.startsWith('/api/')) {
-    console.log(`✅ Public route allowed: ${pathname}`);
+  // Early return for static assets - skip all auth processing
+  if (classification.isStatic) {
+    // Only log static asset requests in development or when debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📁 Static asset: ${pathname} (${classification.matchedPattern})`);
+    }
+    return next();
+  }
+
+  // Conditional logging based on route type
+  if (classification.isPublic) {
+    console.log(`🌐 Public route: ${pathname}`);
+  } else {
+    console.log(`🔒 Protected route: ${pathname}`);
+  }
+
+  // Always allow API routes and public routes (except root which needs special handling)
+  if (pathname.startsWith('/api/') || (classification.isPublic && pathname !== '/')) {
+    console.log(`✅ Route allowed: ${pathname}`);
     return next();
   }
 
@@ -33,36 +46,38 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
     }
   }
 
-  // Redirect unauthenticated users to login for protected routes
-  if (!user) {
-    console.log(`🚫 No user found, redirecting to login from ${pathname}`);
-    return redirect('/login');
-  }
-
-  console.log(`👤 User found: ${user.email || user.id}`);
-
-  // Check onboarding status for authenticated users
-  try {
-    const preferences = await serverAuth.getUserPreferences(user.id);
-    const hasCompletedOnboarding = !!preferences;
-
-    console.log(`📋 Onboarding complete: ${hasCompletedOnboarding}`);
-
-    // Force onboarding if not completed
-    if (!hasCompletedOnboarding && pathname !== '/onboarding') {
-      console.log(`📝 Redirecting to onboarding from ${pathname}`);
-      return redirect('/onboarding');
+  // For protected routes, check authentication
+  if (classification.requiresAuth) {
+    if (!user) {
+      console.log(`🚫 Authentication required for ${pathname}, redirecting to login`);
+      return redirect('/login');
     }
 
-    // If onboarding is complete and user is on onboarding page, redirect to dashboard
-    if (hasCompletedOnboarding && pathname === '/onboarding') {
-      console.log(`🏠 Redirecting to dashboard from onboarding`);
-      return redirect('/dashboard');
-    }
+    console.log(`👤 Authenticated user: ${user.email || user.id}`);
 
-  } catch (error) {
-    console.error('⚠️ Middleware error:', error);
-    // On error, allow access but log the issue
+    // Check onboarding status for authenticated users on protected routes
+    try {
+      const preferences = await serverAuth.getUserPreferences(user.id);
+      const hasCompletedOnboarding = !!preferences;
+
+      console.log(`📋 Onboarding status: ${hasCompletedOnboarding ? 'complete' : 'pending'}`);
+
+      // Force onboarding if not completed
+      if (!hasCompletedOnboarding && pathname !== '/onboarding') {
+        console.log(`📝 Redirecting to onboarding from ${pathname}`);
+        return redirect('/onboarding');
+      }
+
+      // If onboarding is complete and user is on onboarding page, redirect to dashboard
+      if (hasCompletedOnboarding && pathname === '/onboarding') {
+        console.log(`🏠 Redirecting to dashboard from onboarding`);
+        return redirect('/dashboard');
+      }
+
+    } catch (error) {
+      console.error(`⚠️ Middleware error for protected route ${pathname}:`, error);
+      // On error, allow access but log the issue
+    }
   }
 
   console.log(`✅ Access granted to ${pathname}`);
