@@ -1,6 +1,6 @@
 // Progress sharing component
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+// Using CSS animations instead of framer-motion for better build compatibility
 import type { LifeOptimizationScore } from '../../types/cross-module';
 
 interface ProgressSharingProps {
@@ -298,11 +298,7 @@ export const ProgressSharing: React.FC<ProgressSharingProps> = ({
           )}
 
           {shareUrl && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-green-50 border border-green-200 rounded-lg p-4"
-            >
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 animate-fade-in-up">
               <h4 className="font-medium text-green-800 mb-2">✅ Progress Summary Generated!</h4>
               <p className="text-green-700 text-sm mb-3">
                 Your progress summary has been created and is ready to share.
@@ -322,7 +318,7 @@ export const ProgressSharing: React.FC<ProgressSharingProps> = ({
                   Copy
                 </button>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {!shareUrl && !error && (

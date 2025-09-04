@@ -1,6 +1,6 @@
 // Module statistics grid component
 import React from 'react';
-import { motion } from 'framer-motion';
+// Using CSS animations instead of framer-motion for better build compatibility
 import type { ModuleStats } from '../../types/cross-module';
 
 interface ModuleStatsGridProps {
@@ -69,12 +69,10 @@ export const ModuleStatsGrid: React.FC<ModuleStatsGridProps> = ({ stats }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
       {modules.map((module, index) => (
-        <motion.div
+        <div
           key={module.name}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.1 }}
-          className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
+          className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow animate-fade-in-up"
+          style={{ animationDelay: `${index * 0.1}s` }}
         >
           {/* Header */}
           <div className={`bg-gradient-to-r ${module.color} p-4 text-white`}>
@@ -112,7 +110,7 @@ export const ModuleStatsGrid: React.FC<ModuleStatsGridProps> = ({ stats }) => {
               </div>
             </div>
           )}
-        </motion.div>
+        </div>
       ))}
     </div>
   );

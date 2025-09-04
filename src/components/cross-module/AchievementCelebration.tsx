@@ -1,6 +1,6 @@
 // Achievement celebration component with animations
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Using CSS animations instead of framer-motion for better build compatibility
 import confetti from 'canvas-confetti';
 import type { UserAchievement } from '../../types/cross-module';
 
@@ -119,36 +119,23 @@ export const AchievementCelebration: React.FC<AchievementCelebrationProps> = ({
   const achievement = currentAchievement.achievement;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in-up"
       onClick={onClose}
     >
-      <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.5, opacity: 0 }}
+      <div
         className="bg-white rounded-2xl p-8 max-w-md w-full text-center"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Achievement Icon */}
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+        <div
           className={`w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-r ${getRarityColor(achievement?.rarity || 'common')} flex items-center justify-center text-4xl shadow-2xl ${getRarityGlow(achievement?.rarity || 'common')}`}
         >
           {achievement?.icon || '🏆'}
-        </motion.div>
+        </div>
 
         {/* Achievement Details */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-        >
+        <div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
             Achievement Unlocked!
           </h2>
@@ -204,8 +191,8 @@ export const AchievementCelebration: React.FC<AchievementCelebrationProps> = ({
               Close
             </button>
           </div>
-        </motion.div>
-      </motion.div>
-    </motion.div>
+        </div>
+      </div>
+    </div>
   );
 };

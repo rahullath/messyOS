@@ -32,7 +32,7 @@ interface LifeScoreChartProps {
 export const LifeScoreChart: React.FC<LifeScoreChartProps> = ({ scores }) => {
   if (!scores || scores.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
+      <div className="flex items-center justify-center h-64 text-gray-500 animate-fade-in-up">
         No score data available yet. Complete some habits and tasks to see your progress!
       </div>
     );

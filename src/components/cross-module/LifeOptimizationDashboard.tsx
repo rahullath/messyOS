@@ -1,6 +1,6 @@
 // Life Optimization Dashboard - Main cross-module integration component
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+// Using CSS animations instead of framer-motion for better build compatibility
 import type { LifeOptimizationScore, ModuleStats, CrossModuleInsight } from '../../types/cross-module';
 import { LifeScoreChart } from './LifeScoreChart';
 import { ModuleStatsGrid } from './ModuleStatsGrid';

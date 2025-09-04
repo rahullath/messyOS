@@ -1,6 +1,6 @@
 // Cross-module insights component
 import React from 'react';
-import { motion } from 'framer-motion';
+// Using CSS animations instead of framer-motion for better build compatibility
 import type { CrossModuleInsight } from '../../types/cross-module';
 
 interface CrossModuleInsightsProps {
@@ -10,7 +10,7 @@ interface CrossModuleInsightsProps {
 export const CrossModuleInsights: React.FC<CrossModuleInsightsProps> = ({ insights }) => {
   if (!insights || insights.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-gray-500 animate-fade-in-up">
         <div className="text-4xl mb-4">🔍</div>
         <p>No cross-module insights available yet.</p>
         <p className="text-sm mt-2">Keep tracking your habits and tasks to discover patterns!</p>
@@ -47,11 +47,8 @@ export const CrossModuleInsights: React.FC<CrossModuleInsightsProps> = ({ insigh
   return (
     <div className="space-y-4">
       {insights.map((insight, index) => (
-        <motion.div
+        <div
           key={index}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: index * 0.1 }}
           className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
         >
           <div className="flex items-start gap-4">
@@ -135,7 +132,7 @@ export const CrossModuleInsights: React.FC<CrossModuleInsightsProps> = ({ insigh
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       ))}
     </div>
   );
