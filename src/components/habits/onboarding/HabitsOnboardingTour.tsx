@@ -49,7 +49,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: 'quick-actions',
     title: 'Quick Actions (Mobile)',
-    content: 'On mobile, use the quick actions widget for rapid habit logging without opening the full interface.',
+    content: 'On mobile devices, a quick actions widget appears here for rapid habit logging. On desktop, you can click directly on habit cards to log progress.',
     target: '#mobile-quick-actions',
     position: 'top'
   },
@@ -94,7 +94,10 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
   useEffect(() => {
     if (isVisible) {
       setIsVisible(true);
-      updateTooltipPosition();
+      // Add a small delay to ensure DOM is ready
+      setTimeout(() => {
+        updateTooltipPosition();
+      }, 100);
     } else {
       setIsVisible(false);
     }
@@ -104,7 +107,13 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
     const step = TOUR_STEPS[currentStep];
     const targetElement = document.querySelector(step.target);
     
-    if (targetElement && step.target !== 'body') {
+    // Check if element exists and is visible
+    const isElementVisible = targetElement && 
+      targetElement.offsetParent !== null && 
+      getComputedStyle(targetElement).display !== 'none' &&
+      getComputedStyle(targetElement).visibility !== 'hidden';
+    
+    if (isElementVisible && step.target !== 'body') {
       const rect = targetElement.getBoundingClientRect();
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
       const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
@@ -148,7 +157,7 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
         }, 3000);
       }
     } else {
-      // Center of screen for body target
+      // Center of screen for body target or when element is not visible
       setTooltipPosition({
         top: window.innerHeight / 2,
         left: window.innerWidth / 2
@@ -158,7 +167,20 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
 
   const nextStep = () => {
     if (currentStep < TOUR_STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
+      let nextIndex = currentStep + 1;
+      
+      // Skip mobile-only steps on desktop if element is not visible
+      const nextStepElement = document.querySelector(TOUR_STEPS[nextIndex].target);
+      const isMobile = window.innerWidth < 768;
+      
+      // If it's the mobile quick actions step and we're on desktop, still show it but centered
+      if (TOUR_STEPS[nextIndex].id === 'quick-actions' && !isMobile) {
+        // Show the step but center it since the element is hidden
+        setCurrentStep(nextIndex);
+        return;
+      }
+      
+      setCurrentStep(nextIndex);
     } else {
       completeTour();
     }
@@ -201,9 +223,13 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
         {/* Tooltip */}
         <div
           className={`absolute z-60 tour-tooltip animate-modal-fade-in ${
-            step.target === 'body' ? 'tour-tooltip-center' : ''
+            step.target === 'body' || !document.querySelector(step.target) || 
+            (document.querySelector(step.target) && document.querySelector(step.target)!.offsetParent === null)
+              ? 'tour-tooltip-center' : ''
           }`}
-          style={step.target !== 'body' ? {
+          style={step.target !== 'body' && 
+            document.querySelector(step.target) && 
+            document.querySelector(step.target)!.offsetParent !== null ? {
             top: tooltipPosition.top,
             left: tooltipPosition.left,
             transform: getTooltipTransform(step.position)
