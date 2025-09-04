@@ -1,0 +1,11 @@
+Position,Name,Question,Description,NumRepetitions,Interval,Color
+001,Vaping,How many puffs today,,1,1,#5D4037
+002,No Pot,Did you not smoke up?,,1,1,#8E24AA
+003,Quit Valorant,Did you game,,1,1,#F9A825
+004,Wake Up Early,Did you wake up early,,1,1,#7CB342
+005,Walk,Go for a walk,,1,1,#00897B
+006,No Energy Drink,,,1,1,#AFB42B
+007,Coding,build,,1,1,#D81B60
+008,Shower,filthy,,1,1,#FF8F00
+009,University,"docs, applications, research",,1,1,#5D4037
+010,Gym,Did you go to the gym?,,1,1,#8E24AA

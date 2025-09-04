@@ -1,0 +1,237 @@
+---
+// Public progress sharing page
+import Layout from '../../../layouts/Layout.astro';
+
+const { token } = Astro.params;
+
+if (!token) {
+  return Astro.redirect('/404');
+}
+
+// Fetch the shared progress summary
+let progressData = null;
+let error = null;
+
+try {
+  const response = await fetch(`${Astro.url.origin}/api/cross-module/share?token=${token}`);
+  
+  if (response.ok) {
+    const data = await response.json();
+    progressData = data.data;
+  } else {
+    error = 'Progress summary not found or no longer available';
+  }
+} catch (err) {
+  error = 'Failed to load progress summary';
+}
+
+if (error || !progressData) {
+  return Astro.redirect('/404');
+}
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
+const getScoreColor = (score: number) => {
+  if (score >= 80) return 'text-green-600';
+  if (score >= 60) return 'text-yellow-600';
+  if (score >= 40) return 'text-orange-600';
+  return 'text-red-600';
+};
+
+const getScoreGradient = (score: number) => {
+  if (score >= 80) return 'from-green-500 to-emerald-600';
+  if (score >= 60) return 'from-yellow-500 to-orange-500';
+  if (score >= 40) return 'from-orange-500 to-red-500';
+  return 'from-red-500 to-red-700';
+};
+---
+
+<Layout title={`${progressData.user_display_name}'s Progress - ${progressData.title}`}>
+  <div class="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div class="max-w-4xl mx-auto px-4 py-8">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold text-gray-900 mb-2">
+          {progressData.title}
+        </h1>
+        <p class="text-xl text-gray-600 mb-4">
+          Shared by {progressData.user_display_name}
+        </p>
+        <p class="text-gray-500">
+          {formatDate(progressData.period_start)} - {formatDate(progressData.period_end)}
+        </p>
+      </div>
+
+      <!-- Life Scores Overview -->
+      {progressData.data.scores && progressData.data.scores.length > 0 && (
+        <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+          <h2 class="text-2xl font-semibold text-gray-900 mb-6">Life Optimization Scores</h2>
+          
+          {progressData.data.scores.map((score: any) => (
+            <div class="mb-6 last:mb-0" key={score.id}>
+              <div class="flex justify-between items-center mb-4">
+                <span class="text-gray-600">{formatDate(score.score_date)}</span>
+                <span class={`text-3xl font-bold ${getScoreColor(score.overall_score)}`}>
+                  {Math.round(score.overall_score)}/100
+                </span>
+              </div>
+              
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="text-center">
+                  <div class="text-lg font-semibold text-green-600">
+                    {Math.round(score.habits_score)}
+                  </div>
+                  <div class="text-sm text-gray-500">Habits</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-lg font-semibold text-blue-600">
+                    {Math.round(score.tasks_score)}
+                  </div>
+                  <div class="text-sm text-gray-500">Tasks</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-lg font-semibold text-red-600">
+                    {Math.round(score.health_score)}
+                  </div>
+                  <div class="text-sm text-gray-500">Health</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-lg font-semibold text-yellow-600">
+                    {Math.round(score.productivity_score)}
+                  </div>
+                  <div class="text-sm text-gray-500">Productivity</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-lg font-semibold text-purple-600">
+                    {Math.round(score.content_score)}
+                  </div>
+                  <div class="text-sm text-gray-500">Content</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <!-- Statistics Grid -->
+      <div class="grid md:grid-cols-2 gap-8 mb-8">
+        <!-- Habits Stats -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="text-2xl">🎯</span>
+            <h3 class="text-xl font-semibold text-gray-900">Habits</h3>
+          </div>
+          
+          <div class="space-y-3">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Completed</span>
+              <span class="font-semibold">{progressData.data.habits.completed}</span>
+            </div>
+            
+            {progressData.data.habits.categories && Object.keys(progressData.data.habits.categories).length > 0 && (
+              <div>
+                <div class="text-sm text-gray-500 mb-2">By Category</div>
+                {Object.entries(progressData.data.habits.categories).map(([category, count]: [string, any]) => (
+                  <div class="flex justify-between text-sm" key={category}>
+                    <span class="capitalize">{category}</span>
+                    <span>{count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <!-- Tasks Stats -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="text-2xl">✅</span>
+            <h3 class="text-xl font-semibold text-gray-900">Tasks</h3>
+          </div>
+          
+          <div class="space-y-3">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Completed</span>
+              <span class="font-semibold">{progressData.data.tasks.completed}</span>
+            </div>
+            
+            {progressData.data.tasks.by_priority && Object.keys(progressData.data.tasks.by_priority).length > 0 && (
+              <div>
+                <div class="text-sm text-gray-500 mb-2">By Priority</div>
+                {Object.entries(progressData.data.tasks.by_priority).map(([priority, count]: [string, any]) => (
+                  <div class="flex justify-between text-sm" key={priority}>
+                    <span class="capitalize">{priority}</span>
+                    <span>{count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <!-- Achievements -->
+      {progressData.data.achievements && progressData.data.achievements.length > 0 && (
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h3 class="text-xl font-semibold text-gray-900 mb-4">🏆 Achievements Earned</h3>
+          
+          <div class="grid md:grid-cols-2 gap-4">
+            {progressData.data.achievements.map((userAchievement: any) => (
+              <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg" key={userAchievement.id}>
+                <span class="text-2xl">{userAchievement.achievement?.icon || '🏆'}</span>
+                <div>
+                  <div class="font-medium">{userAchievement.achievement?.name}</div>
+                  <div class="text-sm text-gray-600">{userAchievement.achievement?.description}</div>
+                  {userAchievement.achievement?.reward_tokens > 0 && (
+                    <div class="text-xs text-yellow-600">+{userAchievement.achievement.reward_tokens} tokens</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- Insights -->
+      {progressData.data.insights && progressData.data.insights.length > 0 && (
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+          <h3 class="text-xl font-semibold text-gray-900 mb-4">💡 Key Insights</h3>
+          
+          <div class="space-y-3">
+            {progressData.data.insights.map((insight: string, index: number) => (
+              <div class="flex items-start gap-3 p-3 bg-blue-50 rounded-lg" key={index}>
+                <span class="text-blue-600 mt-1">•</span>
+                <span class="text-gray-700">{insight}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <!-- Footer -->
+      <div class="text-center py-8">
+        <p class="text-gray-500 mb-4">
+          Want to track your own progress like this?
+        </p>
+        <a 
+          href="/" 
+          class="inline-block bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all"
+        >
+          Get Started with MessyOS
+        </a>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  body {
+    background: linear-gradient(135deg, #f3e8ff 0%, #dbeafe 100%);
+  }
+</style>

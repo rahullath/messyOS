@@ -3,23 +3,22 @@ import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../../lib/auth/simple-multi-user';
 
 export const POST: APIRoute = async ({ request, params, cookies }) => {
-    const serverAuth = createServerAuth(cookies);
-    const user = await serverAuth.requireAuth();
-    const supabase = serverAuth.supabase;
-  
   const habitId = params.id as string;
 
   try {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.requireAuth();
+    const supabase = serverAuth.supabase;
     const body = await request.json();
     const { 
       value = 1,     // 0=missed, 1=completed, 2=skipped, 3=partial
       date,          // ✅ Allow custom date
       notes,
-      effort,
-      duration,
+      effort = 3,
+      duration,      // Duration in minutes
       completion_time,
-      energy_level,
-      mood,
+      energy_level = 3,
+      mood = 3,
       location,
       weather,
       context = []
@@ -43,15 +42,15 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
         .from('habit_entries')
         .update({
           value,
-          notes,
+          notes: notes || null,
           effort,
-          duration,
-          completion_time,
+          duration_minutes: duration || null,
+          completion_time: completion_time || null,
           energy_level,
           mood,
-          location,
-          weather,
-          context: Array.isArray(context) ? context : context.split(',').filter((c: string) => c.trim()),
+          location: location || null,
+          weather: weather || null,
+          context_tags: Array.isArray(context) ? context : (typeof context === 'string' ? context.split(',').filter((c: string) => c.trim()) : []),
           logged_at: new Date().toISOString()
         })
         .eq('id', existingEntry.id)
@@ -76,15 +75,15 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
         habit_id: habitId,
         user_id: user.id,
         value,
-        notes,
+        notes: notes || null,
         effort,
-        duration,
-        completion_time,
+        duration_minutes: duration || null,
+        completion_time: completion_time || null,
         energy_level,
         mood,
-        location,
-        weather,
-        context: Array.isArray(context) ? context : context.split(',').filter((c: string) => c.trim()),
+        location: location || null,
+        weather: weather || null,
+        context_tags: Array.isArray(context) ? context : (typeof context === 'string' ? context.split(',').filter((c: string) => c.trim()) : []),
         logged_at: new Date().toISOString(),
         date: targetDate
       }])
@@ -150,8 +149,8 @@ async function updateHabitStreak(supabase: any, habitId: string, userId: string)
         if (i === 0 || currentStreak > 0) currentStreak++;
         tempStreak++;
       } else if (entry.value === 2) { // Skipped - doesn't break streak
+        if (i === 0 || currentStreak > 0) currentStreak++;
         tempStreak++;
-        continue;
       } else { // Failed (value = 0)
         if (currentStreak === 0) currentStreak = tempStreak;
         break;

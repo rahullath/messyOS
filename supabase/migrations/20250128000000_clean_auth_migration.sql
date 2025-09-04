@@ -1,7 +1,17 @@
 -- Supabase-Only Migration SQL
 -- Clean migration for pure Supabase authentication with simulated wallet
 
--- Step 1: Add simulated wallet columns to profiles table
+-- Step 1: Create profiles table if it doesn't exist
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT,
+    full_name TEXT,
+    avatar_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add simulated wallet columns to profiles table
 ALTER TABLE profiles 
 ADD COLUMN IF NOT EXISTS simulated_wallet_address TEXT,
 ADD COLUMN IF NOT EXISTS wallet_created_at TIMESTAMPTZ,

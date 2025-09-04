@@ -204,6 +204,10 @@ self.addEventListener('sync', (event) => {
   if (event.tag === 'token-sync') {
     event.waitUntil(syncTokenData());
   }
+  
+  if (event.tag === 'habit-sync') {
+    event.waitUntil(syncHabitEntries());
+  }
 });
 
 // Push notifications (for future use)
@@ -242,11 +246,38 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('Service Worker: Notification clicked', event);
   
-  event.notification.close();
+  const notification = event.notification;
+  const action = event.action;
+  const data = notification.data || {};
   
-  if (event.action === 'explore') {
+  notification.close();
+  
+  if (action === 'complete' && data.habitId) {
+    // Handle habit completion from notification
+    event.waitUntil(handleHabitCompletion(data.habitId, data.habitName));
+  } else if (action === 'snooze' && data.habitId) {
+    // Snooze for 1 hour
+    event.waitUntil(scheduleSnoozeNotification(data.habitId, data.habitName));
+  } else if (action === 'dismiss') {
+    // Just close the notification
+    return;
+  } else if (action === 'explore') {
+    event.waitUntil(clients.openWindow('/dashboard'));
+  } else {
+    // Default action - open the habits page
     event.waitUntil(
-      clients.openWindow('/dashboard')
+      clients.matchAll({ type: 'window' }).then((clientList) => {
+        // If app is already open, focus it
+        for (const client of clientList) {
+          if (client.url.includes('/habits') && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // Otherwise open new window
+        if (clients.openWindow) {
+          return clients.openWindow(data.url || '/habits');
+        }
+      })
     );
   }
 });
@@ -261,12 +292,199 @@ async function retryFailedAuth() {
   }
 }
 
+// Handle habit completion from notification
+async function handleHabitCompletion(habitId, habitName) {
+  try {
+    console.log('Service Worker: Completing habit from notification', habitId);
+    
+    const response = await fetch('/api/habits/batch-complete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        completions: [{
+          habitId: habitId,
+          value: 1,
+          date: new Date().toISOString().split('T')[0],
+          notes: 'Completed from notification'
+        }]
+      })
+    });
+
+    if (response.ok) {
+      // Show success notification
+      await self.registration.showNotification(`${habitName} completed! 🎉`, {
+        body: 'Great job staying consistent!',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-96x96.png',
+        tag: `habit-completed-${habitId}`,
+        requireInteraction: false,
+        vibrate: [100, 50, 100],
+        data: { type: 'success', habitId }
+      });
+      
+      // Notify main thread
+      const clients = await self.clients.matchAll();
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'HABIT_COMPLETED_FROM_NOTIFICATION',
+          habitId,
+          habitName
+        });
+      });
+    } else {
+      throw new Error('Failed to complete habit');
+    }
+  } catch (error) {
+    console.error('Service Worker: Error completing habit:', error);
+    
+    // Show error notification
+    await self.registration.showNotification('Unable to complete habit', {
+      body: 'Please open the app to complete your habit.',
+      icon: '/icons/icon-192x192.png',
+      tag: `habit-error-${habitId}`,
+      actions: [
+        { action: 'open', title: 'Open App' }
+      ],
+      data: { type: 'error', habitId }
+    });
+  }
+}
+
+// Schedule snooze notification
+async function scheduleSnoozeNotification(habitId, habitName) {
+  console.log('Service Worker: Scheduling snooze notification', habitId);
+  
+  // Schedule notification for 1 hour later
+  setTimeout(async () => {
+    await self.registration.showNotification(`Reminder: ${habitName}`, {
+      body: 'Don\'t forget to complete your habit!',
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-96x96.png',
+      tag: `habit-snooze-${habitId}`,
+      requireInteraction: true,
+      vibrate: [200, 100, 200],
+      actions: [
+        { action: 'complete', title: 'Mark Complete' },
+        { action: 'snooze', title: 'Snooze Again' },
+        { action: 'dismiss', title: 'Dismiss' }
+      ],
+      data: {
+        type: 'reminder',
+        habitId,
+        habitName,
+        url: '/habits'
+      }
+    });
+  }, 60 * 60 * 1000); // 1 hour
+}
+
 async function syncTokenData() {
   try {
     // Implement token sync logic here
     console.log('Service Worker: Syncing token data');
   } catch (error) {
     console.error('Service Worker: Token sync failed', error);
+  }
+}
+
+async function syncHabitEntries() {
+  try {
+    console.log('Service Worker: Syncing habit entries...');
+    
+    // Get offline queue from localStorage
+    const offlineQueue = await getOfflineHabitQueue();
+    
+    if (offlineQueue.length === 0) {
+      console.log('Service Worker: No offline habit entries to sync');
+      return;
+    }
+    
+    let syncedCount = 0;
+    const failedEntries = [];
+    
+    for (const entry of offlineQueue) {
+      try {
+        const response = await fetch(`/api/habits/${entry.habitId}/log-enhanced`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            value: entry.value,
+            date: entry.date,
+            notes: `Synced from offline (${new Date(entry.timestamp).toLocaleString()})`
+          })
+        });
+        
+        if (response.ok) {
+          syncedCount++;
+        } else {
+          failedEntries.push(entry);
+        }
+      } catch (error) {
+        console.error('Service Worker: Failed to sync habit entry:', error);
+        failedEntries.push(entry);
+      }
+    }
+    
+    // Update the offline queue to remove synced entries
+    await updateOfflineQueue(failedEntries);
+    
+    console.log(`Service Worker: Successfully synced ${syncedCount} habit entries`);
+    
+    // Notify the main thread about sync completion
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'HABIT_SYNC_COMPLETE',
+        syncedCount,
+        failedCount: failedEntries.length
+      });
+    });
+    
+  } catch (error) {
+    console.error('Service Worker: Habit sync failed:', error);
+    throw error;
+  }
+}
+
+async function getOfflineHabitQueue() {
+  try {
+    // Since we can't access localStorage directly in service worker,
+    // we'll need to communicate with the main thread
+    const clients = await self.clients.matchAll();
+    if (clients.length > 0) {
+      return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (event) => {
+          resolve(event.data.queue || []);
+        };
+        
+        clients[0].postMessage({
+          type: 'GET_OFFLINE_QUEUE'
+        }, [channel.port2]);
+      });
+    }
+    return [];
+  } catch (error) {
+    console.error('Service Worker: Failed to get offline queue:', error);
+    return [];
+  }
+}
+
+async function updateOfflineQueue(remainingEntries) {
+  try {
+    const clients = await self.clients.matchAll();
+    if (clients.length > 0) {
+      clients[0].postMessage({
+        type: 'UPDATE_OFFLINE_QUEUE',
+        queue: remainingEntries
+      });
+    }
+  } catch (error) {
+    console.error('Service Worker: Failed to update offline queue:', error);
   }
 }
 

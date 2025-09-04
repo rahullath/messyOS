@@ -1,7 +1,7 @@
 ---
 // src/pages/import.astro - Enhanced with Finance Import
 import DashboardLayout from '../layouts/DashboardLayout.astro';
-import LoopHabitsImport from '../components/import/LoopHabitsImport.tsx';
+import EnhancedLoopHabitsImport from '../components/import/EnhancedLoopHabitsImport.tsx';
 import FinanceDataImport from '../components/import/FinanceDataImport.tsx';
 import ContentDataImport from '../components/import/ContentDataImport.tsx';
 ---
@@ -32,7 +32,7 @@ import ContentDataImport from '../components/import/ContentDataImport.tsx';
           </div>
         </div>
         
-        <LoopHabitsImport client:load />
+        <EnhancedLoopHabitsImport client:load />
         
         <!-- Import Instructions -->
         <div class="card p-4 bg-accent-success/5 border border-accent-success/20">

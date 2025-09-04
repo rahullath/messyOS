@@ -1,0 +1,42 @@
+---
+// Test page for cross-module integration
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Cross-Module Integration Test">
+  <div id="cross-module-root"></div>
+</Layout>
+
+<script>
+  import React from 'react';
+  import { createRoot } from 'react-dom/client';
+  import { LifeOptimizationDashboard } from '../components/cross-module/LifeOptimizationDashboard';
+
+  // Mock auth data for testing
+  const mockUserId = 'test-user-id';
+  const mockAuthToken = 'test-auth-token';
+
+  const container = document.getElementById('cross-module-root');
+  if (container) {
+    const root = createRoot(container);
+    root.render(
+      React.createElement(LifeOptimizationDashboard, {
+        userId: mockUserId,
+        authToken: mockAuthToken
+      })
+    );
+  }
+</script>
+
+<style>
+  body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+  }
+  
+  #cross-module-root {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+</style>

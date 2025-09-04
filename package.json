@@ -14,7 +14,14 @@
     "db:generate-types": "supabase gen types typescript --project-id YOUR_PROJECT_ID > src/types/supabase.ts",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "test:habits": "vitest --run src/test/unit/habit-*.test.ts src/test/integration/*habits*.test.ts src/test/e2e/habit-*.test.ts",
+    "test:habits:unit": "vitest --run src/test/unit/habit-*.test.ts src/test/unit/streak-*.test.ts",
+    "test:habits:integration": "vitest --run src/test/integration/*habits*.test.ts src/test/integration/enhanced-logging*.test.ts src/test/integration/analytics-*.test.ts src/test/integration/mobile-*.test.ts",
+    "test:habits:e2e": "vitest --run src/test/e2e/habit-*.test.ts",
+    "test:habits:performance": "vitest --run src/test/performance/habits-*.test.ts",
+    "test:habits:all": "vitest --run src/test/unit/habit-*.test.ts src/test/unit/streak-*.test.ts src/test/integration/*habits*.test.ts src/test/integration/enhanced-logging*.test.ts src/test/integration/analytics-*.test.ts src/test/integration/mobile-*.test.ts src/test/e2e/habit-*.test.ts src/test/performance/habits-*.test.ts",
+    "test:coverage": "vitest --run --coverage"
   },
   "dependencies": {
     "@astrojs/react": "^4.3.0",
