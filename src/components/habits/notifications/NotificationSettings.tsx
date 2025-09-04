@@ -1,6 +1,6 @@
 // src/components/habits/notifications/NotificationSettings.tsx
 import React, { useState, useEffect } from 'react';
-import { notificationService, HabitReminder, formatReminderTime, getDayNames } from '../../../lib/habits/notifications';
+import { notificationService, formatReminderTime, getDayNames, type HabitReminder } from '../../../lib/habits/notifications';
 
 interface NotificationSettingsProps {
   habitId: string;

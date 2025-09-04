@@ -333,6 +333,9 @@ class HabitNotificationService {
 // Export singleton instance
 export const notificationService = new HabitNotificationService();
 
+// Re-export the interface for easier importing
+export type { HabitReminder, NotificationPermission };
+
 // Utility functions
 export const formatReminderTime = (time: string): string => {
   const [hours, minutes] = time.split(':').map(Number);

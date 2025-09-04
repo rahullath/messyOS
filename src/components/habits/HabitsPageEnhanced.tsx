@@ -18,6 +18,13 @@ interface NewHabitData {
   allows_skips: boolean;
 }
 
+// Declare global function for TypeScript
+declare global {
+  interface Window {
+    openHabitCreationModal?: () => void;
+  }
+}
+
 export default function HabitsPageEnhanced() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [habitsData, setHabitsData] = useState<any>(null);
@@ -67,9 +74,11 @@ export default function HabitsPageEnhanced() {
   // Function to be called from the global scope
   React.useEffect(() => {
     // Make the function available globally so the button can call it
-    (window as any).openHabitCreationModal = () => {
+    const openModal = () => {
       setIsModalOpen(true);
     };
+    
+    (window as any).openHabitCreationModal = openModal;
 
     // Extract habits data from the page for mobile quick actions
     const extractHabitsData = () => {
