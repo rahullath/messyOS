@@ -1,13 +1,15 @@
 // src/pages/api/habits/create.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import { createServerClient } from '../../../lib/supabase/server';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const serverAuth = createServerAuth(cookies);
-  const user = await serverAuth.requireAuth();
-  const supabase = serverAuth.supabase;
+  const supabase = createServerClient(cookies);
 
   try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
     const body = await request.json();
     const {
       name,

@@ -26,7 +26,16 @@
       "Bash(psql:*)",
       "Bash(copy supabase-clean-migration.sql supabasemigrations20250128000000_clean_auth_migration.sql)",
       "Bash(del \"src\\pages\\api\\auth\\privy-sync.ts\")",
-      "WebFetch(domain:supabase.com)"
+      "WebFetch(domain:supabase.com)",
+      "Bash(supabase status:*)",
+      "Bash(supabase start:*)",
+      "Bash(supabase db reset:*)",
+      "Bash(supabase stop:*)",
+      "Bash(supabase init:*)",
+      "Bash(supabase link:*)",
+      "Bash(timeout:*)",
+      "Bash(node:*)",
+      "Bash(supabase db inspect:*)"
     ],
     "deny": []
   }

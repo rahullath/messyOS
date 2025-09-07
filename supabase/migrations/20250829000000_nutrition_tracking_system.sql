@@ -143,7 +143,8 @@ CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredient
 CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_food_id ON recipe_ingredients(food_id);
 
 CREATE INDEX IF NOT EXISTS idx_food_logs_user_id ON food_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_food_logs_date ON food_logs(DATE(logged_at));
+-- Note: Functional index on date removed due to immutability constraints
+-- Queries can still filter on logged_at directly for date ranges
 CREATE INDEX IF NOT EXISTS idx_food_logs_meal_type ON food_logs(meal_type);
 
 CREATE INDEX IF NOT EXISTS idx_nutrition_goals_user_id ON nutrition_goals(user_id);
@@ -411,9 +412,9 @@ INSERT INTO foods (name, category, subcategory, calories, protein, carbs, fat, f
 ('Olive Oil', 'fats', 'cooking_oil', 884, 0.0, 0.0, 100.0, 0.0, '[{"name": "1 tsp", "grams": 5}, {"name": "1 tbsp", "grams": 15}]', 'western'),
 
 -- Spices and seasonings (commonly used in significant quantities)
-('Coconut (fresh)', 'nuts_seeds', 'coconut', 354, 3.3, 15.2, 33.5, 9.0, '[{"name": "1/4 cup shredded", "grams": 20}, {"name": "1 tbsp", "grams": 15}]', 'indian')
+('Coconut (fresh)', 'nuts_seeds', 'coconut', 354, 3.3, 15.2, 33.5, 9.0, '[{"name": "1/4 cup shredded", "grams": 20}, {"name": "1 tbsp", "grams": 15}]', 'indian');
 
-ON CONFLICT (name) DO NOTHING;
+-- Note: ON CONFLICT removed as name column doesn't have unique constraint
 
 -- Step 10: Add comments
 COMMENT ON TABLE foods IS 'Master food database with nutrition per 100g';

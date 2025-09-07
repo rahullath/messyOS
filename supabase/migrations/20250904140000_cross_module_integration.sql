@@ -368,8 +368,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_life_score_on_task_completion
-  AFTER INSERT OR UPDATE ON tasks
-  FOR EACH ROW
-  WHEN (NEW.status = 'completed' AND (OLD IS NULL OR OLD.status != 'completed'))
-  EXECUTE FUNCTION trigger_update_life_score_tasks();
+-- TODO: Enable this trigger after tasks table is created in later migration
+-- CREATE TRIGGER update_life_score_on_task_completion
+--   AFTER INSERT OR UPDATE ON tasks
+--   FOR EACH ROW
+--   WHEN (NEW.status = 'completed' AND (OLD IS NULL OR OLD.status != 'completed'))
+--   EXECUTE FUNCTION trigger_update_life_score_tasks();

@@ -1,0 +1,76 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Skip Onboarding - MeshOS">
+  <div class="min-h-screen bg-background flex items-center justify-center p-6">
+    <div class="max-w-md w-full">
+      <div class="card p-8">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold mb-4 text-text-primary">Skip Onboarding</h1>
+          <p class="text-text-secondary">
+            Having trouble with the onboarding page? Click below to skip it and go straight to your dashboard.
+          </p>
+        </div>
+
+        <div class="space-y-4">
+          <button
+            id="skip-btn"
+            class="w-full bg-accent-primary hover:bg-accent-primary/90 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+          >
+            Skip Onboarding & Go to Dashboard
+          </button>
+
+          <div class="text-center">
+            <a href="/onboarding" class="text-accent-primary hover:text-accent-primary/80 underline text-sm">
+              Try onboarding again
+            </a>
+          </div>
+        </div>
+
+        <div id="status" class="mt-4 text-center text-sm"></div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const skipBtn = document.getElementById('skip-btn');
+    const status = document.getElementById('status');
+    
+    if (skipBtn && status) {
+      skipBtn.addEventListener('click', async function() {
+        skipBtn.disabled = true;
+        skipBtn.textContent = 'Skipping...';
+        status.textContent = '';
+        
+        try {
+          const response = await fetch('/api/skip-onboarding', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            status.innerHTML = '<span class="text-accent-success">✅ Success! Redirecting...</span>';
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 1000);
+          } else {
+            status.innerHTML = `<span class="text-accent-error">❌ Error: ${result.error}</span>`;
+            skipBtn.disabled = false;
+            skipBtn.textContent = 'Skip Onboarding & Go to Dashboard';
+          }
+        } catch (error) {
+          status.innerHTML = `<span class="text-accent-error">❌ Network error: ${error.message}</span>`;
+          skipBtn.disabled = false;
+          skipBtn.textContent = 'Skip Onboarding & Go to Dashboard';
+        }
+      });
+    }
+  });
+</script>

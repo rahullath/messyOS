@@ -13,44 +13,44 @@ DROP INDEX IF EXISTS idx_habit_entries_habit_date;
 DROP INDEX IF EXISTS idx_habit_entries_date;
 
 -- Composite indexes for common query patterns
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habits_user_active_position 
+CREATE INDEX IF NOT EXISTS idx_habits_user_active_position 
 ON habits(user_id, is_active, position) 
 WHERE user_id IS NOT NULL AND is_active = true;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habits_user_category_type 
+CREATE INDEX IF NOT EXISTS idx_habits_user_category_type 
 ON habits(user_id, category, type) 
 WHERE user_id IS NOT NULL;
 
 -- Optimized indexes for habit entries with date-based queries
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habit_entries_user_date_desc 
+CREATE INDEX IF NOT EXISTS idx_habit_entries_user_date_desc 
 ON habit_entries(user_id, date DESC, habit_id) 
 WHERE user_id IS NOT NULL;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habit_entries_habit_date_value 
+CREATE INDEX IF NOT EXISTS idx_habit_entries_habit_date_value 
 ON habit_entries(habit_id, date DESC, value) 
 WHERE habit_id IS NOT NULL;
 
 -- Index for streak calculations (consecutive date queries)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habit_entries_streak_calc 
+CREATE INDEX IF NOT EXISTS idx_habit_entries_streak_calc 
 ON habit_entries(habit_id, date, value) 
 WHERE habit_id IS NOT NULL AND value IS NOT NULL;
 
 -- Context data indexes for analytics queries
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habit_entries_context_analytics 
+CREATE INDEX IF NOT EXISTS idx_habit_entries_context_analytics 
 ON habit_entries USING GIN(context_tags) 
 WHERE context_tags IS NOT NULL AND array_length(context_tags, 1) > 0;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habit_entries_mood_energy 
+CREATE INDEX IF NOT EXISTS idx_habit_entries_mood_energy 
 ON habit_entries(user_id, mood, energy_level, date) 
 WHERE user_id IS NOT NULL AND mood IS NOT NULL AND energy_level IS NOT NULL;
 
 -- Location-based analytics index
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habit_entries_location_success 
+CREATE INDEX IF NOT EXISTS idx_habit_entries_location_success 
 ON habit_entries(user_id, location, value, date) 
 WHERE user_id IS NOT NULL AND location IS NOT NULL;
 
 -- Time-based completion patterns
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_habit_entries_completion_time 
+CREATE INDEX IF NOT EXISTS idx_habit_entries_completion_time 
 ON habit_entries(user_id, completion_time, value, date) 
 WHERE user_id IS NOT NULL AND completion_time IS NOT NULL;
 
@@ -72,7 +72,8 @@ SELECT
     AVG(mood) FILTER (WHERE mood IS NOT NULL) as avg_mood,
     AVG(energy_level) FILTER (WHERE energy_level IS NOT NULL) as avg_energy,
     array_agg(DISTINCT location) FILTER (WHERE location IS NOT NULL) as locations,
-    array_agg(DISTINCT unnest(context_tags)) FILTER (WHERE context_tags IS NOT NULL) as all_tags
+    -- Note: Simplified tags aggregation to avoid set-returning function in aggregate
+    jsonb_agg(DISTINCT context_tags) FILTER (WHERE context_tags IS NOT NULL) as all_tags
 FROM habit_entries 
 WHERE user_id IS NOT NULL
 GROUP BY user_id, date;
@@ -84,9 +85,9 @@ ON habit_daily_summary(user_id, date);
 -- Weekly habit statistics
 CREATE MATERIALIZED VIEW IF NOT EXISTS habit_weekly_stats AS
 SELECT 
-    user_id,
-    habit_id,
-    date_trunc('week', date) as week_start,
+    he.user_id,
+    he.habit_id,
+    date_trunc('week', he.date) as week_start,
     COUNT(*) as entries_count,
     COUNT(*) FILTER (WHERE value > 0) as completions,
     ROUND(
@@ -100,7 +101,7 @@ SELECT
 FROM habit_entries he
 JOIN habits h ON he.habit_id = h.id
 WHERE he.user_id IS NOT NULL AND h.is_active = true
-GROUP BY user_id, habit_id, date_trunc('week', date);
+GROUP BY he.user_id, he.habit_id, date_trunc('week', he.date);
 
 -- Create index on weekly stats
 CREATE INDEX IF NOT EXISTS idx_habit_weekly_stats_user_week 
@@ -304,7 +305,8 @@ BEGIN
                 AND he.value > 0
             ) as optimal_times,
             -- Success-associated tags
-            array_agg(DISTINCT unnest(he.context_tags)) FILTER (
+            -- Note: Simplified tags aggregation to avoid set-returning function in aggregate
+            jsonb_agg(DISTINCT he.context_tags) FILTER (
                 WHERE he.context_tags IS NOT NULL 
                 AND he.value > 0
             ) as success_tags
@@ -347,8 +349,8 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION refresh_habit_analytics()
 RETURNS void AS $$
 BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY habit_daily_summary;
-    REFRESH MATERIALIZED VIEW CONCURRENTLY habit_weekly_stats;
+    REFRESH MATERIALIZED VIEW habit_daily_summary;
+    REFRESH MATERIALIZED VIEW habit_weekly_stats;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -464,4 +466,4 @@ END $$;
 --       PERFORM update_user_habit_streaks(user_record.user_id); 
 --     END LOOP; END $$;');
 
-COMMENT ON MIGRATION IS 'Comprehensive performance optimization for habits module including advanced indexing, materialized views, optimized functions, and monitoring';
+-- Migration: Comprehensive performance optimization for habits module including advanced indexing, materialized views, optimized functions, and monitoring

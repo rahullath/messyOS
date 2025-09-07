@@ -94,9 +94,9 @@ GRANT ALL ON ai_usage_tracking TO authenticated;
 
 -- Create function to clean up expired insights
 CREATE OR REPLACE FUNCTION cleanup_expired_insights()
-RETURNS void AS $
+RETURNS void AS $$
 BEGIN
     DELETE FROM habit_insights 
     WHERE expires_at IS NOT NULL AND expires_at < NOW();
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;

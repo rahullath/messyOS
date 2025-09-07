@@ -62,10 +62,17 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
 
       console.log(`📋 Onboarding status: ${hasCompletedOnboarding ? 'complete' : 'pending'}`);
 
-      // Force onboarding if not completed
-      if (!hasCompletedOnboarding && pathname !== '/onboarding') {
+      // NUCLEAR BYPASS: Skip onboarding check for your specific email
+      const isYourEmail = user.email === 'ketaminedevs@gmail.com';
+      
+      // Force onboarding if not completed, but allow bypass routes and your email
+      if (!hasCompletedOnboarding && !isYourEmail && pathname !== '/onboarding' && pathname !== '/skip-onboarding' && pathname !== '/bypass-onboarding') {
         console.log(`📝 Redirecting to onboarding from ${pathname}`);
         return redirect('/onboarding');
+      }
+      
+      if (isYourEmail) {
+        console.log(`🚀 NUCLEAR BYPASS: Allowing access for ${user.email}`);
       }
 
       // If onboarding is complete and user is on onboarding page, redirect to dashboard

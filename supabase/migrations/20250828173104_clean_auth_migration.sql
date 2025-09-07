@@ -296,10 +296,8 @@ LEFT JOIN bank_transaction_insights b ON u.id = b.user_id;
 -- Grant access to the view
 GRANT SELECT ON user_dashboard_view TO authenticated;
 
--- Create RLS policy for the view
-DROP POLICY IF EXISTS "Users can view own dashboard" ON user_dashboard_view;
-CREATE POLICY "Users can view own dashboard" ON user_dashboard_view
-  FOR SELECT USING (auth.uid() = id);
+-- Note: RLS policies cannot be created on views, only on tables
+-- The security is handled through the underlying tables' policies
 
 -- Step 11: Create function for token spending analytics
 CREATE OR REPLACE FUNCTION get_user_spending_analytics(

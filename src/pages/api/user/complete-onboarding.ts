@@ -2,7 +2,7 @@
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
-export const POST: APIRoute = async ({ cookies }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.getUser();
@@ -81,12 +81,27 @@ export const POST: APIRoute = async ({ cookies }) => {
 
     console.log('✅ Default preferences created, onboarding complete');
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: 'Onboarding completed successfully'
-    }), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    // Check if this is a form submission (redirect) or API call (JSON)
+    const contentType = request.headers.get('content-type') || '';
+    const isFormSubmission = !contentType.includes('application/json');
+    
+    if (isFormSubmission) {
+      // Form submission - redirect to tasks page
+      return new Response(null, {
+        status: 302,
+        headers: {
+          'Location': '/tasks'
+        }
+      });
+    } else {
+      // API call - return JSON
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Onboarding completed successfully'
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
   } catch (error: any) {
     console.error('❌ Complete onboarding error:', error);

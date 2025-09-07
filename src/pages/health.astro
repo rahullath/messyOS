@@ -12,15 +12,15 @@ if (!user) {
   return Astro.redirect('/login');
 }
 
-// Fetch health metrics from the last 30 days
+// Fetch fitness metrics from the last 30 days
 const thirtyDaysAgo = new Date();
 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
 const { data: healthMetrics, error } = await supabase
-  .from('metrics')
-  .select('type, value, unit, metadata, recorded_at')
+  .from('fitness_metrics')
+  .select('metric_type, value, unit, recorded_at')
   .eq('user_id', user.id)
-  .in('type', ['sleep_duration', 'heart_rate_avg', 'heart_rate_min', 'heart_rate_max', 'stress_level', 'health_score'])
+  .in('metric_type', ['sleep_duration', 'heart_rate_avg', 'heart_rate_min', 'heart_rate_max', 'stress_level', 'health_score'])
   .gte('recorded_at', thirtyDaysAgo.toISOString())
   .order('recorded_at', { ascending: false });
 
@@ -32,10 +32,10 @@ if (error) {
 const metrics = healthMetrics || [];
 
 // Group by type
-const sleepData = metrics.filter(m => m.type === 'sleep_duration');
-const heartRateData = metrics.filter(m => m.type === 'heart_rate_avg');
-const stressData = metrics.filter(m => m.type === 'stress_level');
-const healthScores = metrics.filter(m => m.type === 'health_score');
+const sleepData = metrics.filter(m => m.metric_type === 'sleep_duration');
+const heartRateData = metrics.filter(m => m.metric_type === 'heart_rate_avg');
+const stressData = metrics.filter(m => m.metric_type === 'stress_level');
+const healthScores = metrics.filter(m => m.metric_type === 'health_score');
 
 // Calculate statistics
 const avgSleep = sleepData.length > 0 
@@ -76,9 +76,9 @@ for (let i = 6; i >= 0; i--) {
     m.recorded_at.split('T')[0] === dateStr
   );
   
-  const sleepMetric = dayMetrics.find(m => m.type === 'sleep_duration');
-  const heartRateMetric = dayMetrics.find(m => m.type === 'heart_rate_avg');
-  const stressMetric = dayMetrics.find(m => m.type === 'stress_level');
+  const sleepMetric = dayMetrics.find(m => m.metric_type === 'sleep_duration');
+  const heartRateMetric = dayMetrics.find(m => m.metric_type === 'heart_rate_avg');
+  const stressMetric = dayMetrics.find(m => m.metric_type === 'stress_level');
   
   chartData.push({
     date: dateStr,

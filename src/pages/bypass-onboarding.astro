@@ -1,0 +1,34 @@
+---
+// Create minimal user preferences to bypass onboarding completely
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// Check if user already has preferences
+const existingPrefs = await serverAuth.getUserPreferences(user.id);
+
+if (!existingPrefs) {
+  // Create MINIMAL preferences with only essential column (user_id)
+  const minimalPreferences = {
+    user_id: user.id
+  };
+
+  const { error } = await serverAuth.supabase
+    .from('user_preferences')
+    .insert(minimalPreferences);
+
+  if (error) {
+    console.error('Error creating preferences:', error);
+  } else {
+    console.log('✅ Onboarding bypassed successfully');
+  }
+}
+
+// Always redirect to dashboard
+return Astro.redirect('/dashboard');
+---

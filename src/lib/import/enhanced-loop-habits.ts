@@ -618,9 +618,33 @@ export class EnhancedLoopHabitsImporter {
     
     const habitMap = new Map<string, string>();
     
+    // Get existing habits to avoid duplicates
+    const { data: existingHabits } = await this.supabase
+      .from('habits')
+      .select('id, name')
+      .eq('user_id', this.userId);
+    
+    const existingHabitsMap = new Map<string, string>();
+    if (existingHabits) {
+      for (const habit of existingHabits) {
+        existingHabitsMap.set(habit.name.toLowerCase().trim(), habit.id);
+      }
+    }
+    
     // Import habits
     for (const habit of habits) {
       try {
+        const habitKey = habit.name.toLowerCase().trim();
+        
+        // Check if habit already exists
+        if (existingHabitsMap.has(habitKey)) {
+          const existingId = existingHabitsMap.get(habitKey);
+          habitMap.set(habit.name, existingId!);
+          console.log(`📋 Using existing habit: ${habit.name} (${existingId})`);
+          skippedHabits++;
+          continue;
+        }
+        
         const { data: insertedHabit } = await this.supabase
           .from('habits')
           .insert({
@@ -639,11 +663,20 @@ export class EnhancedLoopHabitsImporter {
         
         if (insertedHabit) {
           habitMap.set(habit.name, insertedHabit.id);
+          existingHabitsMap.set(habitKey, insertedHabit.id); // Update the map
+          console.log(`✅ Created new habit: ${habit.name} (${insertedHabit.id})`);
           importedHabits++;
         } else {
           skippedHabits++;
         }
       } catch (error: any) {
+        // Check if it's a duplicate key error
+        if (error.code === '23505' || error.message?.includes('duplicate')) {
+          console.log(`🔄 Duplicate habit detected, skipping: ${habit.name}`);
+          skippedHabits++;
+          continue;
+        }
+        
         errors.push({
           type: 'database',
           severity: 'error',
@@ -655,8 +688,25 @@ export class EnhancedLoopHabitsImporter {
       }
     }
     
-    // Import entries
+    // Import entries - check for existing entries to avoid duplicates
     const entries = [];
+    const existingEntriesMap = new Map<string, boolean>();
+    
+    // Get existing entries to avoid duplicates
+    if (habitMap.size > 0) {
+      const { data: existingEntries } = await this.supabase
+        .from('habit_entries')
+        .select('habit_id, date')
+        .eq('user_id', this.userId)
+        .in('habit_id', Array.from(habitMap.values()));
+      
+      if (existingEntries) {
+        for (const entry of existingEntries) {
+          existingEntriesMap.set(`${entry.habit_id}-${entry.date}`, true);
+        }
+      }
+    }
+    
     for (const [habitName, dateEntries] of Object.entries(parsedData.checkmarks)) {
       const habitId = habitMap.get(habitName);
       if (!habitId) continue;
@@ -664,14 +714,37 @@ export class EnhancedLoopHabitsImporter {
       for (const [dateStr, value] of Object.entries(dateEntries as Record<string, number>)) {
         if (value !== null && value !== undefined && value >= 0) {
           try {
+            const entryKey = `${habitId}-${dateStr}`;
+            
+            // Skip if entry already exists
+            if (existingEntriesMap.has(entryKey)) {
+              console.log(`📝 Skipping existing entry: ${habitName} on ${dateStr}`);
+              continue;
+            }
+            
             const isoDate = new Date(dateStr).toISOString();
-            entries.push({
+            const entry = {
               habit_id: habitId,
               user_id: this.userId,
               value: value,
               logged_at: isoDate,
               date: dateStr
-            });
+            };
+            
+            // Validate entry before adding
+            if (!entry.habit_id || !entry.user_id || entry.value === null || entry.value === undefined) {
+              console.error('❌ Invalid entry data:', entry);
+              errors.push({
+                type: 'parsing',
+                severity: 'error',
+                message: `Invalid entry data for ${habitName} on ${dateStr}`,
+                habitName: habitName
+              });
+              failedEntries++;
+              continue;
+            }
+            
+            entries.push(entry);
           } catch (error: any) {
             errors.push({
               type: 'parsing',
@@ -685,33 +758,76 @@ export class EnhancedLoopHabitsImporter {
       }
     }
     
+    console.log(`📊 Prepared ${entries.length} new entries for import`);
+    
     // Batch insert entries
     if (entries.length > 0) {
+      console.log(`📝 About to insert ${entries.length} entries. First entry sample:`, entries[0]);
+      
       try {
-        const { error: entriesError } = await this.supabase
-          .from('habit_entries')
-          .insert(entries);
+        // Use safe insertion to prevent duplicates and auto-update streaks
+        console.log(`📦 Inserting ${entries.length} entries using safe insertion (prevents duplicates)`);
+        let insertedCount = 0;
         
-        if (entriesError) {
-          errors.push({
-            type: 'database',
-            severity: 'error',
-            message: 'Failed to insert habit entries',
-            details: entriesError.message
-          });
-          failedEntries += entries.length;
-        } else {
-          importedEntries = entries.length;
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          
+          try {
+            // Use the safe insertion function that prevents duplicates
+            const { data, error } = await this.supabase
+              .rpc('insert_habit_entry_safe', {
+                p_habit_id: entry.habit_id,
+                p_user_id: entry.user_id,
+                p_date: entry.date,
+                p_value: entry.value,
+                p_notes: entry.notes
+              });
+
+            if (error) {
+              console.error(`❌ Failed to insert entry ${i + 1}:`, error);
+              errors.push({
+                type: 'database',
+                severity: 'error',
+                message: `Failed to insert entry for ${entry.date}: ${error.message}`,
+                details: { entry, error }
+              });
+              failedEntries++;
+            } else {
+              insertedCount++;
+              if ((i + 1) % 100 === 0) {
+                console.log(`✅ Processed ${i + 1}/${entries.length} entries (${insertedCount} inserted/updated)`);
+              }
+            }
+          } catch (insertError: any) {
+            console.error(`❌ Exception inserting entry ${i + 1}:`, insertError);
+            errors.push({
+              type: 'database',
+              severity: 'error',
+              message: `Exception inserting entry for ${entry.date}: ${insertError.message}`,
+              details: { entry, error: insertError }
+            });
+            failedEntries++;
+          }
         }
+        
+        importedEntries = insertedCount;
+        if (insertedCount > 0) {
+          console.log(`✅ Successfully processed ${importedEntries} habit entries (inserted/updated with duplicate prevention)`);
+        }
+        
       } catch (error: any) {
+        console.error('❌ Database error during entry insertion:', error);
+        console.error('❌ Error stack:', error.stack);
         errors.push({
           type: 'database',
           severity: 'error',
           message: 'Database error during entry insertion',
-          details: error.message
+          details: `${error.message} | Stack: ${error.stack?.split('\n')[0] || 'no stack'}`
         });
         failedEntries += entries.length;
       }
+    } else {
+      console.log('ℹ️ No new entries to import');
     }
     
     return {

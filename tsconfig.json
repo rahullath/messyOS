@@ -1,16 +1,14 @@
 {
   "extends": "astro/tsconfigs/strict",
-  "include": ["src/types/supabase.ts", "**/*"],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./src/*"],
       "*": ["./src/*"],
       "components/*": ["./src/components/*"],
       "lib/*": ["./src/lib/*"],
       "types/*": ["./src/types/*"]
     },
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
     "types": ["astro/client"],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true

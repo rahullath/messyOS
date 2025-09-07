@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '../utils/test-utils';
 import { createTestUser, createTestTokenBalance, createTestTransaction } from '../utils/test-utils';
-import { TokenService } from '@/lib/tokens/service';
+import { tokenService } from '@/lib/tokens/service';
 import { Wallet } from '@/components/wallet/Wallet';
 import { TransactionHistory } from '@/components/wallet/TransactionHistory';
 import { TrialStatus } from '@/components/wallet/TrialStatus';

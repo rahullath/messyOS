@@ -157,8 +157,8 @@ INSERT INTO habit_templates (name, category, type, measurement_type, description
 ('Journaling', 'Wellness', 'build', 'boolean', 'Daily reflection and gratitude practice', NULL, NULL, '#F59E0B', true),
 ('Limit Social Media', 'Productivity', 'break', 'duration', 'Reduce time spent on social media', 60, 'minutes', '#EF4444', true),
 ('Sleep 8 Hours', 'Health', 'maintain', 'duration', 'Maintain consistent sleep schedule', 8, 'hours', '#6366F1', true),
-('Daily Walk', 'Health', 'build', 'boolean', 'Take a walk outside for fresh air', NULL, NULL, '#059669', true)
-ON CONFLICT (name) DO NOTHING;
+('Daily Walk', 'Health', 'build', 'boolean', 'Take a walk outside for fresh air', NULL, NULL, '#059669', true);
+-- Note: ON CONFLICT removed as name column doesn't have unique constraint
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_habits_user_active ON habits(user_id, is_active) WHERE user_id IS NOT NULL;
@@ -188,12 +188,12 @@ CREATE POLICY "Anyone can view habit templates" ON habit_templates
 
 -- Create updated_at trigger function if it doesn't exist
 CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Create triggers for updated_at
 DROP TRIGGER IF EXISTS habits_updated_at ON habits;
