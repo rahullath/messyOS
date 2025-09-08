@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Task, TaskQueryParams, TasksResponse } from '../../types/task-management';
 
 interface TaskListProps {
+  userId: string;
   refreshTrigger?: number;
   onTaskUpdate?: (task: Task) => void;
 }
@@ -171,7 +172,7 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               value={filters.status || ''}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value || undefined }))}
+              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as Task['status'] || undefined }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
               <option value="">All Statuses</option>
@@ -187,7 +188,7 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
             <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
             <select
               value={filters.priority || ''}
-              onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value || undefined }))}
+              onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value as Task['priority'] || undefined }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
               <option value="">All Priorities</option>
@@ -225,7 +226,7 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
               value={`${filters.sort_by}-${filters.sort_order}`}
               onChange={(e) => {
                 const [sort_by, sort_order] = e.target.value.split('-');
-                setFilters(prev => ({ ...prev, sort_by, sort_order }));
+                setFilters(prev => ({ ...prev, sort_by: sort_by as TaskQueryParams['sort_by'], sort_order: sort_order as TaskQueryParams['sort_order'] }));
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >

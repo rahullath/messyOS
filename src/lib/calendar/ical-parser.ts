@@ -214,7 +214,7 @@ export class ICalParser {
   /**
    * Parse iCal datetime format
    */
-  private parseDateTime(dateTimeStr: string): Date {
+  private parseDateTime(dateTimeStr: string): string {
     // Handle different iCal datetime formats
     // Format: YYYYMMDDTHHMMSS or YYYYMMDDTHHMMSSZ
     const cleanStr = dateTimeStr.replace(/[TZ]/g, '');
@@ -232,11 +232,12 @@ export class ICalParser {
         second = parseInt(cleanStr.substring(12, 14));
       }
       
-      return new Date(year, month, day, hour, minute, second);
+      // Construct a Date object and return its ISO string
+      return new Date(year, month, day, hour, minute, second).toISOString();
     }
     
-    // Fallback to Date parsing
-    return new Date(dateTimeStr);
+    // Fallback to Date parsing and return ISO string
+    return new Date(dateTimeStr).toISOString();
   }
 
   /**

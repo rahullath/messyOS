@@ -15,8 +15,11 @@ import type {
   TimeSlot,
   AvailabilityQuery,
   CalendarConflict,
-  CalendarStats
+  CalendarStats,
+  ScheduledTask,
+  ScheduleTaskRequest
 } from 'types/calendar';
+import type { TablesInsert, TablesUpdate } from 'types/supabase';
 
 export class CalendarService {
   /**
@@ -54,7 +57,7 @@ export class CalendarService {
         priority: sourceData.priority || 1,
         sync_frequency: sourceData.sync_frequency || 60,
         is_active: true
-      })
+      } as TablesInsert<'calendar_sources'>)
       .select()
       .single();
 
@@ -74,7 +77,7 @@ export class CalendarService {
   ): Promise<CalendarSource> {
     const { data, error } = await supabase
       .from('calendar_sources')
-      .update(updates)
+      .update(updates as TablesUpdate<'calendar_sources'>)
       .eq('id', sourceId)
       .select()
       .single();
@@ -130,7 +133,7 @@ export class CalendarService {
           expires_at: expiresAt,
           calendar_id: credentials.calendar_id || 'primary'
         }
-      })
+      } as TablesUpdate<'calendar_sources'>)
       .eq('id', sourceId);
 
     if (error) {
@@ -205,7 +208,7 @@ export class CalendarService {
         .eq('source_id', source.id);
 
       const existingEventMap = new Map(
-        (existingEvents || []).map(event => [event.external_id, event])
+        (existingEvents || []).map(event => [event.external_id || '', event])
       );
 
       // Process new events
@@ -215,18 +218,44 @@ export class CalendarService {
         if (existingEvent) {
           // Update existing event if changed
           if (this.hasEventChanged(existingEvent, newEvent)) {
+            const updatePayload: TablesUpdate<'calendar_events'> = {
+              title: newEvent.title,
+              description: newEvent.description,
+              start_time: newEvent.start_time.toISOString(),
+              end_time: newEvent.end_time.toISOString(),
+              location: newEvent.location,
+              event_type: newEvent.event_type,
+              flexibility: newEvent.flexibility,
+              importance: newEvent.importance,
+              external_id: newEvent.external_id,
+              user_id: newEvent.user_id,
+              source_id: newEvent.source_id,
+            };
             await supabase
               .from('calendar_events')
-              .update(newEvent)
+              .update(updatePayload)
               .eq('id', existingEvent.id);
             result.events_updated++;
           }
           existingEventMap.delete(newEvent.external_id || '');
         } else {
           // Add new event
+          const insertPayload: TablesInsert<'calendar_events'> = {
+            user_id: newEvent.user_id,
+            source_id: newEvent.source_id,
+            title: newEvent.title,
+            description: newEvent.description,
+            start_time: newEvent.start_time.toISOString(),
+            end_time: newEvent.end_time.toISOString(),
+            location: newEvent.location,
+            event_type: newEvent.event_type,
+            flexibility: newEvent.flexibility,
+            importance: newEvent.importance,
+            external_id: newEvent.external_id,
+          };
           await supabase
             .from('calendar_events')
-            .insert(newEvent);
+            .insert(insertPayload);
           result.events_added++;
         }
       }
@@ -243,7 +272,7 @@ export class CalendarService {
       // Update last sync time
       await supabase
         .from('calendar_sources')
-        .update({ last_sync: result.last_sync })
+        .update({ last_sync: result.last_sync?.toISOString() } as TablesUpdate<'calendar_sources'>)
         .eq('id', source.id);
 
       result.success = true;
@@ -328,7 +357,7 @@ export class CalendarService {
     let query = supabase
       .from('calendar_events')
       .select(`
-        *,
+        id, user_id, source_id, external_id, title, description, start_time, end_time, location, event_type, flexibility, importance, created_at, updated_at,
         calendar_sources!inner(name, type, color, is_active)
       `)
       .eq('user_id', userId)
@@ -356,7 +385,9 @@ export class CalendarService {
       throw new Error(`Failed to fetch calendar events: ${error.message}`);
     }
 
-    return data || [];
+    // The data returned from Supabase will have start_time and end_time as strings,
+    // which now matches our CalendarEvent interface.
+    return data as CalendarEvent[] || [];
   }
 
   /**
@@ -372,7 +403,7 @@ export class CalendarService {
     });
 
     const slots: TimeSlot[] = [];
-    const current = new Date(query.start);
+    let current = new Date(query.start);
     const buffer = query.buffer || 0;
 
     while (current < query.end) {
@@ -384,8 +415,8 @@ export class CalendarService {
         this.timeRangesOverlap(
           current,
           slotEnd,
-          new Date(event.start_time),
-          new Date(event.end_time)
+          new Date(event.start_time), // Convert string to Date for comparison
+          new Date(event.end_time)    // Convert string to Date for comparison
         )
       );
 
@@ -398,7 +429,7 @@ export class CalendarService {
       });
 
       // Move to next potential slot (considering buffer)
-      current.setMinutes(current.getMinutes() + Math.max(15, buffer));
+      current = new Date(current.getTime() + Math.max(15, buffer) * 60000);
     }
 
     return slots.filter(slot => slot.available);
@@ -408,7 +439,10 @@ export class CalendarService {
    * Detect calendar conflicts
    */
   async detectConflicts(userId: string, dateRange?: { start: Date; end: Date }): Promise<CalendarConflict[]> {
-    const events = await this.getCalendarEvents(userId, dateRange);
+    const events = await this.getCalendarEvents(userId, {
+      startDate: dateRange?.start,
+      endDate: dateRange?.end,
+    });
     const conflicts: CalendarConflict[] = [];
 
     for (let i = 0; i < events.length; i++) {
@@ -417,10 +451,10 @@ export class CalendarService {
         const event2 = events[j];
 
         if (this.timeRangesOverlap(
-          new Date(event1.start_time),
-          new Date(event1.end_time),
-          new Date(event2.start_time),
-          new Date(event2.end_time)
+          new Date(event1.start_time), // Convert string to Date for comparison
+          new Date(event1.end_time),   // Convert string to Date for comparison
+          new Date(event2.start_time), // Convert string to Date for comparison
+          new Date(event2.end_time)    // Convert string to Date for comparison
         )) {
           conflicts.push({
             type: 'overlap',
@@ -487,13 +521,16 @@ export class CalendarService {
     existing: CalendarEvent,
     updated: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>
   ): boolean {
+    // Compare existing string dates with updated Date objects converted to ISO strings
     return (
       existing.title !== updated.title ||
       existing.description !== updated.description ||
-      existing.start_time.getTime() !== updated.start_time.getTime() ||
-      existing.end_time.getTime() !== updated.end_time.getTime() ||
+      existing.start_time !== updated.start_time.toISOString() ||
+      existing.end_time !== updated.end_time.toISOString() ||
       existing.location !== updated.location ||
-      existing.event_type !== updated.event_type
+      existing.event_type !== updated.event_type ||
+      existing.flexibility !== updated.flexibility ||
+      existing.importance !== updated.importance
     );
   }
 
@@ -530,6 +567,116 @@ export class CalendarService {
       return `Consider prioritizing "${event2.title}" over "${event1.title}".`;
     }
     return `These events overlap. Consider rescheduling one of them.`;
+  }
+
+  /**
+   * Schedule a task into the calendar.
+   * This method will find an available slot, create a calendar event, and handle conflicts.
+   */
+  async scheduleTask(request: ScheduleTaskRequest): Promise<ScheduledTask> {
+    const {
+      task_id,
+      user_id,
+      title,
+      description,
+      estimated_duration,
+      deadline,
+      energy_required,
+      priority,
+      flexibility,
+      importance,
+      preferred_start_time,
+      preferred_end_time,
+      source_id
+    } = request;
+
+    if (!estimated_duration || estimated_duration <= 0) {
+      throw new Error('Estimated duration is required and must be positive.');
+    }
+
+    // Determine the search range for available slots
+    const searchStart = preferred_start_time ? new Date(preferred_start_time) : new Date();
+    const searchEnd = preferred_end_time ? new Date(preferred_end_time) : (deadline ? new Date(deadline) : new Date(searchStart.getTime() + 7 * 24 * 60 * 60 * 1000)); // Default to 1 week from now
+
+    // Find available slots
+    const availabilityQuery: AvailabilityQuery = {
+      start: searchStart,
+      end: searchEnd,
+      duration: estimated_duration,
+      buffer: 15, // Default buffer of 15 minutes
+      preferences: {
+        energyLevel: energy_required,
+        taskType: 'task' // Assuming tasks are generally of type 'task'
+      }
+    };
+
+    const availableSlots = await this.findAvailableSlots(user_id, availabilityQuery);
+
+    if (availableSlots.length === 0) {
+      throw new Error('No available slots found for the given task and preferences.');
+    }
+
+    // For now, pick the first available slot.
+    // Future enhancements will involve more intelligent selection based on energy patterns, etc.
+    const selectedSlot = availableSlots[0];
+
+    // Create the calendar event
+    const newCalendarEvent: TablesInsert<'calendar_events'> = {
+      user_id,
+      source_id: source_id || (await this.getDefaultCalendarSourceId(user_id)), // Use a default source if not provided
+      title,
+      description,
+      start_time: selectedSlot.start.toISOString(),
+      end_time: selectedSlot.end.toISOString(),
+      event_type: 'task',
+      flexibility: flexibility || 'flexible',
+      importance: importance || 'medium',
+      external_id: task_id // Link task to calendar event
+    };
+
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .insert(newCalendarEvent)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create calendar event for task: ${error.message}`);
+    }
+
+    // Check for conflicts with the newly created event (should be none if slot was truly available, but good for robustness)
+    const conflicts = await this.detectConflicts(user_id, {
+      start: selectedSlot.start,
+      end: selectedSlot.end
+    });
+
+    const scheduledTask: ScheduledTask = {
+      task_id: task_id,
+      calendar_event_id: data.id,
+      scheduled_start_time: data.start_time, // Already ISO string from DB
+      scheduled_end_time: data.end_time,     // Already ISO string from DB
+      original_task_duration: estimated_duration,
+      energy_match_score: undefined, // To be filled by EnergyAwareScheduler
+      flexibility_used: newCalendarEvent.flexibility,
+      conflict_resolved: conflicts.length === 0,
+      resolution_details: conflicts.length > 0 ? 'Conflicts detected after scheduling' : undefined
+    };
+
+    return scheduledTask;
+  }
+
+  /**
+   * Helper: Get a default calendar source ID for scheduling if none is provided.
+   * This could be the user's primary manual calendar or the first active one found.
+   */
+  private async getDefaultCalendarSourceId(userId: string): Promise<string> {
+    const sources = await this.getCalendarSources(userId);
+    const defaultSource = sources.find(s => s.type === 'manual' && s.is_active) || sources.find(s => s.is_active);
+
+    if (!defaultSource) {
+      throw new Error('No active calendar sources found to schedule the task.');
+    }
+    return defaultSource.id;
   }
 }
 

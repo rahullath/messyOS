@@ -276,10 +276,10 @@ export class GoogleCalendarIntegration {
       summary: event.title,
       description: event.description,
       start: {
-        dateTime: event.start_time.toISOString(),
+        dateTime: event.start_time, // Already ISO string
       },
       end: {
-        dateTime: event.end_time.toISOString(),
+        dateTime: event.end_time,   // Already ISO string
       },
       location: event.location,
     };
@@ -288,11 +288,11 @@ export class GoogleCalendarIntegration {
   /**
    * Parse Google Calendar datetime format
    */
-  private parseGoogleDateTime(dateTime: GoogleCalendarEvent['start'] | GoogleCalendarEvent['end']): Date {
+  private parseGoogleDateTime(dateTime: GoogleCalendarEvent['start'] | GoogleCalendarEvent['end']): string {
     if (dateTime.dateTime) {
-      return new Date(dateTime.dateTime);
+      return new Date(dateTime.dateTime).toISOString();
     } else if (dateTime.date) {
-      return new Date(dateTime.date);
+      return new Date(dateTime.date).toISOString();
     }
     throw new Error('Invalid Google Calendar datetime format');
   }

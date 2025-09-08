@@ -4,33 +4,31 @@
  */
 
 import type { APIRoute } from 'astro';
-import { calendarService } from 'lib/calendar/calendar-service';
-import { createServerClient } from 'lib/supabase/server';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 import type { CreateCalendarSourceRequest, UpdateCalendarSourceRequest } from 'types/calendar';
 
-export const GET: APIRoute = async ({ request, cookies }) => {
-  const supabase = createServerClient(cookies);
+export const GET: APIRoute = async ({ cookies }) => {
   try {
-    // Get user from session
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.getUser();
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Use the authenticated server client to get calendar sources
+    const { data: sources, error } = await serverAuth.supabase
+      .from('calendar_sources')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('priority', { ascending: true });
 
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
+    if (error) {
+      throw new Error(`Failed to fetch calendar sources: ${error.message}`);
     }
-
-    const sources = await calendarService.getCalendarSources(user.id);
 
     return new Response(JSON.stringify({ sources }), {
       status: 200,
@@ -49,22 +47,12 @@ export const GET: APIRoute = async ({ request, cookies }) => {
 };
 
 export const POST: APIRoute = async ({ request, cookies }) => {
-  const supabase = createServerClient(cookies);
   try {
-    // Get user from session
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.getUser();
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -92,7 +80,25 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const source = await calendarService.createCalendarSource(user.id, sourceData);
+    // Use the authenticated server client to create the calendar source
+    const { data: source, error } = await serverAuth.supabase
+      .from('calendar_sources')
+      .insert({
+        user_id: user.id,
+        name: sourceData.name,
+        type: sourceData.type,
+        url: sourceData.url,
+        color: sourceData.color || '#3B82F6',
+        priority: sourceData.priority || 1,
+        sync_frequency: sourceData.sync_frequency || 60,
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create calendar source: ${error.message}`);
+    }
 
     return new Response(JSON.stringify({ source }), {
       status: 201,
@@ -111,22 +117,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 };
 
 export const PUT: APIRoute = async ({ request, url, cookies }) => {
-  const supabase = createServerClient(cookies);
   try {
-    // Get user from session
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.getUser();
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -141,7 +137,19 @@ export const PUT: APIRoute = async ({ request, url, cookies }) => {
     }
 
     const updates: UpdateCalendarSourceRequest = await request.json();
-    const source = await calendarService.updateCalendarSource(sourceId, updates);
+
+    // Use the authenticated server client to update the calendar source
+    const { data: source, error } = await serverAuth.supabase
+      .from('calendar_sources')
+      .update(updates)
+      .eq('id', sourceId)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update calendar source: ${error.message}`);
+    }
 
     return new Response(JSON.stringify({ source }), {
       status: 200,
@@ -160,22 +168,12 @@ export const PUT: APIRoute = async ({ request, url, cookies }) => {
 };
 
 export const DELETE: APIRoute = async ({ request, url, cookies }) => {
-  const supabase = createServerClient(cookies);
   try {
-    // Get user from session
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.getUser();
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -189,7 +187,23 @@ export const DELETE: APIRoute = async ({ request, url, cookies }) => {
       });
     }
 
-    await calendarService.deleteCalendarSource(sourceId);
+    // Delete events first using authenticated server client
+    await serverAuth.supabase
+      .from('calendar_events')
+      .delete()
+      .eq('source_id', sourceId)
+      .eq('user_id', user.id);
+
+    // Delete source using authenticated server client
+    const { error } = await serverAuth.supabase
+      .from('calendar_sources')
+      .delete()
+      .eq('id', sourceId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      throw new Error(`Failed to delete calendar source: ${error.message}`);
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

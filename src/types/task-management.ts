@@ -60,6 +60,7 @@ export interface UpdateTaskRequest {
   estimated_duration?: number;
   deadline?: string;
   position?: number;
+  actual_duration?: number; // Add actual_duration to UpdateTaskRequest
 }
 
 // Calendar interfaces
@@ -311,12 +312,8 @@ export interface AIResponse {
   confidence: number;
 }
 
-// Time slot and scheduling interfaces
-export interface TimeSlot {
-  start: string;
-  end: string;
-  duration: number; // minutes
-}
+// Import TimeSlot from calendar.ts for consistency
+import type { TimeSlot } from './calendar';
 
 export interface SchedulingConstraints {
   preferred_times?: TimeSlot[];
@@ -325,20 +322,17 @@ export interface SchedulingConstraints {
   buffer_time?: number;
 }
 
+import type { ScheduledTask as CalendarScheduledTask } from './calendar';
+
 export interface OptimalSchedule {
-  scheduledTasks: ScheduledTask[];
+  scheduledTasks: CalendarScheduledTask[];
   energyUtilization: number;
   balanceScore: number;
   alternativeOptions: ScheduleOption[];
 }
 
-export interface ScheduledTask {
-  task: Task;
-  scheduledTime: TimeSlot;
-  energyMatch: number;
-  successProbability: number;
-  bufferTime: number;
-}
+// Using the ScheduledTask from calendar.ts for consistency in scheduling
+export type ScheduledTask = CalendarScheduledTask;
 
 export interface ScheduleOption {
   tasks: ScheduledTask[];

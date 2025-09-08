@@ -35,7 +35,8 @@
       "Bash(supabase link:*)",
       "Bash(timeout:*)",
       "Bash(node:*)",
-      "Bash(supabase db inspect:*)"
+      "Bash(supabase db inspect:*)",
+      "Bash(npx supabase db reset:*)"
     ],
     "deny": []
   }

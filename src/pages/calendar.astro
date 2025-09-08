@@ -1,0 +1,19 @@
+---
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import CalendarPageWrapper from '../components/calendar/CalendarPageWrapper';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+
+// Require authentication
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+---
+
+<DashboardLayout title="Calendar Management - MessyOS" user={user}>
+  <div class="calendar-management-page">
+    <CalendarPageWrapper client:load userId={user.id} />
+  </div>
+</DashboardLayout>

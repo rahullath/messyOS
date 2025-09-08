@@ -41,8 +41,10 @@
     "@supabase/supabase-js": "^2.49.10",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
+    "@types/papaparse": "^5.3.16",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
+    "@types/uuid": "^10.0.0",
     "buffer": "^6.0.3",
     "canvas-confetti": "^1.9.3",
     "chart.js": "^4.5.0",
@@ -51,6 +53,7 @@
     "date-fns": "^4.1.0",
     "langchain": "^0.3.29",
     "lucide-react": "^0.513.0",
+    "papaparse": "^5.5.3",
     "postgres": "^3.4.7",
     "react": "^19.1.0",
     "react-chartjs-2": "^5.3.0",
@@ -58,6 +61,7 @@
     "recharts": "^2.15.3",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^3.4.17",
+    "uuid": "^12.0.0",
     "zod": "^3.25.74"
   },
   "devDependencies": {

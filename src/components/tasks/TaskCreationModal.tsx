@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { CreateTaskRequest, TaskPriority, TaskComplexity, EnergyLevel } from '../../types/task-management';
 
 interface TaskCreationModalProps {
+  userId: string;
   isOpen: boolean;
   onClose: () => void;
   onTaskCreated: (task: any) => void;
@@ -42,7 +43,7 @@ const DURATION_OPTIONS = [
   { value: '480', label: '8 hours' }
 ];
 
-export default function TaskCreationModal({ isOpen, onClose, onTaskCreated }: TaskCreationModalProps) {
+export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreated }: TaskCreationModalProps) {
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',

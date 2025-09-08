@@ -31,14 +31,14 @@ export interface CalendarEvent {
   external_id?: string; // ID from source system
   title: string;
   description?: string;
-  start_time: Date;
-  end_time: Date;
+  start_time: string; // ISO string
+  end_time: string; // ISO string
   location?: string;
   event_type: 'class' | 'meeting' | 'personal' | 'workout' | 'task' | 'break' | 'meal';
   flexibility: 'fixed' | 'moveable' | 'flexible';
   importance: 'low' | 'medium' | 'high' | 'critical';
-  created_at: Date;
-  updated_at: Date;
+  created_at: string; // ISO string
+  updated_at: string; // ISO string
 }
 
 export interface CalendarConflict {
@@ -54,6 +54,34 @@ export interface TimeSlot {
   duration: number; // minutes
   available: boolean;
   conflicts?: CalendarEvent[];
+}
+
+export interface ScheduledTask {
+  task_id: string;
+  calendar_event_id: string;
+  scheduled_start_time: string; // ISO string
+  scheduled_end_time: string; // ISO string
+  original_task_duration: number; // minutes
+  energy_match_score?: number; // 0-100
+  flexibility_used?: 'fixed' | 'moveable' | 'flexible';
+  conflict_resolved?: boolean;
+  resolution_details?: string;
+}
+
+export interface ScheduleTaskRequest {
+  task_id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  estimated_duration: number; // minutes
+  deadline?: string; // ISO string
+  energy_required?: 'low' | 'medium' | 'high';
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  flexibility?: 'fixed' | 'moveable' | 'flexible';
+  importance?: 'low' | 'medium' | 'high' | 'critical';
+  preferred_start_time?: string; // ISO string
+  preferred_end_time?: string; // ISO string
+  source_id?: string; // Optional: if scheduling into a specific calendar source
 }
 
 export interface AvailabilityQuery {
@@ -133,10 +161,10 @@ export interface GoogleCalendarAuthResponse {
 export interface CalendarViewProps {
   events: CalendarEvent[];
   sources: CalendarSource[];
-  selectedDate?: Date;
+  selectedDate?: string; // ISO string
   viewType?: 'day' | 'week' | 'month';
   onEventClick?: (event: CalendarEvent) => void;
-  onTimeSlotClick?: (date: Date) => void;
+  onTimeSlotClick?: (date: string) => void;
   onEventUpdate?: (event: CalendarEvent) => void;
 }
 

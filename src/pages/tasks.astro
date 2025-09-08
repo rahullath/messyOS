@@ -1,6 +1,7 @@
 ---
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerAuth } from '../lib/auth/simple-multi-user';
+import TaskManagement from '../components/tasks/TaskManagement.tsx';
 
 // Require authentication
 const serverAuth = createServerAuth(Astro.cookies);
@@ -34,50 +35,7 @@ if (!user) {
 
     <!-- Task Management Component Container -->
     <div id="task-management-root">
-      <!-- Fallback content while React component loads -->
-      <div class="card p-8 text-center">
-        <div class="w-16 h-16 bg-accent-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span class="text-2xl">📋</span>
-        </div>
-        <h3 class="text-lg font-semibold text-text-primary mb-2">Task Management</h3>
-        <p class="text-text-secondary mb-6">
-          Advanced task management system is loading. Create, organize, and track your tasks with AI-powered insights.
-        </p>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-md mx-auto mb-6">
-          <div class="p-3 bg-surface-hover rounded-lg">
-            <div class="text-2xl mb-1">🎯</div>
-            <div class="text-sm font-medium text-text-primary">Smart Categorization</div>
-            <div class="text-xs text-text-muted">AI-powered task organization</div>
-          </div>
-          <div class="p-3 bg-surface-hover rounded-lg">
-            <div class="text-2xl mb-1">⚡</div>
-            <div class="text-sm font-medium text-text-primary">Energy Matching</div>
-            <div class="text-xs text-text-muted">Tasks matched to energy levels</div>
-          </div>
-          <div class="p-3 bg-surface-hover rounded-lg">
-            <div class="text-2xl mb-1">📊</div>
-            <div class="text-sm font-medium text-text-primary">Progress Tracking</div>
-            <div class="text-xs text-text-muted">Time tracking and analytics</div>
-          </div>
-        </div>
-        
-        <div class="text-sm text-text-muted">
-          If this message persists, please refresh the page or check the browser console for any loading errors.
-        </div>
-      </div>
+      <TaskManagement client:load userId={user.id} />
     </div>
   </div>
 </DashboardLayout>
-
-<script>
-  // Add task button functionality
-  document.getElementById('add-task-btn')?.addEventListener('click', () => {
-    alert('📋 Advanced task management system is being initialized. This will integrate with the intelligent task management features including AI task creation, energy-aware scheduling, and comprehensive time tracking.');
-  });
-
-  // Try to load React component
-  // For now, we'll keep the fallback content
-  // In a full implementation, you would load the React component here
-  console.log('Task management page loaded. React component integration pending.');
-</script>

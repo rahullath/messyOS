@@ -4,27 +4,15 @@
  */
 
 import type { APIRoute } from 'astro';
-import { calendarService } from 'lib/calendar/calendar-service';
-import { createServerClient } from 'lib/supabase/server';
-import type { AvailabilityQuery } from 'types/calendar';
+import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
 export const GET: APIRoute = async ({ request, url, cookies }) => {
-  const supabase = createServerClient(cookies);
   try {
-    // Get user from session
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization required' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+    const serverAuth = createServerAuth(cookies);
+    const user = await serverAuth.getUser();
+    
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -36,24 +24,36 @@ export const GET: APIRoute = async ({ request, url, cookies }) => {
     const sourceIds = url.searchParams.get('source_ids')?.split(',');
     const eventTypes = url.searchParams.get('event_types')?.split(',');
 
-    const options: Parameters<typeof calendarService.getCalendarEvents>[1] = {};
+    // Build query using authenticated server client
+    let query = serverAuth.supabase
+      .from('calendar_events')
+      .select(`
+        *,
+        calendar_sources!inner(name, type, color, is_active)
+      `)
+      .eq('user_id', user.id)
+      .eq('calendar_sources.is_active', true);
 
     if (startDate) {
-      options.startDate = new Date(startDate);
+      query = query.gte('start_time', new Date(startDate).toISOString());
     }
     if (endDate) {
-      options.endDate = new Date(endDate);
+      query = query.lte('start_time', new Date(endDate).toISOString());
     }
     if (sourceIds?.length) {
-      options.sourceIds = sourceIds;
+      query = query.in('source_id', sourceIds);
     }
     if (eventTypes?.length) {
-      options.eventTypes = eventTypes;
+      query = query.in('event_type', eventTypes);
     }
 
-    const events = await calendarService.getCalendarEvents(user.id, options);
+    const { data: events, error } = await query.order('start_time');
 
-    return new Response(JSON.stringify({ events }), {
+    if (error) {
+      throw new Error(`Failed to fetch calendar events: ${error.message}`);
+    }
+
+    return new Response(JSON.stringify({ events: events || [] }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

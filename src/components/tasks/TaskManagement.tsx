@@ -3,7 +3,11 @@ import TaskCreationModal from './TaskCreationModal';
 import TaskList from './TaskList';
 import type { Task } from '../../types/task-management';
 
-export default function TaskManagement() {
+interface TaskManagementProps {
+  userId: string;
+}
+
+export default function TaskManagement({ userId }: TaskManagementProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -41,12 +45,14 @@ export default function TaskManagement() {
 
       {/* Task List */}
       <TaskList 
+        userId={userId}
         refreshTrigger={refreshTrigger}
         onTaskUpdate={handleTaskUpdate}
       />
 
       {/* Task Creation Modal */}
       <TaskCreationModal
+        userId={userId}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onTaskCreated={handleTaskCreated}
