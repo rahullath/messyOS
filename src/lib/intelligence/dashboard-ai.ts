@@ -218,7 +218,7 @@ export class DashboardIntelligence {
     return insights;
   }
 
-  private analyzeHealthPatrics(metrics: any[]): AIInsight[] {
+  private analyzeHealthPatterns(metrics: any[]): AIInsight[] {
     const insights: AIInsight[] = [];
 
     const sleepData = metrics.filter(m => m.type === 'sleep_duration');
@@ -304,7 +304,7 @@ export class DashboardIntelligence {
     `;
 
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.geminiApiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${this.geminiApiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

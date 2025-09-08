@@ -87,7 +87,10 @@ export class AILifeCoach {
 
     const { data: savedPlan, error: saveError } = await this.supabase
       .from('daily_plans')
-      .insert(insertPayload)
+      .upsert(insertPayload, { 
+        onConflict: 'user_id,plan_date',
+        ignoreDuplicates: false 
+      })
       .select()
       .single();
 

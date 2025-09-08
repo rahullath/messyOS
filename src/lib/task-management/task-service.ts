@@ -1,7 +1,9 @@
 // Task Management Service Layer
 // Provides business logic and data access for task operations
 
-import { supabase } from '../supabase/client';
+import { supabase as defaultSupabase } from '../supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../../types/supabase';
 import type { 
   Task, 
   CreateTaskRequest, 
@@ -19,8 +21,14 @@ import type {
 
 export class TaskService {
   // Task CRUD operations
-  static async createTask(userId: string, taskData: CreateTaskRequest): Promise<Task> {
-    const { data, error } = await supabase
+  static async createTask(userId: string, taskData: CreateTaskRequest, supabaseClient?: SupabaseClient<Database>): Promise<Task> {
+    const client = supabaseClient || defaultSupabase;
+    
+    // Debug: Check auth state
+    const { data: { user } } = await client.auth.getUser();
+    console.log(`🔍 TaskService.createTask - userId: ${userId}, auth.user.id: ${user?.id}, match: ${userId === user?.id}`);
+    
+    const { data, error } = await client
       .from('tasks')
       .insert({
         ...taskData,

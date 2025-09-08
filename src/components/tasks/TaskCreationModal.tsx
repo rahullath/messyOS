@@ -44,6 +44,12 @@ const DURATION_OPTIONS = [
 ];
 
 export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreated }: TaskCreationModalProps) {
+  const [mode, setMode] = useState<'manual' | 'natural'>('natural'); // Default to natural language
+  const [naturalLanguageInput, setNaturalLanguageInput] = useState('');
+  const [isProcessingNL, setIsProcessingNL] = useState(false);
+  const [parsedTasks, setParsedTasks] = useState<any[]>([]);
+  const [parseResult, setParseResult] = useState<any>(null);
+
   const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
@@ -145,6 +151,115 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
     }
   };
 
+  // Natural Language Processing Functions
+  const handleProcessNaturalLanguage = async () => {
+    if (!naturalLanguageInput.trim()) {
+      showToast('Please enter some text to process', 'error');
+      return;
+    }
+
+    setIsProcessingNL(true);
+    setErrors({});
+
+    try {
+      const response = await fetch('/api/tasks/natural-language', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: naturalLanguageInput,
+          mode: 'simple', // Just parse, don't save yet
+          config: {
+            enableReasoning: true,
+            confidenceThreshold: 0.3
+          }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process natural language');
+      }
+
+      setParseResult(data.result);
+      setParsedTasks(data.result.tasks);
+      
+      if (data.result.tasks.length === 0) {
+        showToast('No tasks could be extracted from your input. Try being more specific.', 'error');
+      } else {
+        showToast(`Successfully parsed ${data.result.tasks.length} task${data.result.tasks.length > 1 ? 's' : ''}!`, 'success');
+      }
+
+    } catch (error) {
+      console.error('Error processing natural language:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to process natural language', 'error');
+    } finally {
+      setIsProcessingNL(false);
+    }
+  };
+
+  const handleCreateParsedTasks = async () => {
+    if (parsedTasks.length === 0) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('/api/tasks/natural-language', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: naturalLanguageInput,
+          mode: 'create', // Parse and save
+          config: {
+            enableReasoning: true,
+            confidenceThreshold: 0.3
+          }
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create tasks');
+      }
+
+      // Notify parent about created tasks
+      if (data.result.savedTasks && data.result.savedTasks.length > 0) {
+        data.result.savedTasks.forEach((task: any) => onTaskCreated(task));
+        showToast(`Successfully created ${data.result.savedTasks.length} task${data.result.savedTasks.length > 1 ? 's' : ''}!`, 'success');
+        handleClose();
+      } else {
+        showToast('No tasks were created', 'error');
+      }
+
+    } catch (error) {
+      console.error('Error creating tasks:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to create tasks', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFillFromParsed = (task: any, index: number) => {
+    setFormData({
+      title: task.title,
+      description: task.description || '',
+      category: task.category,
+      priority: task.priority,
+      complexity: task.complexity,
+      energy_required: task.energy_required,
+      estimated_duration: task.estimated_duration ? task.estimated_duration.toString() : '',
+      deadline: task.deadline || ''
+    });
+    setMode('manual');
+  };
+
   const handleClose = () => {
     setFormData({
       title: '',
@@ -156,8 +271,13 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
       estimated_duration: '',
       deadline: ''
     });
+    setNaturalLanguageInput('');
+    setParsedTasks([]);
+    setParseResult(null);
+    setMode('natural');
     setErrors({});
     setIsSubmitting(false);
+    setIsProcessingNL(false);
     onClose();
   };
 
@@ -186,7 +306,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isProcessingNL}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -194,8 +314,197 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
             </button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Mode Selector */}
+          <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setMode('natural')}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                mode === 'natural' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+              disabled={isSubmitting || isProcessingNL}
+            >
+              <div className="flex items-center justify-center">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+                Natural Language
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('manual')}
+              className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                mode === 'manual' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+              disabled={isSubmitting || isProcessingNL}
+            >
+              <div className="flex items-center justify-center">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Manual Form
+              </div>
+            </button>
+          </div>
+
+          {/* Natural Language Mode */}
+          {mode === 'natural' && (
+            <div className="space-y-6">
+              {/* Natural Language Input */}
+              <div>
+                <label htmlFor="natural-input" className="block text-sm font-medium text-gray-700 mb-2">
+                  Describe your task(s) in natural language
+                </label>
+                <textarea
+                  id="natural-input"
+                  rows={4}
+                  value={naturalLanguageInput}
+                  onChange={(e) => setNaturalLanguageInput(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
+                  placeholder="e.g., 'I need to finish my assignment by Friday, call mom tomorrow, and buy groceries this week'"
+                  disabled={isProcessingNL || isSubmitting}
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  💡 Try: "Finish homework by tomorrow", "Call dentist to schedule appointment", or "Buy groceries, do laundry, and clean kitchen"
+                </p>
+              </div>
+
+              {/* Process Button */}
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleProcessNaturalLanguage}
+                  disabled={!naturalLanguageInput.trim() || isProcessingNL}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                >
+                  {isProcessingNL ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Parse with AI
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Parsed Tasks Results */}
+              {parseResult && (
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-medium text-gray-900">
+                      Parsed Tasks ({parsedTasks.length})
+                    </h3>
+                    <div className="text-sm text-gray-600">
+                      Confidence: {Math.round((parseResult.confidence || 0) * 100)}%
+                    </div>
+                  </div>
+
+                  {parseResult.warnings && parseResult.warnings.length > 0 && (
+                    <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+                      {parseResult.warnings.map((warning: string, index: number) => (
+                        <div key={index}>⚠️ {warning}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {parsedTasks.length > 0 ? (
+                    <div className="space-y-3">
+                      {parsedTasks.map((task: any, index: number) => (
+                        <div key={index} className="bg-white border border-gray-200 rounded-lg p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">{task.title}</h4>
+                              {task.description && (
+                                <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                              )}
+                              <div className="flex items-center mt-2 space-x-4 text-xs">
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                  {task.category}
+                                </span>
+                                <span className={`px-2 py-1 rounded ${
+                                  task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                                  task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-green-100 text-green-700'
+                                }`}>
+                                  {task.priority} priority
+                                </span>
+                                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                  {task.complexity} complexity
+                                </span>
+                                <span className="text-gray-500">
+                                  {Math.round((task.confidence || 0) * 100)}% confident
+                                </span>
+                              </div>
+                              {task.deadline && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  📅 Deadline: {new Date(task.deadline).toLocaleDateString()}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleFillFromParsed(task, index)}
+                              className="ml-2 text-blue-600 hover:text-blue-700 text-xs underline"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Create All Tasks Button */}
+                      <div className="flex justify-center pt-4 border-t">
+                        <button
+                          type="button"
+                          onClick={handleCreateParsedTasks}
+                          disabled={isSubmitting}
+                          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Creating...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Create All Tasks ({parsedTasks.length})
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No tasks could be parsed from your input. Try being more specific.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Manual Form Mode */}
+          {mode === 'manual' && (
+            <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
@@ -241,7 +550,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   id="category"
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white ${
                     errors.category ? 'border-red-500' : 'border-gray-300'
                   }`}
                   disabled={isSubmitting}
@@ -261,7 +570,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   id="priority"
                   value={formData.priority}
                   onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as TaskPriority }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
                   disabled={isSubmitting}
                 >
                   <option value="low">Low</option>
@@ -282,7 +591,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   id="complexity"
                   value={formData.complexity}
                   onChange={(e) => setFormData(prev => ({ ...prev, complexity: e.target.value as TaskComplexity }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
                   disabled={isSubmitting}
                 >
                   <option value="simple">Simple</option>
@@ -299,7 +608,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   id="energy_required"
                   value={formData.energy_required}
                   onChange={(e) => setFormData(prev => ({ ...prev, energy_required: e.target.value as EnergyLevel }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
                   disabled={isSubmitting}
                 >
                   <option value="low">Low Energy</option>
@@ -369,6 +678,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
               </button>
             </div>
           </form>
+        )}
         </div>
       </div>
     </div>

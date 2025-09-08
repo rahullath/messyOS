@@ -259,6 +259,8 @@
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
   font-size: 0.95rem;
+  color: #1f2937;
+  background-color: white;
 }
 
 .form-group small {
