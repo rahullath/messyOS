@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import TaskCreationModal from './TaskCreationModal';
 import TaskList from './TaskList';
-import ActiveSessionsDebug from './ActiveSessionsDebug';
 import type { Task } from '../../types/task-management';
 
 interface TaskManagementProps {
