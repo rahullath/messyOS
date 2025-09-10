@@ -297,15 +297,15 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-surface rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-border">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Create New Task</h2>
+            <h2 className="text-2xl font-semibold text-text-primary">Create New Task</h2>
             <button
               onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-text-muted hover:text-text-primary transition-colors p-1 hover:bg-surface-hover rounded-full"
               disabled={isSubmitting || isProcessingNL}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,14 +315,14 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
           </div>
 
           {/* Mode Selector */}
-          <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+          <div className="flex mb-6 bg-surface-hover rounded-lg p-1">
             <button
               type="button"
               onClick={() => setMode('natural')}
               className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 mode === 'natural' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-800'
+                  ? 'bg-accent-primary text-white shadow-sm' 
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface'
               }`}
               disabled={isSubmitting || isProcessingNL}
             >
@@ -338,8 +338,8 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
               onClick={() => setMode('manual')}
               className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 mode === 'manual' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-800'
+                  ? 'bg-accent-primary text-white shadow-sm' 
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface'
               }`}
               disabled={isSubmitting || isProcessingNL}
             >
@@ -357,7 +357,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
             <div className="space-y-6">
               {/* Natural Language Input */}
               <div>
-                <label htmlFor="natural-input" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="natural-input" className="block text-sm font-medium text-text-primary mb-2">
                   Describe your task(s) in natural language
                 </label>
                 <textarea
@@ -365,11 +365,11 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   rows={4}
                   value={naturalLanguageInput}
                   onChange={(e) => setNaturalLanguageInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary text-text-primary bg-surface placeholder-text-muted"
                   placeholder="e.g., 'I need to finish my assignment by Friday, call mom tomorrow, and buy groceries this week'"
                   disabled={isProcessingNL || isSubmitting}
                 />
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-text-muted">
                   💡 Try: "Finish homework by tomorrow", "Call dentist to schedule appointment", or "Buy groceries, do laundry, and clean kitchen"
                 </p>
               </div>
@@ -380,7 +380,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   type="button"
                   onClick={handleProcessNaturalLanguage}
                   disabled={!naturalLanguageInput.trim() || isProcessingNL}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                  className="px-6 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                 >
                   {isProcessingNL ? (
                     <>
@@ -403,18 +403,18 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
 
               {/* Parsed Tasks Results */}
               {parseResult && (
-                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <div className="border border-border rounded-lg p-4 bg-surface-hover">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-medium text-gray-900">
+                    <h3 className="text-lg font-medium text-text-primary">
                       Parsed Tasks ({parsedTasks.length})
                     </h3>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-text-secondary">
                       Confidence: {Math.round((parseResult.confidence || 0) * 100)}%
                     </div>
                   </div>
 
                   {parseResult.warnings && parseResult.warnings.length > 0 && (
-                    <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+                    <div className="mb-3 p-2 bg-accent-warning/20 border border-accent-warning/30 rounded text-sm text-accent-warning">
                       {parseResult.warnings.map((warning: string, index: number) => (
                         <div key={index}>⚠️ {warning}</div>
                       ))}
@@ -424,34 +424,34 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   {parsedTasks.length > 0 ? (
                     <div className="space-y-3">
                       {parsedTasks.map((task: any, index: number) => (
-                        <div key={index} className="bg-white border border-gray-200 rounded-lg p-3">
+                        <div key={index} className="bg-surface border border-border rounded-lg p-3">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{task.title}</h4>
+                              <h4 className="font-medium text-text-primary">{task.title}</h4>
                               {task.description && (
-                                <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                <p className="text-sm text-text-secondary mt-1">{task.description}</p>
                               )}
                               <div className="flex items-center mt-2 space-x-4 text-xs">
-                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
                                   {task.category}
                                 </span>
                                 <span className={`px-2 py-1 rounded ${
-                                  task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                                  task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                                  task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-green-100 text-green-700'
+                                  task.priority === 'urgent' ? 'bg-red-500/20 text-red-400' :
+                                  task.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                                  task.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-green-500/20 text-green-400'
                                 }`}>
                                   {task.priority} priority
                                 </span>
-                                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded">
                                   {task.complexity} complexity
                                 </span>
-                                <span className="text-gray-500">
+                                <span className="text-text-muted">
                                   {Math.round((task.confidence || 0) * 100)}% confident
                                 </span>
                               </div>
                               {task.deadline && (
-                                <div className="text-xs text-gray-500 mt-1">
+                                <div className="text-xs text-text-muted mt-1">
                                   📅 Deadline: {new Date(task.deadline).toLocaleDateString()}
                                 </div>
                               )}
@@ -459,7 +459,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                             <button
                               type="button"
                               onClick={() => handleFillFromParsed(task, index)}
-                              className="ml-2 text-blue-600 hover:text-blue-700 text-xs underline"
+                              className="ml-2 text-accent-primary hover:text-accent-primary/80 text-xs underline"
                             >
                               Edit
                             </button>
@@ -473,7 +473,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                           type="button"
                           onClick={handleCreateParsedTasks}
                           disabled={isSubmitting}
-                          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                          className="px-6 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                         >
                           {isSubmitting ? (
                             <>
@@ -495,7 +495,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                       </div>
                     </div>
                   ) : (
-                    <p className="text-gray-500 text-center py-4">No tasks could be parsed from your input. Try being more specific.</p>
+                    <p className="text-text-muted text-center py-4">No tasks could be parsed from your input. Try being more specific.</p>
                   )}
                 </div>
               )}
@@ -507,26 +507,26 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
             <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                Task Title <span className="text-red-500">*</span>
+              <label htmlFor="title" className="block text-sm font-medium text-text-primary mb-2">
+                Task Title <span className="text-accent-error">*</span>
               </label>
               <input
                 type="text"
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.title ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary bg-surface text-text-primary ${
+                  errors.title ? 'border-accent-error' : 'border-border'
                 }`}
                 placeholder="What needs to be done?"
                 disabled={isSubmitting}
               />
-              {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
+              {errors.title && <p className="mt-1 text-sm text-accent-error">{errors.title}</p>}
             </div>
 
             {/* Description */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="description" className="block text-sm font-medium text-text-primary mb-2">
                 Description
               </label>
               <textarea
@@ -534,7 +534,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                 rows={3}
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary bg-surface text-text-primary"
                 placeholder="Describe the task in detail..."
                 disabled={isSubmitting}
               />
@@ -543,15 +543,15 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
             {/* Category and Priority */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-                  Category <span className="text-red-500">*</span>
+                <label htmlFor="category" className="block text-sm font-medium text-text-primary mb-2">
+                  Category <span className="text-accent-error">*</span>
                 </label>
                 <select
                   id="category"
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white ${
-                    errors.category ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary text-text-primary bg-surface ${
+                    errors.category ? 'border-accent-error' : 'border-border'
                   }`}
                   disabled={isSubmitting}
                 >
@@ -559,18 +559,18 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                     <option key={category} value={category}>{category}</option>
                   ))}
                 </select>
-                {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
+                {errors.category && <p className="mt-1 text-sm text-accent-error">{errors.category}</p>}
               </div>
 
               <div>
-                <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="priority" className="block text-sm font-medium text-text-primary mb-2">
                   Priority
                 </label>
                 <select
                   id="priority"
                   value={formData.priority}
                   onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as TaskPriority }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary text-text-primary bg-surface"
                   disabled={isSubmitting}
                 >
                   <option value="low">Low</option>
@@ -584,14 +584,14 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
             {/* Complexity and Energy Required */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="complexity" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="complexity" className="block text-sm font-medium text-text-primary mb-2">
                   Complexity
                 </label>
                 <select
                   id="complexity"
                   value={formData.complexity}
                   onChange={(e) => setFormData(prev => ({ ...prev, complexity: e.target.value as TaskComplexity }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary text-text-primary bg-surface"
                   disabled={isSubmitting}
                 >
                   <option value="simple">Simple</option>
@@ -601,14 +601,14 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
               </div>
 
               <div>
-                <label htmlFor="energy_required" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="energy_required" className="block text-sm font-medium text-text-primary mb-2">
                   Energy Required
                 </label>
                 <select
                   id="energy_required"
                   value={formData.energy_required}
                   onChange={(e) => setFormData(prev => ({ ...prev, energy_required: e.target.value as EnergyLevel }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder-gray-400"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary text-text-primary bg-surface"
                   disabled={isSubmitting}
                 >
                   <option value="low">Low Energy</option>
@@ -621,15 +621,15 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
             {/* Estimated Duration and Deadline */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="estimated_duration" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="estimated_duration" className="block text-sm font-medium text-text-primary mb-2">
                   Estimated Duration
                 </label>
                 <select
                   id="estimated_duration"
                   value={formData.estimated_duration}
                   onChange={(e) => setFormData(prev => ({ ...prev, estimated_duration: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.estimated_duration ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary bg-surface text-text-primary ${
+                    errors.estimated_duration ? 'border-accent-error' : 'border-border'
                   }`}
                   disabled={isSubmitting}
                 >
@@ -638,11 +638,11 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
-                {errors.estimated_duration && <p className="mt-1 text-sm text-red-600">{errors.estimated_duration}</p>}
+                {errors.estimated_duration && <p className="mt-1 text-sm text-accent-error">{errors.estimated_duration}</p>}
               </div>
 
               <div>
-                <label htmlFor="deadline" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="deadline" className="block text-sm font-medium text-text-primary mb-2">
                   Deadline
                 </label>
                 <input
@@ -650,12 +650,12 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
                   id="deadline"
                   value={formData.deadline}
                   onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.deadline ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-primary bg-surface text-text-primary ${
+                    errors.deadline ? 'border-accent-error' : 'border-border'
                   }`}
                   disabled={isSubmitting}
                 />
-                {errors.deadline && <p className="mt-1 text-sm text-red-600">{errors.deadline}</p>}
+                {errors.deadline && <p className="mt-1 text-sm text-accent-error">{errors.deadline}</p>}
               </div>
             </div>
 
@@ -664,7 +664,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
                 disabled={isSubmitting}
               >
                 Cancel
@@ -672,7 +672,7 @@ export default function TaskCreationModal({ userId, isOpen, onClose, onTaskCreat
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isSubmitting ? 'Creating...' : 'Create Task'}
               </button>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, TaskQueryParams, TasksResponse } from '../../types/task-management';
 import TaskSchedulingModal from './TaskSchedulingModal';
+import IntelligentSchedulingButton from './IntelligentSchedulingButton';
+import BatchSchedulingButton from './BatchSchedulingButton';
 import type { ScheduledTask } from '../../types/calendar';
 
 interface TaskListProps {
@@ -10,18 +12,18 @@ interface TaskListProps {
 }
 
 const PRIORITY_COLORS = {
-  low: 'bg-gray-800 text-gray-300',
-  medium: 'bg-blue-900 text-blue-300',
-  high: 'bg-orange-900 text-orange-300',
-  urgent: 'bg-red-900 text-red-300'
+  low: 'bg-gray-500/20 text-gray-400',
+  medium: 'bg-blue-500/20 text-blue-400',
+  high: 'bg-orange-500/20 text-orange-400',
+  urgent: 'bg-red-500/20 text-red-400'
 };
 
 const STATUS_COLORS = {
-  pending: 'bg-yellow-900 text-yellow-300',
-  in_progress: 'bg-blue-900 text-blue-300',
-  completed: 'bg-green-900 text-green-300',
-  cancelled: 'bg-gray-800 text-gray-300',
-  deferred: 'bg-purple-900 text-purple-300'
+  pending: 'bg-yellow-500/20 text-yellow-400',
+  in_progress: 'bg-blue-500/20 text-blue-400',
+  completed: 'bg-green-500/20 text-green-400',
+  cancelled: 'bg-gray-500/20 text-gray-400',
+  deferred: 'bg-purple-500/20 text-purple-400'
 };
 
 export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps) {
@@ -178,15 +180,21 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
 
   return (
     <div className="space-y-4">
+      {/* AI Batch Scheduling */}
+      <BatchSchedulingButton 
+        tasks={tasks}
+        onTasksUpdated={fetchTasks}
+      />
+
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border">
+      <div className="card">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Status</label>
             <select
               value={filters.status || ''}
               onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as Task['status'] || undefined }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm bg-surface text-text-primary"
             >
               <option value="">All Statuses</option>
               <option value="pending">Pending</option>
@@ -198,11 +206,11 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Priority</label>
             <select
               value={filters.priority || ''}
               onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value as Task['priority'] || undefined }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm bg-surface text-text-primary"
             >
               <option value="">All Priorities</option>
               <option value="low">Low</option>
@@ -213,11 +221,11 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Category</label>
             <select
               value={filters.category || ''}
               onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value || undefined }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm bg-surface text-text-primary"
             >
               <option value="">All Categories</option>
               <option value="Work">Work</option>
@@ -234,14 +242,14 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+            <label className="block text-sm font-medium text-text-primary mb-1">Sort By</label>
             <select
               value={`${filters.sort_by}-${filters.sort_order}`}
               onChange={(e) => {
                 const [sort_by, sort_order] = e.target.value.split('-');
                 setFilters(prev => ({ ...prev, sort_by: sort_by as TaskQueryParams['sort_by'], sort_order: sort_order as TaskQueryParams['sort_order'] }));
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              className="w-full px-3 py-2 border border-border rounded-md text-sm bg-surface text-text-primary"
             >
               <option value="created_at-desc">Newest First</option>
               <option value="created_at-asc">Oldest First</option>
@@ -255,8 +263,8 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
 
       {/* Task List */}
       {tasks.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <svg className="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="text-center py-8 text-text-muted">
+          <svg className="w-12 h-12 mx-auto mb-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <p>No tasks found</p>
@@ -267,12 +275,12 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+              className="card hover:bg-surface-hover transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <h3 className="text-lg font-medium text-gray-900 truncate">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <h3 className="text-lg font-semibold text-text-primary truncate">
                       {task.title}
                     </h3>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${PRIORITY_COLORS[task.priority]}`}>
@@ -284,12 +292,12 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
                   </div>
 
                   {task.description && (
-                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                    <p className="text-text-secondary text-sm mb-3 line-clamp-2">
                       {task.description}
                     </p>
                   )}
 
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <div className="flex items-center space-x-4 text-sm text-text-muted">
                     <span className="flex items-center">
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -334,17 +342,23 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2 ml-4">
-                  {/* Schedule Button - available for pending and in_progress tasks */}
+                  {/* AI Intelligent Scheduling Button */}
+                  <IntelligentSchedulingButton 
+                    task={task} 
+                    onTaskUpdate={fetchTasks}
+                  />
+
+                  {/* Manual Schedule Button - available for pending and in_progress tasks */}
                   {(task.status === 'pending' || task.status === 'in_progress') && (
                     <button
                       onClick={() => handleScheduleTask(task)}
-                      className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex items-center"
-                      title={task.status === 'in_progress' ? 'Edit Schedule' : 'Schedule Task'}
+                      className="px-3 py-1 text-sm bg-surface border border-border text-text-secondary rounded hover:bg-surface-hover transition-colors flex items-center"
+                      title="Manual scheduling options"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      {task.status === 'in_progress' ? 'Reschedule' : 'Schedule'}
+                      Manual
                     </button>
                   )}
 
