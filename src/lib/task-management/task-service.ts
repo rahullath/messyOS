@@ -44,8 +44,10 @@ export class TaskService {
     return data;
   }
 
-  static async getTask(userId: string, taskId: string): Promise<Task | null> {
-    const { data, error } = await supabase
+  static async getTask(userId: string, taskId: string, supabaseClient?: SupabaseClient<Database>): Promise<Task | null> {
+    const client = supabaseClient || defaultSupabase;
+    
+    const { data, error } = await client
       .from('tasks')
       .select('*')
       .eq('id', taskId)
@@ -62,8 +64,10 @@ export class TaskService {
     return data;
   }
 
-  static async getTasks(userId: string, params: TaskQueryParams = {}): Promise<TasksResponse> {
-    let query = supabase
+  static async getTasks(userId: string, params: TaskQueryParams = {}, supabaseClient?: SupabaseClient<Database>): Promise<TasksResponse> {
+    const client = supabaseClient || defaultSupabase;
+    
+    let query = client
       .from('tasks')
       .select('*', { count: 'exact' })
       .eq('user_id', userId);
@@ -118,8 +122,10 @@ export class TaskService {
     };
   }
 
-  static async updateTask(userId: string, taskId: string, updates: UpdateTaskRequest): Promise<Task> {
-    const { data, error } = await supabase
+  static async updateTask(userId: string, taskId: string, updates: UpdateTaskRequest, supabaseClient?: SupabaseClient<Database>): Promise<Task> {
+    const client = supabaseClient || defaultSupabase;
+    
+    const { data, error } = await client
       .from('tasks')
       .update(updates)
       .eq('id', taskId)
@@ -134,8 +140,10 @@ export class TaskService {
     return data;
   }
 
-  static async deleteTask(userId: string, taskId: string): Promise<void> {
-    const { error } = await supabase
+  static async deleteTask(userId: string, taskId: string, supabaseClient?: SupabaseClient<Database>): Promise<void> {
+    const client = supabaseClient || defaultSupabase;
+    
+    const { error } = await client
       .from('tasks')
       .delete()
       .eq('id', taskId)
@@ -182,8 +190,10 @@ export class TaskService {
 }
 
 export class GoalService {
-  static async createGoal(userId: string, goalData: CreateGoalRequest): Promise<Goal> {
-    const { data, error } = await supabase
+  static async createGoal(userId: string, goalData: CreateGoalRequest, supabaseClient?: SupabaseClient<Database>): Promise<Goal> {
+    const client = supabaseClient || defaultSupabase;
+    
+    const { data, error } = await client
       .from('goals')
       .insert({
         ...goalData,
@@ -199,8 +209,10 @@ export class GoalService {
     return data;
   }
 
-  static async getGoals(userId: string, status?: string, category?: string): Promise<Goal[]> {
-    let query = supabase
+  static async getGoals(userId: string, status?: string, category?: string, supabaseClient?: SupabaseClient<Database>): Promise<Goal[]> {
+    const client = supabaseClient || defaultSupabase;
+    
+    let query = client
       .from('goals')
       .select('*')
       .eq('user_id', userId);
@@ -224,14 +236,15 @@ export class GoalService {
     return data || [];
   }
 
-  static async updateGoalStatus(userId: string, goalId: string, status: string): Promise<Goal> {
+  static async updateGoalStatus(userId: string, goalId: string, status: string, supabaseClient?: SupabaseClient<Database>): Promise<Goal> {
+    const client = supabaseClient || defaultSupabase;
     const updateData: any = { status };
     
     if (status === 'completed') {
       updateData.completed_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('goals')
       .update(updateData)
       .eq('id', goalId)

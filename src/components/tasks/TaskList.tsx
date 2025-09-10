@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, TaskQueryParams, TasksResponse } from '../../types/task-management';
+import TaskSchedulingModal from './TaskSchedulingModal';
+import type { ScheduledTask } from '../../types/calendar';
 
 interface TaskListProps {
   userId: string;
@@ -8,24 +10,25 @@ interface TaskListProps {
 }
 
 const PRIORITY_COLORS = {
-  low: 'bg-gray-100 text-gray-800',
-  medium: 'bg-blue-100 text-blue-800',
-  high: 'bg-orange-100 text-orange-800',
-  urgent: 'bg-red-100 text-red-800'
+  low: 'bg-gray-800 text-gray-300',
+  medium: 'bg-blue-900 text-blue-300',
+  high: 'bg-orange-900 text-orange-300',
+  urgent: 'bg-red-900 text-red-300'
 };
 
 const STATUS_COLORS = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  in_progress: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-100 text-gray-800',
-  deferred: 'bg-purple-100 text-purple-800'
+  pending: 'bg-yellow-900 text-yellow-300',
+  in_progress: 'bg-blue-900 text-blue-300',
+  completed: 'bg-green-900 text-green-300',
+  cancelled: 'bg-gray-800 text-gray-300',
+  deferred: 'bg-purple-900 text-purple-300'
 };
 
 export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [schedulingTask, setSchedulingTask] = useState<Task | null>(null);
   const [filters, setFilters] = useState<TaskQueryParams>({
     status: undefined,
     priority: undefined,
@@ -133,6 +136,16 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
 
   const isOverdue = (deadline: string) => {
     return new Date(deadline) < new Date();
+  };
+
+  const handleScheduleTask = (task: Task) => {
+    setSchedulingTask(task);
+  };
+
+  const handleTaskScheduled = (scheduledTask: ScheduledTask) => {
+    // Refresh the task list to reflect the updated status
+    fetchTasks();
+    setSchedulingTask(null);
   };
 
   if (loading) {
@@ -321,6 +334,20 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
 
                 {/* Action Buttons */}
                 <div className="flex items-center space-x-2 ml-4">
+                  {/* Schedule Button - available for pending and in_progress tasks */}
+                  {(task.status === 'pending' || task.status === 'in_progress') && (
+                    <button
+                      onClick={() => handleScheduleTask(task)}
+                      className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex items-center"
+                      title={task.status === 'in_progress' ? 'Edit Schedule' : 'Schedule Task'}
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {task.status === 'in_progress' ? 'Reschedule' : 'Schedule'}
+                    </button>
+                  )}
+
                   {task.status === 'pending' && (
                     <>
                       <button
@@ -377,6 +404,16 @@ export default function TaskList({ refreshTrigger, onTaskUpdate }: TaskListProps
             </div>
           ))}
         </div>
+      )}
+
+      {/* Task Scheduling Modal */}
+      {schedulingTask && (
+        <TaskSchedulingModal
+          task={schedulingTask}
+          isOpen={true}
+          onClose={() => setSchedulingTask(null)}
+          onScheduled={handleTaskScheduled}
+        />
       )}
     </div>
   );

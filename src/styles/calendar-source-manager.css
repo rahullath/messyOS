@@ -11,7 +11,7 @@
 
 .manager-header h2 {
   margin: 0;
-  color: #1f2937;
+  color: rgb(var(--text-primary));
   font-size: 1.5rem;
   font-weight: 600;
 }
@@ -23,8 +23,8 @@
 }
 
 .source-card {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--border));
   border-radius: 0.75rem;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -58,7 +58,7 @@
 
 .source-info h3 {
   margin: 0;
-  color: #1f2937;
+  color: rgb(var(--text-primary));
   font-size: 1.125rem;
   font-weight: 600;
 }
@@ -130,13 +130,14 @@
 }
 
 .btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: rgb(var(--surface-hover));
+  color: rgb(var(--text-primary));
+  border: 1px solid rgb(var(--border));
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #e5e7eb;
+  background: rgb(var(--border));
+  color: rgb(var(--text-primary));
 }
 
 .btn-success {
@@ -184,7 +185,7 @@
 
 .empty-state h3 {
   margin: 0 0 0.5rem 0;
-  color: #374151;
+  color: rgb(var(--text-primary));
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -207,7 +208,7 @@
 }
 
 .modal-content {
-  background: white;
+  background: rgb(var(--surface));
   border-radius: 0.75rem;
   width: 90%;
   max-width: 500px;
@@ -226,7 +227,7 @@
 
 .modal-header h3 {
   margin: 0;
-  color: #1f2937;
+  color: rgb(var(--text-primary));
   font-size: 1.25rem;
   font-weight: 600;
 }
@@ -249,18 +250,18 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #374151;
+  color: rgb(var(--text-primary));
 }
 
 .form-group input,
 .form-group select {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid rgb(var(--border));
   border-radius: 0.375rem;
   font-size: 0.95rem;
-  color: #1f2937;
-  background-color: white;
+  color: rgb(var(--text-primary));
+  background-color: rgb(var(--surface));
 }
 
 .form-group small {
@@ -277,4 +278,229 @@
   padding: 1.5rem;
   border-top: 1px solid #e5e7eb;
   margin-top: 1.5rem;
+}
+
+/* New Event Modal Specific Styles */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid rgb(var(--border));
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
+  color: rgb(var(--text-primary));
+  background-color: rgb(var(--surface));
+  resize: vertical;
+}
+
+.event-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.calendar-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  gap: 2rem;
+}
+
+.calendar-controls .view-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calendar-controls .view-controls button {
+  padding: 0.5rem 1rem;
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--surface));
+  color: rgb(var(--text-primary));
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.calendar-controls .view-controls button:hover {
+  background: rgb(var(--surface-hover));
+}
+
+.calendar-controls .view-controls button.active {
+  background: rgb(var(--accent));
+  color: white;
+  border-color: rgb(var(--accent));
+}
+
+.toggle-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(var(--text-primary));
+  cursor: pointer;
+}
+
+.toggle-option input[type="checkbox"] {
+  cursor: pointer;
+}
+
+/* Event Details Modal Styles */
+.event-details-modal {
+  max-width: 600px;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.event-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.event-title-section h3 {
+  margin: 0;
+  color: rgb(var(--text-primary));
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.event-type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.task-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: #f59e0b;
+  color: white;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.event-source {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.event-details-content {
+  padding: 0 1.5rem;
+}
+
+.detail-section {
+  margin-bottom: 1.5rem;
+}
+
+.detail-section h4 {
+  margin: 0 0 0.75rem 0;
+  color: rgb(var(--text-primary));
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-details, .properties-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.time-row, .property {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgb(var(--text-secondary));
+}
+
+.time-row strong, .property strong {
+  color: rgb(var(--text-primary));
+  min-width: 60px;
+}
+
+.location-details {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.location-text {
+  color: rgb(var(--text-primary));
+  flex: 1;
+  min-width: 200px;
+}
+
+.location-link {
+  flex-shrink: 0;
+}
+
+.description-text {
+  margin: 0;
+  color: rgb(var(--text-primary));
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.importance-badge, .flexibility-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.importance-badge.low {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.importance-badge.medium {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.importance-badge.high {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.importance-badge.critical {
+  background: #fecaca;
+  color: #b91c1c;
+}
+
+.flexibility-badge.fixed {
+  background: #fecaca;
+  color: #b91c1c;
+}
+
+.flexibility-badge.moveable {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.flexibility-badge.flexible {
+  background: #dcfce7;
+  color: #166534;
 }

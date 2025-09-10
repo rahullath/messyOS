@@ -321,19 +321,33 @@ const EventCard: React.FC<EventCardProps> = ({
   const startTime = new Date(event.start_time);
   const endTime = new Date(event.end_time);
   const duration = (endTime.getTime() - startTime.getTime()) / (1000 * 60); // minutes
+  
+  // Special styling for task events
+  const isTaskEvent = event.event_type === 'task';
+  const taskIcon = isTaskEvent ? '📋' : '';
+  const borderStyle = isTaskEvent ? 'dashed' : 'solid';
+  const backgroundColor = isTaskEvent ? 
+    `${source?.color || '#3b82f6'}22` : // More transparent for tasks
+    source?.color || '#3b82f6';
 
   return (
     <div
-      className={`event-card ${compact ? 'compact' : ''} ${minimal ? 'minimal' : ''} ${event.event_type}`}
+      className={`event-card ${compact ? 'compact' : ''} ${minimal ? 'minimal' : ''} ${event.event_type} ${isTaskEvent ? 'task-event' : ''}`}
       style={{ 
-        backgroundColor: source?.color || '#3b82f6',
-        borderLeft: `4px solid ${source?.color || '#3b82f6'}`
+        backgroundColor: backgroundColor,
+        borderLeft: `4px ${borderStyle} ${source?.color || '#3b82f6'}`,
+        border: isTaskEvent ? `1px ${borderStyle} ${source?.color || '#3b82f6'}66` : undefined
       }}
       onClick={onClick}
       draggable={event.flexibility !== 'fixed'}
       onDragStart={onDragStart}
     >
-      <div className="event-title">{event.title}</div>
+      <div className="event-title">
+        {taskIcon} {event.title}
+        {isTaskEvent && !minimal && (
+          <span className="task-badge">Task</span>
+        )}
+      </div>
       {!minimal && (
         <div className="event-time">
           {startTime.toLocaleTimeString('en-US', { 
@@ -346,10 +360,14 @@ const EventCard: React.FC<EventCardProps> = ({
             minute: '2-digit',
             hour12: true 
           })}`}
+          {isTaskEvent && ` (${Math.round(duration)}min)`}
         </div>
       )}
       {!compact && !minimal && event.location && (
         <div className="event-location">{event.location}</div>
+      )}
+      {!compact && !minimal && isTaskEvent && event.description && (
+        <div className="task-description">{event.description}</div>
       )}
     </div>
   );

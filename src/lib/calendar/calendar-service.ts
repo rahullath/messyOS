@@ -3,7 +3,7 @@
  * Manages all calendar sources and provides unified interface
  */
 
-import { supabase } from 'lib/supabase/client';
+import { supabase } from '../supabase/client';
 import { icalParser } from './ical-parser';
 import { googleCalendar } from './google-calendar';
 import type {
@@ -25,8 +25,9 @@ export class CalendarService {
   /**
    * Get all calendar sources for a user
    */
-  async getCalendarSources(userId: string): Promise<CalendarSource[]> {
-    const { data, error } = await supabase
+  async getCalendarSources(userId: string, supabaseClient?: any): Promise<CalendarSource[]> {
+    const client = supabaseClient || supabase;
+    const { data, error } = await client
       .from('calendar_sources')
       .select('*')
       .eq('user_id', userId)
@@ -44,9 +45,11 @@ export class CalendarService {
    */
   async createCalendarSource(
     userId: string,
-    sourceData: CreateCalendarSourceRequest
+    sourceData: CreateCalendarSourceRequest,
+    supabaseClient?: any
   ): Promise<CalendarSource> {
-    const { data, error } = await supabase
+    const client = supabaseClient || supabase;
+    const { data, error } = await client
       .from('calendar_sources')
       .insert({
         user_id: userId,
@@ -352,9 +355,11 @@ export class CalendarService {
       endDate?: Date;
       sourceIds?: string[];
       eventTypes?: string[];
-    } = {}
+    } = {},
+    supabaseClient?: any
   ): Promise<CalendarEvent[]> {
-    let query = supabase
+    const client = supabaseClient || supabase;
+    let query = client
       .from('calendar_events')
       .select(`
         id, user_id, source_id, external_id, title, description, start_time, end_time, location, event_type, flexibility, importance, created_at, updated_at,
@@ -395,18 +400,29 @@ export class CalendarService {
    */
   async findAvailableSlots(
     userId: string,
-    query: AvailabilityQuery
+    query: AvailabilityQuery,
+    supabaseClient?: any
   ): Promise<TimeSlot[]> {
     const events = await this.getCalendarEvents(userId, {
       startDate: query.start,
       endDate: query.end
+    }, supabaseClient);
+
+    console.log(`🔍 Finding available slots for user ${userId}:`, {
+      queryStart: query.start.toISOString(),
+      queryEnd: query.end.toISOString(),
+      duration: query.duration,
+      eventsInRange: events.length
     });
 
     const slots: TimeSlot[] = [];
     let current = new Date(query.start);
     const buffer = query.buffer || 0;
 
-    while (current < query.end) {
+    let slotCount = 0;
+    let availableCount = 0;
+    
+    while (current < query.end && slotCount < 500) { // Increased limit to find more slots
       const slotEnd = new Date(current.getTime() + query.duration * 60000);
       
       if (slotEnd > query.end) break;
@@ -420,17 +436,23 @@ export class CalendarService {
         )
       );
 
+      const isAvailable = conflicts.length === 0;
       slots.push({
         start: new Date(current),
         end: new Date(slotEnd),
         duration: query.duration,
-        available: conflicts.length === 0,
+        available: isAvailable,
         conflicts: conflicts.length > 0 ? conflicts : undefined
       });
 
-      // Move to next potential slot (considering buffer)
-      current = new Date(current.getTime() + Math.max(15, buffer) * 60000);
+      slotCount++;
+      if (isAvailable) availableCount++;
+
+      // Move to next potential slot - check every 30 minutes for more flexibility
+      current = new Date(current.getTime() + Math.max(30, buffer || 30) * 60000);
     }
+    
+    console.log(`🔍 Slot search results: ${slotCount} slots checked, ${availableCount} available`);
 
     return slots.filter(slot => slot.available);
   }
@@ -438,11 +460,11 @@ export class CalendarService {
   /**
    * Detect calendar conflicts
    */
-  async detectConflicts(userId: string, dateRange?: { start: Date; end: Date }): Promise<CalendarConflict[]> {
+  async detectConflicts(userId: string, dateRange?: { start: Date; end: Date }, supabaseClient?: any): Promise<CalendarConflict[]> {
     const events = await this.getCalendarEvents(userId, {
       startDate: dateRange?.start,
       endDate: dateRange?.end,
-    });
+    }, supabaseClient);
     const conflicts: CalendarConflict[] = [];
 
     for (let i = 0; i < events.length; i++) {
@@ -573,7 +595,8 @@ export class CalendarService {
    * Schedule a task into the calendar.
    * This method will find an available slot, create a calendar event, and handle conflicts.
    */
-  async scheduleTask(request: ScheduleTaskRequest): Promise<ScheduledTask> {
+  async scheduleTask(request: ScheduleTaskRequest, supabaseClient?: any): Promise<ScheduledTask> {
+    const client = supabaseClient || supabase;
     const {
       task_id,
       user_id,
@@ -595,24 +618,72 @@ export class CalendarService {
     }
 
     // Determine the search range for available slots
-    const searchStart = preferred_start_time ? new Date(preferred_start_time) : new Date();
-    const searchEnd = preferred_end_time ? new Date(preferred_end_time) : (deadline ? new Date(deadline) : new Date(searchStart.getTime() + 7 * 24 * 60 * 60 * 1000)); // Default to 1 week from now
+    const now = new Date();
+    let actualSearchStart: Date;
+    let searchEnd: Date;
+    
+    if (preferred_start_time) {
+      // User specified a preferred time - use it if it's in the future
+      const preferredTime = new Date(preferred_start_time);
+      actualSearchStart = preferredTime > now ? preferredTime : new Date(now.getTime() + 30 * 60000); // 30 mins from now if preferred time is past
+      
+      if (preferred_end_time) {
+        searchEnd = new Date(preferred_end_time);
+      } else {
+        // If no end time specified, search from preferred time for 1 week
+        searchEnd = new Date(actualSearchStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      }
+    } else {
+      // No preferred time - search from next 30 minutes for 3 weeks  
+      actualSearchStart = new Date(now.getTime() + 30 * 60000);
+      searchEnd = deadline ? new Date(deadline) : new Date(actualSearchStart.getTime() + 21 * 24 * 60 * 60 * 1000);
+    }
+    
+    // Ensure searchEnd is after searchStart
+    if (searchEnd <= actualSearchStart) {
+      searchEnd = new Date(actualSearchStart.getTime() + 7 * 24 * 60 * 60 * 1000); // Default to 1 week from start
+    }
+    
+    console.log('🕒 Schedule time range:', {
+      now: now.toISOString(),
+      actualSearchStart: actualSearchStart.toISOString(), 
+      searchEnd: searchEnd.toISOString(),
+      duration: estimated_duration
+    });
 
     // Find available slots
     const availabilityQuery: AvailabilityQuery = {
-      start: searchStart,
+      start: actualSearchStart,
       end: searchEnd,
       duration: estimated_duration,
-      buffer: 15, // Default buffer of 15 minutes
+      buffer: 0, // No buffer for now to find more slots
       preferences: {
         energyLevel: energy_required,
         taskType: 'task' // Assuming tasks are generally of type 'task'
       }
     };
 
-    const availableSlots = await this.findAvailableSlots(user_id, availabilityQuery);
+    const availableSlots = await this.findAvailableSlots(user_id, availabilityQuery, client);
+
+    console.log(`🔍 Searching for slots:`, {
+      actualSearchStart: actualSearchStart.toISOString(),
+      searchEnd: searchEnd.toISOString(),
+      duration: estimated_duration,
+      slotsFound: availableSlots.length
+    });
 
     if (availableSlots.length === 0) {
+      // Get all events in the time range to help debug
+      const events = await this.getCalendarEvents(user_id, {
+        startDate: actualSearchStart,
+        endDate: searchEnd
+      }, client);
+      console.log(`📅 Events in range: ${events.length}`, events.map(e => ({
+        title: e.title,
+        start: e.start_time,
+        end: e.end_time
+      })));
+      
       throw new Error('No available slots found for the given task and preferences.');
     }
 
@@ -623,7 +694,7 @@ export class CalendarService {
     // Create the calendar event
     const newCalendarEvent: TablesInsert<'calendar_events'> = {
       user_id,
-      source_id: source_id || (await this.getDefaultCalendarSourceId(user_id)), // Use a default source if not provided
+      source_id: source_id || (await this.getDefaultCalendarSourceId(user_id, client)), // Use a default source if not provided
       title,
       description,
       start_time: selectedSlot.start.toISOString(),
@@ -634,7 +705,7 @@ export class CalendarService {
       external_id: task_id // Link task to calendar event
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('calendar_events')
       .insert(newCalendarEvent)
       .select()
@@ -648,7 +719,7 @@ export class CalendarService {
     const conflicts = await this.detectConflicts(user_id, {
       start: selectedSlot.start,
       end: selectedSlot.end
-    });
+    }, client);
 
     const scheduledTask: ScheduledTask = {
       task_id: task_id,
@@ -668,14 +739,25 @@ export class CalendarService {
   /**
    * Helper: Get a default calendar source ID for scheduling if none is provided.
    * This could be the user's primary manual calendar or the first active one found.
+   * If no sources exist, creates a default manual calendar.
    */
-  private async getDefaultCalendarSourceId(userId: string): Promise<string> {
-    const sources = await this.getCalendarSources(userId);
-    const defaultSource = sources.find(s => s.type === 'manual' && s.is_active) || sources.find(s => s.is_active);
+  private async getDefaultCalendarSourceId(userId: string, supabaseClient?: any): Promise<string> {
+    const sources = await this.getCalendarSources(userId, supabaseClient);
+    let defaultSource = sources.find(s => s.type === 'manual' && s.is_active) || sources.find(s => s.is_active);
 
     if (!defaultSource) {
-      throw new Error('No active calendar sources found to schedule the task.');
+      console.log('🔧 No active calendar sources found, creating default manual calendar');
+      // Create a default manual calendar source
+      defaultSource = await this.createCalendarSource(userId, {
+        name: 'My Tasks',
+        type: 'manual',
+        color: '#3B82F6',
+        priority: 1,
+        sync_frequency: 60
+      }, supabaseClient);
+      console.log('✅ Created default calendar source:', defaultSource.id);
     }
+    
     return defaultSource.id;
   }
 }
