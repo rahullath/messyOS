@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import type { Task } from '../../types/task-management';
-import { AutoSchedulerService } from '../../lib/intelligence/auto-scheduler-service';
+// import { AutoSchedulerService } from '../../lib/intelligence/auto-scheduler-service';
+
+// Temporary mock service until auto-scheduler-service is properly built
+const MockAutoSchedulerService = {
+  async suggestOptimalScheduling(userId: string, task: Task, options: any) {
+    // Mock implementation - returns empty suggestions for now
+    return {
+      suggested_slots: [],
+      decomposed_sessions: []
+    };
+  },
+  
+  async autoScheduleTask(userId: string, task: Task, threshold: number) {
+    // Mock implementation - returns no scheduling for now  
+    return {
+      scheduled: false,
+      message: 'AI scheduling is temporarily unavailable'
+    };
+  }
+};
 
 interface IntelligentSchedulingModalProps {
   task: Task;
@@ -51,7 +70,7 @@ export default function IntelligentSchedulingModal({
       setLoading(true);
       setError(null);
 
-      const result = await AutoSchedulerService.suggestOptimalScheduling('user-id', task, {
+      const result = await MockAutoSchedulerService.suggestOptimalScheduling('user-id', task, {
         considerEnergyPatterns: true,
         considerHabits: true,
         decomposeComplexTasks: task.complexity === 'complex',
@@ -111,7 +130,7 @@ export default function IntelligentSchedulingModal({
       setScheduling(true);
       setError(null);
 
-      const result = await AutoSchedulerService.autoScheduleTask('user-id', task, 0.7);
+      const result = await MockAutoSchedulerService.autoScheduleTask('user-id', task, 0.7);
       
       if (result.scheduled) {
         onTaskScheduled(task);
