@@ -1,25 +1,28 @@
 // src/pages/api/habits/[id]/log-enhanced.ts - Enhanced with future dating
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../../lib/auth/simple-multi-user';
+import { createServerClient } from '../../../../lib/supabase/server';
+import { updateHabitStreak } from '../../../../lib/habits/streaks';
 
 export const POST: APIRoute = async ({ request, params, cookies }) => {
-    const serverAuth = createServerAuth(cookies);
-    const user = await serverAuth.requireAuth();
-    const supabase = serverAuth.supabase;
-  
   const habitId = params.id as string;
+  const supabase = createServerClient(cookies);
 
   try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+    
     const body = await request.json();
     const { 
       value = 1,     // 0=missed, 1=completed, 2=skipped, 3=partial
       date,          // ✅ Allow custom date
       notes,
-      effort,
-      duration,
+      effort = 3,
+      duration,      // Duration in minutes
       completion_time,
-      energy_level,
-      mood,
+      energy_level = 3,
+      mood = 3,
       location,
       weather,
       context = []
@@ -43,15 +46,15 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
         .from('habit_entries')
         .update({
           value,
-          notes,
+          notes: notes || null,
           effort,
-          duration,
-          completion_time,
+          duration_minutes: duration || null,
+          completion_time: completion_time || null,
           energy_level,
           mood,
-          location,
-          weather,
-          context: Array.isArray(context) ? context : context.split(',').filter((c: string) => c.trim()),
+          location: location || null,
+          weather: weather || null,
+          context_tags: Array.isArray(context) ? context : (typeof context === 'string' ? context.split(',').filter((c: string) => c.trim()) : []),
           logged_at: new Date().toISOString()
         })
         .eq('id', existingEntry.id)
@@ -76,15 +79,15 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
         habit_id: habitId,
         user_id: user.id,
         value,
-        notes,
+        notes: notes || null,
         effort,
-        duration,
-        completion_time,
+        duration_minutes: duration || null,
+        completion_time: completion_time || null,
         energy_level,
         mood,
-        location,
-        weather,
-        context: Array.isArray(context) ? context : context.split(',').filter((c: string) => c.trim()),
+        location: location || null,
+        weather: weather || null,
+        context_tags: Array.isArray(context) ? context : (typeof context === 'string' ? context.split(',').filter((c: string) => c.trim()) : []),
         logged_at: new Date().toISOString(),
         date: targetDate
       }])
@@ -119,57 +122,3 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
     return new Response(JSON.stringify({ error: errorMessage }), { status: 500 });
   }
 };
-
-// ✅ Enhanced streak calculation that handles skips properly
-async function updateHabitStreak(supabase: any, habitId: string, userId: string) {
-  const { data: entries } = await supabase
-    .from('habit_entries')
-    .select('date, value')
-    .eq('habit_id', habitId)
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .limit(100);
-
-  if (!entries) return;
-
-  let currentStreak = 0;
-  let bestStreak = 0;
-  let tempStreak = 0;
-  const today = new Date();
-  
-  // Calculate current streak (from today backwards)
-  for (let i = 0; i < 100; i++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(today.getDate() - i);
-    const dateStr = checkDate.toISOString().split('T')[0];
-    
-    const entry = entries.find((e: any) => e.date === dateStr);
-    
-    if (entry) {
-      if (entry.value === 1 || entry.value === 3) { // Completed or partial
-        if (i === 0 || currentStreak > 0) currentStreak++;
-        tempStreak++;
-      } else if (entry.value === 2) { // Skipped - doesn't break streak
-        tempStreak++;
-        continue;
-      } else { // Failed (value = 0)
-        if (currentStreak === 0) currentStreak = tempStreak;
-        break;
-      }
-    } else {
-      // No entry - only breaks streak if we have an active one
-      if (currentStreak > 0) break;
-    }
-    
-    bestStreak = Math.max(bestStreak, tempStreak);
-  }
-
-  // Update habit with new streaks
-  await supabase
-    .from('habits')
-    .update({ 
-      streak_count: currentStreak,
-      best_streak: Math.max(bestStreak, currentStreak)
-    })
-    .eq('id', habitId);
-}

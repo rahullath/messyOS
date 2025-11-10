@@ -1,0 +1,423 @@
+/* Mobile-first responsive design and touch optimizations */
+
+/* Touch-friendly interactions */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Minimum touch target sizes */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+[role="link"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Enhanced focus states for mobile */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #06b6d4;
+  outline-offset: 2px;
+}
+
+/* Active states for better touch feedback */
+button:active,
+a:active,
+[role="button"]:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+/* Prevent text selection on interactive elements */
+button,
+a,
+[role="button"] {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Safe area support for notched devices */
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* PWA-specific styles */
+@media (display-mode: standalone) {
+  body {
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Hide scrollbars in standalone mode */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* Prevent overscroll bounce */
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+/* Mobile keyboard optimizations */
+@media (max-width: 768px) {
+  /* Prevent zoom on input focus */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+  
+  /* Better spacing for mobile forms */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  /* Larger tap targets on mobile */
+  button,
+  a,
+  [role="button"] {
+    padding: 12px 16px;
+  }
+  
+  /* Mobile-optimized modals */
+  .modal {
+    margin: 0;
+    border-radius: 0;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+  
+  /* Full-width buttons on mobile */
+  .btn-mobile-full {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Tablet-specific styles */
+  .container {
+    max-width: 90%;
+  }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Crisp borders and shadows */
+  .border {
+    border-width: 0.5px;
+  }
+}
+
+/* Landscape orientation optimizations */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Reduce vertical spacing in landscape */
+  .py-20 {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+  
+  .py-12 {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  /* Enhanced contrast for dark mode */
+  .text-gray-400 {
+    color: #9ca3af;
+  }
+  
+  .text-gray-300 {
+    color: #d1d5db;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  button,
+  a,
+  input {
+    border: 2px solid;
+  }
+  
+  .bg-slate-800 {
+    background-color: #000;
+  }
+  
+  .text-gray-400 {
+    color: #fff;
+  }
+}
+
+/* Loading states for better perceived performance */
+.loading-skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Haptic feedback simulation */
+.haptic-light:active {
+  animation: haptic-light 0.1s ease;
+}
+
+.haptic-medium:active {
+  animation: haptic-medium 0.15s ease;
+}
+
+@keyframes haptic-light {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.98); }
+}
+
+@keyframes haptic-medium {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+}
+
+/* Swipe gesture indicators */
+.swipe-indicator {
+  position: relative;
+}
+
+.swipe-indicator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  width: 0;
+  height: 0;
+  border-left: 6px solid #6b7280;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transform: translateY(-50%);
+}
+
+/* Pull-to-refresh indicator */
+.pull-to-refresh {
+  position: relative;
+  overflow: hidden;
+}
+
+.pull-to-refresh::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #06b6d4;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  animation: spin 1s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pull-to-refresh.refreshing::before {
+  opacity: 1;
+}
+
+@keyframes spin {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+
+/* Power saving mode optimizations */
+.power-save * {
+  animation-duration: 0.1s !important;
+  transition-duration: 0.1s !important;
+}
+
+.power-save .animate-pulse,
+.power-save .animate-spin {
+  animation: none !important;
+}
+
+/* Reduced motion class for slow networks */
+.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* iOS-specific optimizations */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific styles */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    -webkit-appearance: none;
+    border-radius: 8px;
+  }
+  
+  /* Fix iOS zoom on input focus */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  
+  /* iOS safe area handling */
+  .ios-safe-area {
+    padding-top: constant(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Android-specific optimizations */
+@media (max-width: 768px) {
+  /* Android Chrome address bar handling */
+  .full-height {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+  }
+  
+  /* Better touch targets for Android */
+  button, a, [role="button"] {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* Foldable device support */
+@media (spanning: single-fold-vertical) {
+  .main-content {
+    flex-direction: row;
+  }
+  
+  .sidebar {
+    width: 50%;
+  }
+}
+
+@media (spanning: single-fold-horizontal) {
+  .main-content {
+    flex-direction: column;
+  }
+  
+  .header {
+    height: 50%;
+  }
+}
+
+/* Network-aware loading states */
+.slow-network .loading-skeleton {
+  animation-duration: 2s;
+}
+
+.fast-network .loading-skeleton {
+  animation-duration: 1s;
+}
+
+/* Touch-specific hover states */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  .hover\:bg-slate-700:hover {
+    background-color: inherit;
+  }
+  
+  /* Use active states instead */
+  .hover\:bg-slate-700:active {
+    background-color: rgb(51 65 85);
+  }
+}
+
+/* Keyboard navigation improvements */
+.keyboard-navigation button:focus,
+.keyboard-navigation a:focus {
+  outline: 3px solid #06b6d4;
+  outline-offset: 2px;
+}
+
+/* Screen reader optimizations */
+@media (prefers-reduced-motion: reduce) {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Print styles for PWA */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .bg-slate-800,
+  .bg-slate-900 {
+    background: white !important;
+    color: black !important;
+  }
+}

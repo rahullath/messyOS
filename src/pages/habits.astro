@@ -2,6 +2,8 @@
 // src/pages/habits.astro - COMPLETE VERSION
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerClient } from '../lib/supabase/server';
+import HabitsPageEnhanced from '../components/habits/HabitsPageEnhanced.tsx';
+import { UXPolishProvider } from '../components/habits/UXPolishProvider.tsx';
 
 const supabase = createServerClient(Astro.cookies);
 
@@ -142,8 +144,18 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
           Import Data
         </button>
         <button 
+          id="cleanup-duplicates-btn"
+          class="flex items-center px-3 py-2 bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+          Clean Up
+        </button>
+        <button 
           id="add-habit-btn"
           class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+          onclick="if(window.openHabitCreationModal) window.openHabitCreationModal(); else console.warn('Habit creation modal not ready yet');"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -348,9 +360,92 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
       </div>
     </div>
   </div>
+
+  <!-- Mobile Quick Actions Widget -->
+  <div class="block md:hidden mb-6">
+    <div id="mobile-quick-actions"></div>
+  </div>
+
+  <!-- Habits data for mobile quick actions -->
+  <script type="application/json" data-habits>
+    {JSON.stringify({ habits: habitsWithStatus.map(h => ({
+      id: h.id,
+      name: h.name,
+      type: h.type,
+      measurement_type: h.measurement_type || 'boolean',
+      color: h.color,
+      streak_count: h.realCurrentStreak,
+      allows_skips: h.allows_skips,
+      completedToday: h.completedToday
+    })) })}
+
+  // Cleanup duplicates functionality
+  document.getElementById('cleanup-duplicates-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('cleanup-duplicates-btn');
+    if (!btn) return;
+    
+    if (!confirm('This will remove duplicate habits and keep the most recent version of each. Are you sure?')) {
+      return;
+    }
+    
+    btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Cleaning...';
+    btn.disabled = true;
+    
+    try {
+      const response = await fetch('/api/habits/cleanup-duplicates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const duplicatesCount = result.summary?.duplicates_found || 0;
+        const message = duplicatesCount > 0 
+          ? `✅ Successfully cleaned up ${duplicatesCount} duplicate habits!` 
+          : '✅ No duplicates found - your habits are clean!';
+        
+        alert(message);
+        
+        if (duplicatesCount > 0) {
+          // Refresh the page to show updated habits list
+          window.location.reload();
+        }
+      } else {
+        alert(`❌ Cleanup failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Cleanup error:', error);
+      alert(`❌ Cleanup failed: ${error.message}`);
+    } finally {
+      btn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Clean Up';
+      btn.disabled = false;
+    }
+  });
+  </script>
+
+  <!-- Habit Creation Modal and UX Enhancements -->
+  <HabitsPageEnhanced client:load />
+  
+  <!-- UX Polish Provider -->
+  <div id="ux-polish-root"></div>
+  
 </DashboardLayout>
 
 <script>
+  // Ensure global functions are available
+  // Fallback for openHabitCreationModal if not loaded yet
+  if (!window.openHabitCreationModal) {
+    window.openHabitCreationModal = () => {
+      console.warn('Habit creation modal is loading...');
+      // Try again after a short delay
+      setTimeout(() => {
+        if (window.openHabitCreationModal) {
+          window.openHabitCreationModal();
+        }
+      }, 100);
+    };
+  }
   // Import modal
   document.getElementById('import-btn')?.addEventListener('click', () => {
     document.getElementById('import-modal')?.classList.remove('hidden');
@@ -387,6 +482,7 @@ function showEnhancedLoggingModal(habitId: string, habitName: string, allowsSkip
   modal.id = 'enhanced-logging-modal';
   
   const currentTime = new Date().toTimeString().slice(0, 5);
+  const today = new Date().toISOString().split('T')[0];
   
   modal.innerHTML = `
     <div class="bg-gray-900 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -404,10 +500,31 @@ function showEnhancedLoggingModal(habitId: string, habitName: string, allowsSkip
           </button>
         </div>
 
+        <!-- Error Display -->
+        <div id="error-display" class="hidden mb-4 p-4 bg-red-900/50 border border-red-500 rounded-lg">
+          <div class="flex items-center space-x-2">
+            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span id="error-message" class="text-red-400"></span>
+          </div>
+          <button onclick="hideError()" class="mt-2 text-sm text-red-300 hover:text-red-200 underline">
+            Dismiss
+          </button>
+        </div>
+
         <form id="enhanced-logging-form" class="space-y-6">
+          <!-- Date Selection -->
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
+            <input type="date" id="log-date" value="${today}" max="${today}"
+                   class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white">
+            <p class="text-xs text-gray-400 mt-1">You can log habits for past dates</p>
+          </div>
+
           <!-- Status -->
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-3">How did it go?</label>
+            <label class="block text-sm font-medium text-gray-300 mb-3">How did it go? <span class="text-red-400">*</span></label>
             <div class="space-y-2">
               <button type="button" onclick="setStatus(1)" class="status-btn w-full p-3 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 text-left text-green-400">
                 ✅ Completed Successfully
@@ -528,12 +645,18 @@ function showEnhancedLoggingModal(habitId: string, habitName: string, allowsSkip
           <!-- Submit -->
           <div class="flex space-x-3">
             <button type="button" onclick="closeEnhancedModal()" 
-                    class="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500">
+                    class="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    id="cancel-btn">
               Cancel
             </button>
             <button type="submit" 
-                    class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500">
-              Log ${habitName}
+                    class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    id="submit-btn">
+              <span id="submit-text">Log ${habitName}</span>
+              <svg id="submit-spinner" class="hidden animate-spin ml-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
             </button>
           </div>
         </form>
@@ -566,10 +689,22 @@ function setStatus(status: number) {
     btn.classList.remove('border-blue-500', 'bg-blue-500/20');
     btn.classList.add('border-gray-600', 'bg-gray-800');
   });
-  const target = (event as any)?.target as HTMLElement;
-  if (target) {
-    target.classList.remove('border-gray-600', 'bg-gray-800');
-    target.classList.add('border-blue-500', 'bg-blue-500/20');
+  
+  // Find the button that was clicked and highlight it
+  const buttons = document.querySelectorAll('.status-btn');
+  let targetButton: HTMLElement | null = null;
+  
+  if (status === 1) {
+    targetButton = buttons[0] as HTMLElement; // Completed
+  } else if (status === 3) {
+    targetButton = buttons[1] as HTMLElement; // Skipped (if exists)
+  } else if (status === 0) {
+    targetButton = buttons[buttons.length - 1] as HTMLElement; // Failed (last button)
+  }
+  
+  if (targetButton) {
+    targetButton.classList.remove('border-gray-600', 'bg-gray-800');
+    targetButton.classList.add('border-blue-500', 'bg-blue-500/20');
   }
 }
 
@@ -589,6 +724,11 @@ function toggleContext(tag: string) {
 }
 
 async function submitEnhancedLog(habitId: string, habitName: string) {
+  // Hide any previous errors
+  hideError();
+  
+  // Get form elements
+  const logDateEl = document.getElementById('log-date') as HTMLInputElement;
   const effortEl = document.getElementById('effort') as HTMLInputElement;
   const durationEl = document.getElementById('duration') as HTMLInputElement;
   const completionTimeEl = document.getElementById('completion-time') as HTMLInputElement;
@@ -598,20 +738,42 @@ async function submitEnhancedLog(habitId: string, habitName: string) {
   const weatherEl = document.getElementById('weather') as HTMLSelectElement;
   const notesEl = document.getElementById('notes') as HTMLTextAreaElement;
 
+  // Validate required fields
+  const validationErrors = validateEnhancedLogForm();
+  if (validationErrors.length > 0) {
+    showError(validationErrors.join(', '));
+    return;
+  }
+
+  // Prepare form data with proper validation
   const formData = {
     value: selectedStatus,
+    date: logDateEl?.value || new Date().toISOString().split('T')[0],
     effort: effortEl ? parseInt(effortEl.value) : 3,
     duration: durationEl?.value ? parseInt(durationEl.value) : null,
-    completion_time: completionTimeEl?.value || '',
+    completion_time: completionTimeEl?.value || null,
     energy_level: energyEl ? parseInt(energyEl.value) : 3,
     mood: moodEl ? parseInt(moodEl.value) : 3,
-    location: locationEl?.value || '',
-    weather: weatherEl?.value || '',
-    context: selectedContext,
-    notes: notesEl?.value || ''
+    location: locationEl?.value || null,
+    weather: weatherEl?.value || null,
+    context: selectedContext, // This will be handled properly by the API
+    notes: notesEl?.value || null
   };
 
+  // Show loading state
+  setLoadingState(true);
+  
+  // Store original UI state for potential rollback
+  const originalHabitCard = document.querySelector(`[data-habit-id="${habitId}"]`);
+  let originalCardHTML = '';
+  if (originalHabitCard) {
+    originalCardHTML = originalHabitCard.innerHTML;
+  }
+
   try {
+    // Optimistic UI update
+    updateHabitCardOptimistically(habitId, formData);
+
     const response = await fetch(`/api/habits/${habitId}/log-enhanced`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -622,33 +784,185 @@ async function submitEnhancedLog(habitId: string, habitName: string) {
       const result = await response.json();
       
       // Show success message
-      const toast = document.createElement('div');
-      toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      toast.innerHTML = `
-        <div class="flex items-center space-x-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-          </svg>
-          <span>✅ ${habitName} logged with context!</span>
-        </div>
-      `;
-      document.body.appendChild(toast);
+      showSuccessToast(`✅ ${habitName} logged successfully!`);
       
+      // Close modal after short delay
       setTimeout(() => {
-        toast.remove();
+        closeEnhancedModal();
+        // Refresh the page to get updated streak data
         window.location.reload();
-      }, 2000);
+      }, 1500);
       
-      closeEnhancedModal();
     } else {
+      // Rollback optimistic update
+      if (originalHabitCard && originalCardHTML) {
+        originalHabitCard.innerHTML = originalCardHTML;
+      }
+      
       const error = await response.json();
-      const errorMessage = error instanceof Error ? error.message : (error.error || 'Failed to log habit');
+      let errorMessage = 'Failed to log habit';
+      
+      if (error.error) {
+        errorMessage = error.error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       throw new Error(errorMessage);
     }
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    alert(`Error: ${errorMessage}`);
+    // Rollback optimistic update
+    if (originalHabitCard && originalCardHTML) {
+      originalHabitCard.innerHTML = originalCardHTML;
+    }
+    
+    let errorMessage = 'Network error occurred. Please try again.';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
+    showError(errorMessage);
+  } finally {
+    setLoadingState(false);
   }
+}
+
+function validateEnhancedLogForm(): string[] {
+  const errors: string[] = [];
+  
+  // Validate status selection
+  if (selectedStatus === undefined || selectedStatus === null) {
+    errors.push('Please select a completion status');
+  }
+  
+  // Validate date
+  const logDateEl = document.getElementById('log-date') as HTMLInputElement;
+  if (logDateEl?.value) {
+    const selectedDate = new Date(logDateEl.value);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    if (selectedDate > today) {
+      errors.push('Cannot log habits for future dates');
+    }
+  }
+  
+  // Validate duration if provided
+  const durationEl = document.getElementById('duration') as HTMLInputElement;
+  if (durationEl?.value) {
+    const duration = parseInt(durationEl.value);
+    if (isNaN(duration) || duration < 0 || duration > 1440) { // Max 24 hours
+      errors.push('Duration must be between 0 and 1440 minutes');
+    }
+  }
+  
+  // Validate effort, energy, mood ranges
+  const effortEl = document.getElementById('effort') as HTMLInputElement;
+  const energyEl = document.getElementById('energy') as HTMLInputElement;
+  const moodEl = document.getElementById('mood') as HTMLInputElement;
+  
+  if (effortEl && (parseInt(effortEl.value) < 1 || parseInt(effortEl.value) > 5)) {
+    errors.push('Effort level must be between 1 and 5');
+  }
+  if (energyEl && (parseInt(energyEl.value) < 1 || parseInt(energyEl.value) > 5)) {
+    errors.push('Energy level must be between 1 and 5');
+  }
+  if (moodEl && (parseInt(moodEl.value) < 1 || parseInt(moodEl.value) > 5)) {
+    errors.push('Mood level must be between 1 and 5');
+  }
+  
+  return errors;
+}
+
+function setLoadingState(loading: boolean) {
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const cancelBtn = document.getElementById('cancel-btn') as HTMLButtonElement;
+  const submitText = document.getElementById('submit-text');
+  const submitSpinner = document.getElementById('submit-spinner');
+  
+  if (submitBtn && cancelBtn && submitText && submitSpinner) {
+    submitBtn.disabled = loading;
+    cancelBtn.disabled = loading;
+    
+    if (loading) {
+      submitText.textContent = 'Logging...';
+      submitSpinner.classList.remove('hidden');
+    } else {
+      submitText.textContent = 'Log Habit';
+      submitSpinner.classList.add('hidden');
+    }
+  }
+}
+
+function updateHabitCardOptimistically(habitId: string, formData: any) {
+  const habitCard = document.querySelector(`[data-habit-id="${habitId}"]`);
+  if (habitCard) {
+    // Add a subtle loading indicator to the card
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.className = 'absolute top-2 right-2 w-3 h-3 bg-blue-500 rounded-full animate-pulse';
+    loadingIndicator.id = 'loading-indicator';
+    
+    // Remove any existing loading indicator
+    const existingIndicator = habitCard.querySelector('#loading-indicator');
+    if (existingIndicator) {
+      existingIndicator.remove();
+    }
+    
+    habitCard.appendChild(loadingIndicator);
+  }
+}
+
+function showError(message: string) {
+  const errorDisplay = document.getElementById('error-display');
+  const errorMessage = document.getElementById('error-message');
+  
+  if (errorDisplay && errorMessage) {
+    errorMessage.textContent = message;
+    errorDisplay.classList.remove('hidden');
+    
+    // Scroll to top of modal to show error
+    const modal = document.getElementById('enhanced-logging-modal');
+    if (modal) {
+      modal.scrollTop = 0;
+    }
+  }
+}
+
+function hideError() {
+  const errorDisplay = document.getElementById('error-display');
+  if (errorDisplay) {
+    errorDisplay.classList.add('hidden');
+  }
+}
+
+function showSuccessToast(message: string) {
+  const toast = document.createElement('div');
+  toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-x-full';
+  toast.innerHTML = `
+    <div class="flex items-center space-x-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
+      <span>${message}</span>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Animate in
+  setTimeout(() => {
+    toast.classList.remove('translate-x-full');
+  }, 100);
+  
+  // Animate out and remove
+  setTimeout(() => {
+    toast.classList.add('translate-x-full');
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, 3000);
 }
 
 function closeEnhancedModal() {

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MessyOS Icon Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .icon-preview { margin: 10px; display: inline-block; }
+        canvas { border: 1px solid #ccc; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>MessyOS PWA Icon Generator</h1>
+    <p>This generates placeholder icons for the PWA. Replace with actual design assets.</p>
+    
+    <div id="icons"></div>
+    
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        const iconsContainer = document.getElementById('icons');
+        
+        sizes.forEach(size => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#06b6d4'); // cyan-500
+            gradient.addColorStop(1, '#0891b2'); // cyan-600
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Add rounded corners
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            const radius = size * 0.2;
+            ctx.roundRect(0, 0, size, size, radius);
+            ctx.fill();
+            
+            // Reset composite operation
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Add "M" text
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.6}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('M', size / 2, size / 2);
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = canvas.toDataURL();
+            link.textContent = `Download ${size}x${size}`;
+            
+            const preview = document.createElement('div');
+            preview.className = 'icon-preview';
+            preview.appendChild(canvas);
+            preview.appendChild(document.createElement('br'));
+            preview.appendChild(link);
+            
+            iconsContainer.appendChild(preview);
+        });
+        
+        // Auto-download all icons
+        setTimeout(() => {
+            document.querySelectorAll('a[download]').forEach(link => {
+                link.click();
+            });
+        }, 1000);
+    </script>
+</body>
+</html>

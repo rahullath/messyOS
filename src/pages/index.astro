@@ -39,24 +39,29 @@ import Layout from '../layouts/Layout.astro';
           <p class="text-gray-300 mb-6">Get 30 days free when we launch + priority access</p>
           
           <form id="waitlistForm" class="space-y-4">
-            <input 
-              type="email" 
-              name="email"
-              placeholder="Enter your email" 
-              required
-              class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
-            />
-            <select name="interest" class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400">
-              <option value="everything" disabled selected>What do you want to optimize most?</option>
-              <option value="habits">Habits & Goals</option>
-              <option value="health">Health & Wellness</option>
-              <option value="finance">Finance & Investments</option>
-              <option value="productivity">Tasks & Productivity</option>
-              <option value="everything">Everything!</option>
-            </select>
+            <div>
+              <input 
+                type="email" 
+                name="email"
+                placeholder="Enter your email" 
+                required
+                autocomplete="email"
+                class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-colors"
+              />
+            </div>
+            <div>
+              <select name="interest" required class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-colors">
+                <option value="" disabled selected>What do you want to optimize most?</option>
+                <option value="habits">Habits & Goals</option>
+                <option value="health">Health & Wellness</option>
+                <option value="finance">Finance & Investments</option>
+                <option value="productivity">Tasks & Productivity</option>
+                <option value="everything">Everything!</option>
+              </select>
+            </div>
             <button 
               type="submit"
-              class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              class="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center"
             >
               Get Early Access
             </button>
@@ -261,30 +266,140 @@ import Layout from '../layouts/Layout.astro';
   </div>
 
   <script>
-    // Waitlist form handling
-    document.getElementById('waitlistForm')?.addEventListener('submit', async (e) => {
+    // Enhanced waitlist form handling with better UX
+    const waitlistForm = document.getElementById('waitlistForm');
+    const submitButton = waitlistForm?.querySelector('button[type="submit"]');
+    const emailInput = waitlistForm?.querySelector('input[name="email"]');
+    const interestSelect = waitlistForm?.querySelector('select[name="interest"]');
+    
+    // Create notification container
+    const notificationContainer = document.createElement('div');
+    notificationContainer.id = 'notification-container';
+    notificationContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
+    document.body.appendChild(notificationContainer);
+    
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `p-4 rounded-lg border max-w-md transform transition-all duration-300 ${
+        type === 'success' 
+          ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+          : type === 'error'
+          ? 'bg-red-500/10 border-red-500/20 text-red-400'
+          : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+      }`;
+      notification.innerHTML = `<p class="text-sm">${message}</p>`;
+      
+      notificationContainer.appendChild(notification);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+      }, 5000);
+    }
+    
+    function setFormLoading(loading) {
+      if (submitButton) {
+        submitButton.disabled = loading;
+        submitButton.innerHTML = loading 
+          ? '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Joining...'
+          : 'Get Early Access';
+      }
+      
+      if (emailInput) emailInput.disabled = loading;
+      if (interestSelect) interestSelect.disabled = loading;
+    }
+    
+    function validateEmail(email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email.trim());
+    }
+    
+    waitlistForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const form = e.target as HTMLFormElement;
-      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value.trim();
       const interest = (form.elements.namedItem('interest') as HTMLSelectElement).value;
+      
+      // Client-side validation
+      if (!email) {
+        showNotification('Please enter your email address.', 'error');
+        emailInput?.focus();
+        return;
+      }
+      
+      if (!validateEmail(email)) {
+        showNotification('Please enter a valid email address.', 'error');
+        emailInput?.focus();
+        return;
+      }
+      
+      if (!interest || interest === 'everything') {
+        showNotification('Please select what you want to optimize most.', 'error');
+        interestSelect?.focus();
+        return;
+      }
+      
+      setFormLoading(true);
       
       try {
         const response = await fetch('/api/waitlist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, interest })
+          body: JSON.stringify({ 
+            email, 
+            interest,
+            referrer: document.referrer || 'direct'
+          })
         });
         
         const result = await response.json();
 
         if (response.ok) {
-          alert('🎉 Welcome to the waitlist! You will be redirected to the onboarding.');
-          window.location.href = '/onboarding';
+          showNotification('🎉 Welcome to the waitlist! Redirecting to sign up...', 'success');
+          
+          // Replace form with success message
+          if (waitlistForm) {
+            waitlistForm.innerHTML = `
+              <div class="text-center">
+                <div class="text-green-400 text-4xl mb-4">🎉</div>
+                <h3 class="text-2xl font-semibold text-white mb-4">You're on the list!</h3>
+                <p class="text-gray-300 mb-6">
+                  Welcome to the waitlist! You'll get priority access when we launch.
+                </p>
+                <button
+                  onclick="window.location.href = '/login'"
+                  class="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Continue to Sign Up
+                </button>
+              </div>
+            `;
+          }
+          
+          // Auto-redirect after 3 seconds
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 3000);
         } else {
-          alert(`Error: ${result.error || 'Something went wrong. Please try again.'}`);
+          showNotification(result.error || 'Something went wrong. Please try again.', 'error');
+          setFormLoading(false);
         }
       } catch (error) {
-        alert('Something went wrong. Please try again.');
+        console.error('Waitlist submission error:', error);
+        showNotification('Network error. Please check your connection and try again.', 'error');
+        setFormLoading(false);
+      }
+    });
+    
+    // Real-time email validation
+    emailInput?.addEventListener('input', (e) => {
+      const email = e.target.value.trim();
+      if (email && !validateEmail(email)) {
+        e.target.style.borderColor = '#ef4444';
+      } else {
+        e.target.style.borderColor = '';
       }
     });
   </script>

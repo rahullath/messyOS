@@ -1,0 +1,126 @@
+/**
+ * Forms Dark Theme Fix
+ * Ensures all form elements have proper colors for dark theme
+ */
+
+/* Fix for all form inputs, selects, and textareas */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+input[type="tel"],
+input[type="search"],
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+  background: rgb(var(--surface)) !important;
+  color: rgb(var(--text-primary)) !important;
+  border: 1px solid rgb(var(--border)) !important;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="url"]:focus,
+input[type="tel"]:focus,
+input[type="search"]:focus,
+input[type="datetime-local"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+select:focus,
+textarea:focus {
+  border-color: rgb(var(--accent-primary)) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Placeholder text color */
+input::placeholder,
+textarea::placeholder {
+  color: rgb(var(--text-muted)) !important;
+  opacity: 1 !important;
+}
+
+/* Option elements in select dropdowns */
+option {
+  background: rgb(var(--surface)) !important;
+  color: rgb(var(--text-primary)) !important;
+}
+
+/* Labels */
+label {
+  color: rgb(var(--text-primary)) !important;
+}
+
+/* Form validation styles */
+input:invalid {
+  border-color: rgb(var(--accent-error)) !important;
+}
+
+input:valid {
+  border-color: rgb(var(--accent-success)) !important;
+}
+
+/* Disabled form elements */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background: rgb(var(--border)) !important;
+  color: rgb(var(--text-muted)) !important;
+  cursor: not-allowed !important;
+}
+
+/* Checkbox and radio buttons */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: rgb(var(--accent-primary)) !important;
+}
+
+/* Button styling to ensure consistency */
+button {
+  color: rgb(var(--text-primary)) !important;
+}
+
+/* Modal and dialog backgrounds */
+.modal,
+.dialog,
+[role="dialog"] {
+  background: rgb(var(--surface)) !important;
+  color: rgb(var(--text-primary)) !important;
+  border: 1px solid rgb(var(--border)) !important;
+}
+
+/* Ensure all form containers have proper colors */
+.form-container,
+.form-group,
+.form-field,
+.input-group {
+  color: rgb(var(--text-primary)) !important;
+}
+
+/* Fix for any white backgrounds in forms */
+.form-container *,
+.modal-content *,
+.dialog * {
+  color: inherit !important;
+}
+
+/* Fix for any hardcoded white backgrounds */
+.bg-white {
+  background: rgb(var(--surface)) !important;
+  color: rgb(var(--text-primary)) !important;
+}
+
+/* Ensure text is visible in white containers */
+.bg-white input,
+.bg-white select,
+.bg-white textarea,
+.bg-white label {
+  background: rgb(var(--surface)) !important;
+  color: rgb(var(--text-primary)) !important;
+  border: 1px solid rgb(var(--border)) !important;
+}

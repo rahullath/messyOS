@@ -1,0 +1,15 @@
+---
+// src/layouts/AuthenticatedDashboardLayout.astro - Supabase Dashboard Layout
+import Layout from './Layout.astro';
+import { SupabaseWalletDemo } from '../components/auth/SupabaseWalletDemo.tsx';
+
+export interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<Layout title={title}>
+  <SupabaseWalletDemo client:load />
+</Layout>

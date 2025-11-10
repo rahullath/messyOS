@@ -1,40 +1,164 @@
 ---
-// src/pages/onboarding.astro - User Onboarding Flow
-import Layout from '../layouts/Layout.astro';
-import { createServerAuth } from '../lib/auth/simple-multi-user';
-import OnboardingFlow from '../components/onboarding/OnboardingFlow.tsx';
+import { createServerClient } from '../lib/supabase/server';
 
 // Require authentication
-const serverAuth = createServerAuth(Astro.cookies);
-const user = await serverAuth.getUser();
+const supabase = createServerClient(Astro.cookies);
+const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-if (!user) {
+if (authError || !user) {
   return Astro.redirect('/login');
 }
 
-// Note: Middleware will handle redirecting users who have already completed onboarding
+// Check if user has already completed onboarding
+const { data: preferences } = await supabase
+  .from('user_preferences')
+  .select('*')
+  .eq('user_id', user.id)
+  .single();
+
+if (preferences) {
+  // User has already completed onboarding, redirect to dashboard
+  return Astro.redirect('/dashboard');
+}
 ---
 
-<Layout title="Welcome to messyOS - Setup">
-  <div class="container mx-auto max-w-2xl py-12">
-    <h1 class="text-3xl font-bold mb-4 text-center">Welcome to messyOS</h1>
-    <p class="text-center mb-8">Let's get your workspace set up.</p>
-    <OnboardingFlow client:load />
-  </div>
-</Layout>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to MeshOS</title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
+      min-height: 100vh;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #0891b2, #0e7490);
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0e7490, #155e75);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(8, 145, 178, 0.3);
+    }
+    .card {
+      background: rgba(30, 41, 59, 0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+    .loading {
+      display: none;
+    }
+    .loading.show {
+      display: inline-block;
+    }
+  </style>
+</head>
+<body class="text-white">
+  <main class="min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-2xl w-full">
+      
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-5xl font-bold mb-4">
+          Welcome to <span class="text-cyan-400">Messy</span>OS! 🎉
+        </h1>
+        <p class="text-xl text-gray-300">
+          Your AI-powered life optimization system is ready
+        </p>
+      </div>
 
-<script>
-  // Listen for onboarding completion and redirect
-  window.addEventListener('onboardingComplete', () => {
-    console.log('🎉 Onboarding completed, redirecting to dashboard...');
-    window.location.href = '/';
-  });
-  
-  // Add debugging for page load
-  console.log('📄 Onboarding page loaded');
-  
-  // Check if user is authenticated
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔍 Checking authentication status...');
-  });
-</script>
+      <!-- Free Trial Banner -->
+      <div class="card rounded-xl p-6 mb-8 border-cyan-400/30">
+        <h2 class="text-2xl font-bold text-cyan-300 mb-2 text-center">🎁 Free Trial Activated!</h2>
+        <p class="text-cyan-100 text-lg mb-4 text-center">
+          You've received <strong>5,000 tokens</strong> (₹500 value) to explore all MessyOS features
+        </p>
+        <div class="bg-cyan-900/20 rounded-lg p-4">
+          <p class="text-cyan-200 text-center">
+            <strong>Your trial expires in 30 days</strong><br>
+            Use your tokens to try AI workflows, integrations, and automation
+          </p>
+        </div>
+      </div>
+
+      <!-- Features Preview -->
+      <div class="grid md:grid-cols-2 gap-4 mb-8">
+        <div class="card rounded-lg p-4">
+          <h3 class="text-lg font-semibold mb-2">📋 Task Management</h3>
+          <p class="text-gray-300 text-sm">
+            Organize your work and personal tasks with intelligent prioritization
+          </p>
+        </div>
+        <div class="card rounded-lg p-4">
+          <h3 class="text-lg font-semibold mb-2">🎯 Habit Tracking</h3>
+          <p class="text-gray-300 text-sm">
+            Build positive habits and track your progress over time
+          </p>
+        </div>
+        <div class="card rounded-lg p-4">
+          <h3 class="text-lg font-semibold mb-2">💰 Finance Tracking</h3>
+          <p class="text-gray-300 text-sm">
+            Monitor expenses, investments, and financial goals
+          </p>
+        </div>
+        <div class="card rounded-lg p-4">
+          <h3 class="text-lg font-semibold mb-2">❤️ Health Monitoring</h3>
+          <p class="text-gray-300 text-sm">
+            Track fitness, sleep, nutrition, and wellness metrics
+          </p>
+        </div>
+      </div>
+
+      <!-- Get Started Form -->
+      <div class="text-center mb-8">
+        <form id="onboarding-form" action="/api/user/complete-onboarding" method="POST">
+          <button
+            type="submit"
+            id="submit-btn"
+            class="btn-primary text-white font-bold py-4 px-8 rounded-lg text-lg w-full md:w-auto"
+          >
+            <span id="btn-text">Start Using MessyOS →</span>
+            <span id="loading" class="loading">
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Setting up your account...
+            </span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Support -->
+      <div class="text-center text-sm text-gray-400">
+        <p>Need help getting started?</p>
+        <a href="/dashboard" class="text-cyan-400 hover:text-cyan-300 underline">
+          Skip to Dashboard
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const onboardingForm = document.getElementById('onboarding-form');
+      if (onboardingForm) {
+        onboardingForm.addEventListener('submit', function(e) {
+          const submitBtn = document.getElementById('submit-btn');
+          const btnText = document.getElementById('btn-text');
+          const loading = document.getElementById('loading');
+          
+          // Show loading state
+          if (submitBtn) submitBtn.disabled = true;
+          if (btnText) btnText.style.display = 'none';
+          if (loading) loading.classList.add('show');
+        });
+      }
+    });
+  </script>
+</body>
+</html>
+
+

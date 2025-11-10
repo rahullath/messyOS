@@ -6,13 +6,30 @@ import vercel from '@astrojs/vercel';
 export default defineConfig({
   integrations: [
     react(),
-    tailwind({
-      applyBaseStyles: false, // We'll handle our own base styles
-    }),
+    tailwind(),
   ],
   output: 'server',
   adapter: vercel(),
   // Middleware is now automatically detected from src/middleware.ts
   // See: https://docs.astro.build/en/guides/middleware/
   scopedStyleStrategy: 'where', // Or 'attribute'
+  vite: {
+    define: {
+      global: 'globalThis',
+    },
+    
+    server: {
+      fs: {
+        strict: false
+      }
+    }
+  },
+  // PWA configuration
+  site: 'https://messos.vercel.app', // Replace with your actual domain
+  base: '/',
+  trailingSlash: 'ignore',
+  build: {
+    assets: '_astro',
+    inlineStylesheets: 'auto'
+  }
 });

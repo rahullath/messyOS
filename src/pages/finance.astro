@@ -12,54 +12,49 @@ if (!user) {
   return Astro.redirect('/login');
 }
 
-// Fetch financial metrics from the last 6 months
+// Fetch financial data from the last 6 months
 const sixMonthsAgo = new Date();
 sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-const { data: financeMetrics, error } = await supabase
-  .from('metrics')
-  .select('type, value, unit, metadata, recorded_at')
+const { data: expenseData, error } = await supabase
+  .from('expenses')
+  .select('amount, currency, merchant_name, description, category_id, transaction_date, created_at')
   .eq('user_id', user.id)
-  .in('type', ['expense', 'income', 'crypto_value'])
-  .gte('recorded_at', sixMonthsAgo.toISOString())
-  .order('recorded_at', { ascending: false });
+  .gte('transaction_date', sixMonthsAgo.toISOString().split('T')[0])
+  .order('transaction_date', { ascending: false });
 
 if (error) {
   console.error('Error fetching finance metrics:', error);
 }
 
 // Process financial data
-const metrics = financeMetrics || [];
-
-// Group by type
-const expenses = metrics.filter(m => m.type === 'expense');
-const cryptoHoldings = metrics.filter(m => m.type === 'crypto_value');  // ✅ Correct type
-const cryptoValue = cryptoHoldings.reduce((sum, c) => sum + c.value, 0); // ✅ Direct calculation
-const bankTransactions = metrics.filter(m => m.type === 'bank_transaction');
-const monthlyExpensesMetrics = metrics.filter(m => m.type === 'monthly_expenses');
-// Removed cryptoPortfolioMetrics as it's no longer needed with direct calculation
+const expenses = expenseData || [];
 
 // Calculate key statistics
-const totalExpenses = expenses.reduce((sum, e) => sum + e.value, 0);
-const monthlyExpenses = monthlyExpensesMetrics.length > 0 ? monthlyExpensesMetrics[0].value : totalExpenses;
+const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+const monthlyExpenses = expenses.length > 0 ? totalExpenses / Math.max(1, expenses.length / 30) : 0;
+
+// For demo purposes - in real implementation you'd have crypto data from a separate table
+const cryptoValue = 0; // No crypto data in current schema
+const cryptoHoldings = [];
 // cryptoValue is now directly calculated above
 
 // Calculate financial runway (assuming current balance)
 const currentBalance = 94300; // From your analysis: ₹38,500 + ₹55,800 June salary
 const runway = currentBalance / (monthlyExpenses || 40546);
 
-// Categorize expenses
+// Categorize expenses - simplified for demo
 const expensesByCategory = new Map<string, number>();
 for (const expense of expenses) {
-  const category = expense.metadata?.category || 'Other';
-  expensesByCategory.set(category, (expensesByCategory.get(category) || 0) + expense.value);
+  const category = expense.merchant_name || 'Other';
+  expensesByCategory.set(category, (expensesByCategory.get(category) || 0) + expense.amount);
 }
 
 const topCategories = Array.from(expensesByCategory.entries())
   .map(([category, amount]) => ({
     category,
     amount,
-    percentage: (amount / totalExpenses) * 100
+    percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
   }))
   .sort((a, b) => b.amount - a.amount)
   .slice(0, 6);
@@ -71,15 +66,15 @@ const budgetScore = calculateBudgetHealth(monthlyExpenses, runway, cryptoHolding
 const recentTransactions = expenses
   .slice(0, 10)
   .map(expense => ({
-    date: expense.recorded_at,
-    description: expense.metadata?.description || 'Unknown expense',
-    amount: expense.value,
-    category: expense.metadata?.category || 'Other',
-    vendor: expense.metadata?.vendor || 'Unknown'
+    date: expense.transaction_date,
+    description: expense.description || expense.merchant_name || 'Unknown expense',
+    amount: expense.amount,
+    category: expense.merchant_name || 'Other',
+    vendor: expense.merchant_name || 'Unknown'
   }));
 
 // Check if we have financial data
-const hasFinanceData = metrics.length > 0;
+const hasFinanceData = expenses.length > 0;
 
 // Monthly trend (simplified)
 const expensesTrend = [

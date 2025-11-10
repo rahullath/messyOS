@@ -6,5 +6,7 @@
   "tailwindCSS.experimental.classRegex": [
     "class=\"([^\"]*)"
   ],
-  "codium.codeCompletion.enable": false
+  "codium.codeCompletion.enable": false,
+  "kiroAgent.configureMCP": "Disabled",
+  "typescript.autoClosingTags": false
 }

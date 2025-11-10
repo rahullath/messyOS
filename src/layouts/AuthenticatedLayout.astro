@@ -1,0 +1,15 @@
+---
+// src/layouts/AuthenticatedLayout.astro - Supabase Authentication Layout
+import Layout from './Layout.astro';
+import { SupabaseAuth } from '../components/auth/SupabaseAuth.tsx';
+
+export interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<Layout title={title}>
+  <SupabaseAuth client:load />
+</Layout>

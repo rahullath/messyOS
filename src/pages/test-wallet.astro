@@ -1,0 +1,361 @@
+---
+// src/pages/test-wallet.astro - Simple Wallet Test Page
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wallet Test - MessyOS</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #0f0f23;
+        color: white;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      
+      .test-section {
+        background: #1a1a2e;
+        border: 1px solid #2d3748;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      
+      .test-section h2 {
+        margin-top: 0;
+        color: #8b5cf6;
+      }
+      
+      .auth-status {
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      
+      .auth-status.authenticated {
+        background: #065f46;
+        border: 1px solid #10b981;
+      }
+      
+      .auth-status.unauthenticated {
+        background: #7f1d1d;
+        border: 1px solid #ef4444;
+      }
+      
+      button {
+        background: #8b5cf6;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      button:hover {
+        background: #7c3aed;
+      }
+      
+      button:disabled {
+        background: #4b5563;
+        cursor: not-allowed;
+      }
+      
+      .balance-display {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #10b981;
+        margin: 1rem 0;
+      }
+      
+      .error {
+        color: #ef4444;
+        background: #7f1d1d;
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin: 0.5rem 0;
+      }
+      
+      .success {
+        color: #10b981;
+        background: #065f46;
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin: 0.5rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>MessyOS Wallet Test</h1>
+      
+      <!-- Authentication Status -->
+      <div class="test-section">
+        <h2>Authentication Status</h2>
+        <div id="auth-status" class="auth-status">
+          <div>Status: <span id="auth-status-text">Checking...</span></div>
+          <div>User: <span id="user-info">-</span></div>
+        </div>
+        <button onclick="checkAuth()">Check Auth</button>
+        <button onclick="signOut()">Sign Out</button>
+      </div>
+
+      <!-- Token Balance -->
+      <div class="test-section">
+        <h2>Token Balance</h2>
+        <div id="balance-display" class="balance-display">Loading...</div>
+        <div id="balance-details"></div>
+        <button onclick="refreshBalance()">Refresh Balance</button>
+        <button onclick="testDeduction()">Test Deduction (10 tokens)</button>
+        <button onclick="testEarning()">Test Earning (50 tokens)</button>
+      </div>
+
+      <!-- Trial Status -->
+      <div class="test-section">
+        <h2>Trial Status</h2>
+        <div id="trial-status">Loading...</div>
+        <button onclick="refreshTrialStatus()">Refresh Trial Status</button>
+      </div>
+
+      <!-- Transaction History -->
+      <div class="test-section">
+        <h2>Recent Transactions</h2>
+        <div id="transaction-list">Loading...</div>
+        <button onclick="refreshTransactions()">Refresh Transactions</button>
+      </div>
+
+      <!-- Messages -->
+      <div id="messages"></div>
+    </div>
+
+    <script type="module">
+      import { authService } from '../lib/auth/service.js';
+      import { tokenService } from '../lib/tokens/service.js';
+
+      let currentUser = null;
+
+      // Utility functions
+      function showMessage(message, type = 'info') {
+        const messagesDiv = document.getElementById('messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = type;
+        messageDiv.textContent = message;
+        messagesDiv.appendChild(messageDiv);
+        setTimeout(() => messageDiv.remove(), 5000);
+      }
+
+      function formatAmount(amount) {
+        return new Intl.NumberFormat('en-US').format(amount);
+      }
+
+      function formatDate(dateString) {
+        return new Date(dateString).toLocaleString();
+      }
+
+      // Authentication functions
+      async function checkAuth() {
+        try {
+          currentUser = await authService.getCurrentUser();
+          const statusDiv = document.getElementById('auth-status');
+          const statusText = document.getElementById('auth-status-text');
+          const userInfo = document.getElementById('user-info');
+
+          if (currentUser) {
+            statusDiv.className = 'auth-status authenticated';
+            statusText.textContent = 'Authenticated';
+            userInfo.textContent = `${currentUser.email} (${currentUser.id})`;
+            
+            // Auto-refresh other data
+            refreshBalance();
+            refreshTrialStatus();
+            refreshTransactions();
+          } else {
+            statusDiv.className = 'auth-status unauthenticated';
+            statusText.textContent = 'Not authenticated';
+            userInfo.textContent = 'Please sign in first';
+          }
+        } catch (error) {
+          console.error('Auth check error:', error);
+          showMessage('Error checking authentication: ' + error.message, 'error');
+        }
+      }
+
+      async function signOut() {
+        try {
+          await authService.signOut();
+          currentUser = null;
+          showMessage('Signed out successfully', 'success');
+          checkAuth();
+        } catch (error) {
+          console.error('Sign out error:', error);
+          showMessage('Error signing out: ' + error.message, 'error');
+        }
+      }
+
+      // Token functions
+      async function refreshBalance() {
+        if (!currentUser) {
+          document.getElementById('balance-display').textContent = 'Not authenticated';
+          return;
+        }
+
+        try {
+          const balance = await tokenService.getTokenBalance(currentUser.id);
+          const balanceDisplay = document.getElementById('balance-display');
+          const balanceDetails = document.getElementById('balance-details');
+
+          if (balance) {
+            balanceDisplay.textContent = `${formatAmount(balance.balance)} TOKENS`;
+            balanceDetails.innerHTML = `
+              <div>Total Earned: ${formatAmount(balance.total_earned)}</div>
+              <div>Total Spent: ${formatAmount(balance.total_spent)}</div>
+              <div>Last Transaction: ${balance.last_transaction_at ? formatDate(balance.last_transaction_at) : 'Never'}</div>
+            `;
+          } else {
+            balanceDisplay.textContent = 'Error loading balance';
+            balanceDetails.innerHTML = '';
+          }
+        } catch (error) {
+          console.error('Balance refresh error:', error);
+          showMessage('Error refreshing balance: ' + error.message, 'error');
+        }
+      }
+
+      async function testDeduction() {
+        if (!currentUser) {
+          showMessage('Please authenticate first', 'error');
+          return;
+        }
+
+        try {
+          const result = await tokenService.deductTokens(
+            currentUser.id,
+            10,
+            'Test deduction from wallet test page',
+            'test',
+            null,
+            { test: true }
+          );
+
+          if (result.success) {
+            showMessage(`Successfully deducted 10 tokens. New balance: ${formatAmount(result.new_balance)}`, 'success');
+            refreshBalance();
+            refreshTransactions();
+          } else {
+            showMessage(`Deduction failed: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          console.error('Deduction test error:', error);
+          showMessage('Error testing deduction: ' + error.message, 'error');
+        }
+      }
+
+      async function testEarning() {
+        if (!currentUser) {
+          showMessage('Please authenticate first', 'error');
+          return;
+        }
+
+        try {
+          const result = await tokenService.addTokens(
+            currentUser.id,
+            50,
+            'Test earning from wallet test page',
+            'bonus',
+            'test',
+            null,
+            { test: true }
+          );
+
+          if (result.success) {
+            showMessage(`Successfully earned 50 tokens. New balance: ${formatAmount(result.new_balance)}`, 'success');
+            refreshBalance();
+            refreshTransactions();
+          } else {
+            showMessage(`Earning failed: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          console.error('Earning test error:', error);
+          showMessage('Error testing earning: ' + error.message, 'error');
+        }
+      }
+
+      async function refreshTrialStatus() {
+        if (!currentUser) {
+          document.getElementById('trial-status').textContent = 'Not authenticated';
+          return;
+        }
+
+        try {
+          const trialStatus = await tokenService.getTrialStatus(currentUser.id);
+          const statusDiv = document.getElementById('trial-status');
+
+          if (trialStatus) {
+            statusDiv.innerHTML = `
+              <div>Status: ${trialStatus.isActive ? 'Active' : 'Expired'}</div>
+              <div>Days Remaining: ${trialStatus.daysRemaining}</div>
+              <div>Tokens Remaining: ${formatAmount(trialStatus.tokensRemaining)}</div>
+              <div>Expires: ${formatDate(trialStatus.expiresAt)}</div>
+            `;
+          } else {
+            statusDiv.textContent = 'No trial information available';
+          }
+        } catch (error) {
+          console.error('Trial status refresh error:', error);
+          showMessage('Error refreshing trial status: ' + error.message, 'error');
+        }
+      }
+
+      async function refreshTransactions() {
+        if (!currentUser) {
+          document.getElementById('transaction-list').textContent = 'Not authenticated';
+          return;
+        }
+
+        try {
+          const transactions = await tokenService.getTransactionHistory(currentUser.id, 10);
+          const listDiv = document.getElementById('transaction-list');
+
+          if (transactions.length > 0) {
+            listDiv.innerHTML = transactions.map(tx => `
+              <div style="border: 1px solid #4a5568; padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px;">
+                <div><strong>${tx.description}</strong></div>
+                <div>Amount: ${tx.amount > 0 ? '+' : ''}${formatAmount(tx.amount)} tokens</div>
+                <div>Type: ${tx.transaction_type}</div>
+                <div>Date: ${formatDate(tx.created_at)}</div>
+                <div>Balance: ${formatAmount(tx.balance_before)} → ${formatAmount(tx.balance_after)}</div>
+              </div>
+            `).join('');
+          } else {
+            listDiv.textContent = 'No transactions found';
+          }
+        } catch (error) {
+          console.error('Transactions refresh error:', error);
+          showMessage('Error refreshing transactions: ' + error.message, 'error');
+        }
+      }
+
+      // Make functions global for button onclick
+      window.checkAuth = checkAuth;
+      window.signOut = signOut;
+      window.refreshBalance = refreshBalance;
+      window.testDeduction = testDeduction;
+      window.testEarning = testEarning;
+      window.refreshTrialStatus = refreshTrialStatus;
+      window.refreshTransactions = refreshTransactions;
+
+      // Initial load
+      checkAuth();
+    </script>
+  </body>
+</html>

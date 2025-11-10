@@ -1,0 +1,107 @@
+---
+// src/pages/test-ai-habits.astro - Test page for AI habits features
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="AI Habits Test - MessyOS">
+  <div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">AI-Powered Habits Test</h1>
+        <p class="text-gray-600">Test the AI insights, natural language processing, and personalized recommendations for habits.</p>
+      </div>
+
+      <!-- AI Dashboard -->
+      <div id="ai-dashboard-container" class="mb-8"></div>
+
+      <!-- Sample Habits Data -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Sample Habits for Testing</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h3 class="font-medium text-blue-900">Exercise</h3>
+            <p class="text-sm text-blue-700">Duration-based habit</p>
+          </div>
+          <div class="p-4 bg-green-50 rounded-lg border border-green-200">
+            <h3 class="font-medium text-green-900">Meditation</h3>
+            <p class="text-sm text-green-700">Duration-based habit</p>
+          </div>
+          <div class="p-4 bg-purple-50 rounded-lg border border-purple-200">
+            <h3 class="font-medium text-purple-900">Reading</h3>
+            <p class="text-sm text-purple-700">Duration-based habit</p>
+          </div>
+          <div class="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h3 class="font-medium text-yellow-900">Journaling</h3>
+            <p class="text-sm text-yellow-700">Boolean habit</p>
+          </div>
+          <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+            <h3 class="font-medium text-red-900">Limit Social Media</h3>
+            <p class="text-sm text-red-700">Break habit</p>
+          </div>
+          <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+            <h3 class="font-medium text-indigo-900">Drink Water</h3>
+            <p class="text-sm text-indigo-700">Count-based habit</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Token Information -->
+      <div class="bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg p-6 text-white">
+        <h2 class="text-lg font-semibold mb-2">AI Feature Token Costs</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="text-center">
+            <div class="text-2xl mb-1">🧠</div>
+            <div class="font-medium">Pattern Analysis</div>
+            <div class="text-sm opacity-90">25 tokens</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl mb-1">🤖</div>
+            <div class="font-medium">Natural Language</div>
+            <div class="text-sm opacity-90">15 tokens</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl mb-1">💡</div>
+            <div class="font-medium">Recommendations</div>
+            <div class="text-sm opacity-90">30 tokens</div>
+          </div>
+          <div class="text-center">
+            <div class="text-2xl mb-1">🎯</div>
+            <div class="font-medium">Optimal Conditions</div>
+            <div class="text-sm opacity-90">20 tokens</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    import { createRoot } from 'react-dom/client';
+    import React from 'react';
+    import { AuthProvider } from '../lib/auth/context';
+    import AIHabitsDashboard from '../components/habits/ai/AIHabitsDashboard';
+
+    // Sample habits data for testing
+    const sampleHabits = [
+      { id: '1', name: 'Exercise', type: 'build', measurement_type: 'duration' },
+      { id: '2', name: 'Meditation', type: 'build', measurement_type: 'duration' },
+      { id: '3', name: 'Reading', type: 'build', measurement_type: 'duration' },
+      { id: '4', name: 'Journaling', type: 'build', measurement_type: 'boolean' },
+      { id: '5', name: 'Limit Social Media', type: 'break', measurement_type: 'duration' },
+      { id: '6', name: 'Drink Water', type: 'build', measurement_type: 'count' }
+    ];
+
+    // Render the AI Dashboard
+    const container = document.getElementById('ai-dashboard-container');
+    if (container) {
+      const root = createRoot(container);
+      root.render(
+        React.createElement(AuthProvider, null,
+          React.createElement(AIHabitsDashboard, { 
+            habits: sampleHabits,
+            className: 'w-full'
+          })
+        )
+      );
+    }
+  </script>
+</Layout>

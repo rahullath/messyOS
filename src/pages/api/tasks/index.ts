@@ -1,183 +1,226 @@
-// src/pages/api/tasks/index.ts
 import type { APIRoute } from 'astro';
-import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import { createServerClient } from '../../../lib/supabase/server';
+import type { 
+  Task, 
+  CreateTaskRequest, 
+  TasksResponse, 
+  TaskQueryParams,
+  ValidationResult,
+  ValidationError 
+} from '../../../types/task-management';
 
-export const GET: APIRoute = async ({ url, cookies }) => {
+// Validation functions
+function validateCreateTaskRequest(data: any): ValidationResult {
+  const errors: ValidationError[] = [];
+
+  if (!data.title || typeof data.title !== 'string' || data.title.trim().length === 0) {
+    errors.push({ field: 'title', message: 'Title is required and must be a non-empty string' });
+  }
+
+  if (data.title && data.title.length > 255) {
+    errors.push({ field: 'title', message: 'Title must be 255 characters or less' });
+  }
+
+  if (!data.category || typeof data.category !== 'string' || data.category.trim().length === 0) {
+    errors.push({ field: 'category', message: 'Category is required and must be a non-empty string' });
+  }
+
+  if (data.priority && !['low', 'medium', 'high', 'urgent'].includes(data.priority)) {
+    errors.push({ field: 'priority', message: 'Priority must be one of: low, medium, high, urgent' });
+  }
+
+  if (data.complexity && !['simple', 'moderate', 'complex'].includes(data.complexity)) {
+    errors.push({ field: 'complexity', message: 'Complexity must be one of: simple, moderate, complex' });
+  }
+
+  if (data.energy_required && !['low', 'medium', 'high'].includes(data.energy_required)) {
+    errors.push({ field: 'energy_required', message: 'Energy required must be one of: low, medium, high' });
+  }
+
+  if (data.estimated_duration && (typeof data.estimated_duration !== 'number' || data.estimated_duration <= 0)) {
+    errors.push({ field: 'estimated_duration', message: 'Estimated duration must be a positive number' });
+  }
+
+  if (data.deadline && isNaN(Date.parse(data.deadline))) {
+    errors.push({ field: 'deadline', message: 'Deadline must be a valid ISO date string' });
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+function buildTaskQuery(supabase: any, params: TaskQueryParams) {
+  let query = supabase
+    .from('tasks')
+    .select('*', { count: 'exact' });
+
+  if (params.status) {
+    query = query.eq('status', params.status);
+  }
+
+  if (params.priority) {
+    query = query.eq('priority', params.priority);
+  }
+
+  if (params.category) {
+    query = query.eq('category', params.category);
+  }
+
+  if (params.deadline_before) {
+    query = query.lt('deadline', params.deadline_before);
+  }
+
+  if (params.deadline_after) {
+    query = query.gt('deadline', params.deadline_after);
+  }
+
+  if (params.parent_task_id) {
+    query = query.eq('parent_task_id', params.parent_task_id);
+  }
+
+  // Sorting
+  const sortBy = params.sort_by || 'created_at';
+  const sortOrder = params.sort_order || 'desc';
+  query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+  // Pagination
+  const page = Math.max(1, params.page || 1);
+  const limit = Math.min(100, Math.max(1, params.limit || 20));
+  const offset = (page - 1) * limit;
+  
+  query = query.range(offset, offset + limit - 1);
+
+  return { query, page, limit };
+}
+
+// GET /api/tasks - List tasks with filtering and pagination
+export const GET: APIRoute = async ({ request, cookies }) => {
   try {
-    const serverAuth = createServerAuth(cookies);
-    const user = await serverAuth.requireAuth();
-    const supabase = serverAuth.supabase;
-
-    const status = url.searchParams.get('status');
-    const category = url.searchParams.get('category');
-    const priority = url.searchParams.get('priority');
-
-    let query = supabase
-      .from('tasks')
-      .select(`
-        *,
-        task_sessions(
-          id, started_at, ended_at, duration, session_type, productivity_score, energy_level
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (status) query = query.eq('status', status);
-    if (category) query = query.eq('category', category);
-    if (priority) query = query.eq('priority', priority);
-
-    const { data: tasks, error } = await query;
-
-    if (error) {
-      return new Response(JSON.stringify({ 
-        error: 'Failed to fetch tasks',
-        details: error.message 
-      }), { status: 500 });
+    const supabase = createServerClient(cookies);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      tasks: tasks || []
-    }), {
+    const url = new URL(request.url);
+    const params: TaskQueryParams = {
+      status: url.searchParams.get('status') as any,
+      priority: url.searchParams.get('priority') as any,
+      category: url.searchParams.get('category') || undefined,
+      deadline_before: url.searchParams.get('deadline_before') || undefined,
+      deadline_after: url.searchParams.get('deadline_after') || undefined,
+      parent_task_id: url.searchParams.get('parent_task_id') || undefined,
+      page: parseInt(url.searchParams.get('page') || '1'),
+      limit: parseInt(url.searchParams.get('limit') || '20'),
+      sort_by: url.searchParams.get('sort_by') as any || 'created_at',
+      sort_order: url.searchParams.get('sort_order') as any || 'desc'
+    };
+
+    const { query, page, limit } = buildTaskQuery(supabase, params);
+    
+    const { data: tasks, error, count } = await query.eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      return new Response(JSON.stringify({ error: 'Failed to fetch tasks' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const response: TasksResponse = {
+      tasks: tasks || [],
+      total: count || 0,
+      page,
+      limit
+    };
+
+    return new Response(JSON.stringify(response), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({
-      error: 'Server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }), { status: 500 });
+    console.error('Unexpected error in GET /api/tasks:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 };
 
+// POST /api/tasks - Create a new task
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
-    // Get authenticated user
-    const serverAuth = createServerAuth(cookies);
-    const user = await serverAuth.requireAuth();
-    const supabase = serverAuth.supabase;
+    const supabase = createServerClient(cookies);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     const body = await request.json();
-    console.log('Received task data:', body);
+    const validation = validateCreateTaskRequest(body);
 
-    const {
-      title,
-      description,
-      category,
-      priority = 'medium',
-      estimated_duration,
-      due_date,
-      scheduled_for,
-      energy_required = 'medium',
-      complexity = 'moderate',
-      location,
-      context = [],
-      tags = [],
-      email_reminders = false
-    } = body;
-
-    if (!title) {
-      return new Response(JSON.stringify({
-        error: 'Title is required'
-      }), { status: 400 });
+    if (!validation.isValid) {
+      return new Response(JSON.stringify({ 
+        error: 'Validation failed', 
+        details: validation.errors 
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    if (!category) {
-      return new Response(JSON.stringify({
-        error: 'Category is required'
-      }), { status: 400 });
-    }
-
-    // Process tags if provided as string
-    const processedTags = typeof tags === 'string' 
-      ? tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-      : Array.isArray(tags) ? tags : [];
-
-    // Process context
-    const processedContext = Array.isArray(context) ? context : [];
-
-    // Build insert data with only valid fields
-    const insertData: any = {
-      user_id: user.id,
-      title: title.trim(),
-      category: category.trim(),
-      priority,
-      status: 'todo'
+    const taskData: CreateTaskRequest = {
+      title: body.title.trim(),
+      description: body.description?.trim() || null,
+      category: body.category.trim(),
+      priority: body.priority || 'medium',
+      complexity: body.complexity || 'moderate',
+      energy_required: body.energy_required || 'medium',
+      estimated_duration: body.estimated_duration || null,
+      deadline: body.deadline || null,
+      parent_task_id: body.parent_task_id || null,
+      created_from: body.created_from || 'manual'
     };
-
-    // Add optional fields only if they have values
-    if (description && description.trim()) {
-      insertData.description = description.trim();
-    }
-
-    if (estimated_duration && !isNaN(parseInt(estimated_duration))) {
-      insertData.estimated_duration = parseInt(estimated_duration);
-    }
-
-    if (due_date) {
-      insertData.due_date = due_date;
-    }
-
-    if (scheduled_for) {
-      insertData.scheduled_for = scheduled_for;
-    }
-
-    if (energy_required) {
-      insertData.energy_required = energy_required;
-    }
-
-    if (complexity) {
-      insertData.complexity = complexity;
-    }
-
-    if (location && location.trim()) {
-      insertData.location = location.trim();
-    }
-
-    if (processedContext.length > 0) {
-      insertData.context = processedContext;
-    }
-
-    if (processedTags.length > 0) {
-      insertData.tags = processedTags;
-    }
-
-    if (email_reminders !== undefined) {
-      insertData.email_reminders = email_reminders;
-    }
-
-    console.log('Insert data:', insertData);
 
     const { data: task, error } = await supabase
       .from('tasks')
-      .insert(insertData)
+      .insert({
+        ...taskData,
+        user_id: user.id
+      })
       .select()
       .single();
 
     if (error) {
-      console.error('Database error:', error);
-      return new Response(JSON.stringify({
-        error: 'Failed to create task',
-        details: error.message,
-        code: error.code
-      }), { status: 500 });
+      console.error('Error creating task:', error);
+      return new Response(JSON.stringify({ error: 'Failed to create task' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log('Created task:', task);
-
-    return new Response(JSON.stringify({
-      success: true,
-      task
-    }), {
+    return new Response(JSON.stringify({ task }), {
+      status: 201,
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Server error:', error);
-    return new Response(JSON.stringify({
-      error: 'Server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }), { status: 500 });
+    console.error('Unexpected error in POST /api/tasks:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 };
