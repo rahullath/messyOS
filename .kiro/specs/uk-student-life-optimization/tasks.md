@@ -12,7 +12,11 @@
   - Write unit tests for data model validation and constraints
   - _Requirements: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 8.1, 9.1, 10.1, 11.1, 12.1_
 
-- [ ] 2. Implement UK Location Service with Birmingham-specific intelligence
+- [x] 2. Implement UK Location Service with Birmingham-specific intelligence
+
+
+
+
   - Create UKLocationService class with Birmingham route calculation
   - Integrate Google Maps API for cycling and walking routes between Five Ways, University, and Selly Oak
   - Implement weather service integration with OpenWeatherMap API
@@ -21,7 +25,15 @@
   - Write comprehensive tests for location calculations and API integrations
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 3. Build grocery and meal planning system
+- [x] 3. Build grocery and meal planning system
+
+
+
+
+
+
+
+
   - Implement MealPlanningService with recipe database and inventory tracking
   - Create inventory management system for fridge, pantry, and freezer items
   - Build recipe suggestion algorithm based on available ingredients and cooking time constraints

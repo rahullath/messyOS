@@ -1,0 +1,261 @@
+---
+// UK Student Life Optimization Dashboard
+// Main dashboard page that integrates all UK student features
+
+import Layout from '../layouts/Layout.astro';
+import { MealPlanningDashboard } from '../components/uk-student/MealPlanningDashboard';
+import { InventoryManager } from '../components/uk-student/InventoryManager';
+import { ShoppingListOptimizer } from '../components/uk-student/ShoppingListOptimizer';
+
+// Mock user data - in a real app this would come from authentication
+const userId = 'demo-user-id';
+const cookingTimeLimits = {
+  breakfast: 10,
+  lunch: 20,
+  dinner: 30
+};
+const budget = 50;
+const dietaryRestrictions: string[] = [];
+---
+
+<Layout title="UK Student Life Optimization">
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+          <div class="flex items-center">
+            <h1 class="text-2xl font-bold text-gray-900">UK Student Life Optimizer</h1>
+            <span class="ml-3 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">Birmingham</span>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-600">Budget: £{budget}/week</span>
+            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+              <span class="text-white text-sm font-medium">U</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex space-x-8">
+          <button 
+            id="meal-planning-tab"
+            class="tab-button active py-4 px-1 border-b-2 border-blue-500 font-medium text-sm text-blue-600"
+          >
+            🍽️ Meal Planning
+          </button>
+          <button 
+            id="inventory-tab"
+            class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          >
+            📦 Inventory
+          </button>
+          <button 
+            id="shopping-tab"
+            class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          >
+            🛒 Shopping
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <!-- Quick Stats -->
+      <div class="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
+                <span class="text-green-600 text-lg">💰</span>
+              </div>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-gray-900">Weekly Budget</p>
+              <p class="text-lg font-semibold text-green-600">£{budget}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
+                <span class="text-blue-600 text-lg">🧊</span>
+              </div>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-gray-900">Inventory Items</p>
+              <p class="text-lg font-semibold text-blue-600" id="inventory-count">-</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-yellow-100 rounded-md flex items-center justify-center">
+                <span class="text-yellow-600 text-lg">⚠️</span>
+              </div>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-gray-900">Expiring Soon</p>
+              <p class="text-lg font-semibold text-yellow-600" id="expiring-count">-</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <div class="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
+                <span class="text-purple-600 text-lg">🏪</span>
+              </div>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-gray-900">Nearby Stores</p>
+              <p class="text-lg font-semibold text-purple-600">5</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="meal-planning-content" class="tab-content">
+        <MealPlanningDashboard 
+          userId={userId}
+          cookingTimeLimits={cookingTimeLimits}
+          budget={budget}
+          dietaryRestrictions={dietaryRestrictions}
+          client:load
+        />
+      </div>
+
+      <div id="inventory-content" class="tab-content hidden">
+        <InventoryManager 
+          userId={userId}
+          client:load
+        />
+      </div>
+
+      <div id="shopping-content" class="tab-content hidden">
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <h2 class="text-xl font-semibold mb-4">Shopping List Optimizer</h2>
+          <p class="text-gray-600 mb-4">
+            Generate a meal plan first to create an optimized shopping list.
+          </p>
+          <div id="shopping-optimizer-container">
+            <!-- Shopping optimizer will be loaded here when meal plan is available -->
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Weather Widget -->
+    <div class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border border-gray-200 max-w-xs">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="font-medium text-gray-900">Birmingham Weather</h3>
+        <span class="text-2xl">🌤️</span>
+      </div>
+      <p class="text-sm text-gray-600">12°C • Partly cloudy</p>
+      <p class="text-xs text-gray-500 mt-1">Good for cycling to uni!</p>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const tabId = this.id.replace('-tab', '-content');
+          
+          // Remove active class from all tabs
+          tabButtons.forEach(btn => {
+            btn.classList.remove('active', 'border-blue-500', 'text-blue-600');
+            btn.classList.add('border-transparent', 'text-gray-500');
+          });
+          
+          // Add active class to clicked tab
+          this.classList.add('active', 'border-blue-500', 'text-blue-600');
+          this.classList.remove('border-transparent', 'text-gray-500');
+          
+          // Hide all tab contents
+          tabContents.forEach(content => {
+            content.classList.add('hidden');
+          });
+          
+          // Show selected tab content
+          const targetContent = document.getElementById(tabId);
+          if (targetContent) {
+            targetContent.classList.remove('hidden');
+          }
+        });
+      });
+
+      // Load initial stats
+      loadInventoryStats();
+    });
+
+    async function loadInventoryStats() {
+      try {
+        // In a real implementation, this would call the API
+        // const response = await fetch('/api/uk-student/meal-planning/inventory');
+        // const data = await response.json();
+        
+        // Mock data for demo
+        document.getElementById('inventory-count').textContent = '12';
+        document.getElementById('expiring-count').textContent = '2';
+      } catch (error) {
+        console.error('Error loading inventory stats:', error);
+      }
+    }
+
+    // Global function to update shopping list when meal plan changes
+    window.updateShoppingList = function(shoppingList) {
+      const container = document.getElementById('shopping-optimizer-container');
+      if (container && shoppingList && shoppingList.length > 0) {
+        // In a real implementation, this would render the ShoppingListOptimizer component
+        container.innerHTML = `
+          <div class="space-y-4">
+            <h3 class="text-lg font-medium">Generated Shopping List</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${shoppingList.map(item => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <span>${item.name}</span>
+                  <span class="text-sm text-gray-500">${item.quantity} ${item.unit}</span>
+                </div>
+              `).join('')}
+            </div>
+            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+              Optimize Shopping Route
+            </button>
+          </div>
+        `;
+      }
+    };
+  </script>
+
+  <style>
+    .tab-button.active {
+      border-color: #3B82F6;
+      color: #3B82F6;
+    }
+    
+    .tab-content {
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</Layout>

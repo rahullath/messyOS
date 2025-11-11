@@ -141,7 +141,7 @@ CREATE TABLE uk_student_recipes (
   description TEXT,
   ingredients JSONB NOT NULL DEFAULT '[]',
   instructions JSONB NOT NULL DEFAULT '[]',
-  cooking_time INTEGER CHECK (cooking_time > 0), -- minutes
+  cooking_time INTEGER CHECK (cooking_time >= 0), -- minutes
   prep_time INTEGER CHECK (prep_time >= 0), -- minutes
   difficulty INTEGER DEFAULT 3 CHECK (difficulty >= 1 AND difficulty <= 5),
   servings INTEGER DEFAULT 1 CHECK (servings > 0),
