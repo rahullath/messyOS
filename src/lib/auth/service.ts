@@ -221,7 +221,7 @@ class AuthenticationService {
     try {
       const { data, error } = await this.client
         .from('user_tokens')
-        .select('balance, total_earned, total_spent, trial_start_date, trial_end_date')
+        .select('balance, total_earned, total_spent')
         .eq('user_id', userId)
         .single();
 
@@ -242,7 +242,11 @@ class AuthenticationService {
         return null;
       }
 
-      return data;
+      return {
+        ...data,
+        trial_start_date: new Date().toISOString(),
+        trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      };
     } catch (error) {
       console.error('Error getting token balance:', error);
       return null;

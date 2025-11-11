@@ -44,15 +44,15 @@ Build a comprehensive Intelligent Task Management module that integrates seamles
 
 ### Requirement 4
 
-**User Story:** As a user, I want comprehensive time tracking with automatic session detection and productivity scoring, so that I can understand and improve my work patterns.
+**User Story:** As a user living in Birmingham UK, I want an AI auto-scheduler that creates perfectly optimized daily plans considering my sleep, classes, gym routine, travel methods, meals, and all tasks, so that every day is efficiently planned without conflicts.
 
 #### Acceptance Criteria
 
-1. WHEN I start working on a task THEN the system SHALL automatically begin time tracking with minimal friction
-2. WHEN I switch between tasks THEN the system SHALL detect context switches and prompt for confirmation
-3. WHEN I complete a work session THEN the system SHALL ask for productivity rating and session notes
-4. WHEN I review my time data THEN the system SHALL show productivity trends, focus patterns, and improvement suggestions
-5. WHEN I'm distracted or idle THEN the system SHALL detect breaks and categorize time appropriately
+1. WHEN I wake up at 6am with classes at 11am THEN the system SHALL schedule gym in the morning with cycling travel time (28-40 mins), workout duration, and shower time
+2. WHEN my classes are at 9am making morning gym impossible THEN the system SHALL find evening gym slots or suggest train travel to optimize time and health
+3. WHEN planning meals THEN the system SHALL decide breakfast timing (before/after gym), lunch location (university vs home), and provide ingredient lists with macros
+4. WHEN scheduling tasks THEN the system SHALL squeeze assignments, room cleaning, cat litter, grocery shopping, and projects into available slots efficiently
+5. WHEN creating schedules THEN the system SHALL integrate maps for cycling/walking routes, nearby supermarkets, and consider linked accounts (Amazon, Deliveroo, Uber Eats)
 
 ### Requirement 5
 
@@ -125,3 +125,27 @@ Build a comprehensive Intelligent Task Management module that integrates seamles
 3. WHEN my habit completion drops THEN the AI SHALL analyze task load and suggest workload rebalancing
 4. WHEN my workout consistency improves THEN the AI SHALL leverage that momentum to suggest complementary healthy habits or challenging tasks
 5. WHEN I consistently achieve in one area THEN the AI SHALL help me apply those successful patterns to other life domains
+
+### Requirement 11
+
+**User Story:** As a Birmingham UK resident, I want the system to integrate with my local context including maps, weather, nearby services, and linked accounts (Amazon, Deliveroo, Uber Eats), so that my daily plans are practically executable and location-aware.
+
+#### Acceptance Criteria
+
+1. WHEN planning cycling to gym (3.7 miles) THEN the system SHALL consider weather conditions and suggest alternative transport if needed
+2. WHEN scheduling grocery shopping THEN the system SHALL identify nearby supermarkets and optimize routes based on my shopping list
+3. WHEN planning meals THEN the system SHALL integrate with Deliveroo/Uber Eats for university lunch options or suggest home cooking with available ingredients
+4. WHEN creating shopping lists THEN the system SHALL check Amazon/Zooplus accounts for recurring orders and delivery schedules
+5. WHEN optimizing travel THEN the system SHALL use real-time maps data for cycling routes, train schedules, and walking paths
+
+### Requirement 12
+
+**User Story:** As a user, I want a conversational AI interface that can create tasks, log activities, and adjust schedules through natural language, so that managing my optimized life feels effortless and intuitive.
+
+#### Acceptance Criteria
+
+1. WHEN I say "I need to clean my cat's litter and do grocery shopping tomorrow" THEN the system SHALL create tasks and find optimal time slots in my schedule
+2. WHEN I say "I'm feeling tired, can we move gym to evening?" THEN the system SHALL reschedule gym session and adjust meal timings accordingly
+3. WHEN I ask "What's my plan for tomorrow?" THEN the system SHALL provide a complete optimized schedule with reasoning for each decision
+4. WHEN I say "I want to cook pasta for lunch" THEN the system SHALL add ingredients to shopping list, schedule cooking time, and calculate macros
+5. WHEN I report "I slept 6 hours last night" THEN the system SHALL adjust tomorrow's schedule to account for lower energy levels

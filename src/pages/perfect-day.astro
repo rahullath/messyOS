@@ -1,0 +1,58 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { createServerClient } from '../lib/supabase/server';
+import PerfectDayPlannerWrapper from '../components/auto-scheduler/PerfectDayPlannerWrapper.astro';
+
+// Check authentication
+const supabase = createServerClient(Astro.cookies);
+const { data: { user }, error } = await supabase.auth.getUser();
+
+if (error || !user) {
+  return Astro.redirect('/auth/signin');
+}
+---
+
+<Layout title="Perfect Day Planner - MessyOS">
+  <main class="min-h-screen bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex items-center">
+            <a href="/dashboard" class="text-xl font-bold text-gray-900">
+              MessyOS
+            </a>
+            <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+              <a href="/dashboard" class="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium">
+                Dashboard
+              </a>
+              <a href="/tasks" class="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium">
+                Tasks
+              </a>
+              <a href="/calendar" class="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium">
+                Calendar
+              </a>
+              <a href="/perfect-day" class="text-blue-600 border-b-2 border-blue-600 px-3 py-2 text-sm font-medium">
+                Perfect Day
+              </a>
+            </div>
+          </div>
+          
+          <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-700">
+              {user.email}
+            </span>
+            <form action="/api/auth/signout" method="post">
+              <button type="submit" class="text-sm text-gray-500 hover:text-gray-700">
+                Sign Out
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Perfect Day Planner Component -->
+    <PerfectDayPlannerWrapper userId={user.id} initialDate={new Date()} />
+  </main>
+</Layout>

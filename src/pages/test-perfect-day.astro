@@ -1,0 +1,259 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { createServerClient } from '../lib/supabase/server';
+
+// Check authentication
+const supabase = createServerClient(Astro.cookies);
+const { data: { user }, error } = await supabase.auth.getUser();
+
+if (error || !user) {
+  return Astro.redirect('/auth/signin');
+}
+---
+
+<Layout title="Test Perfect Day Planner - MessyOS">
+  <main class="min-h-screen bg-gray-50 p-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">
+          🧠 Perfect Day Planner Test
+        </h1>
+        <p class="text-gray-600 mb-4">
+          Test the AI auto-scheduler functionality with a simple interface.
+        </p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Select Date
+            </label>
+            <input 
+              type="date" 
+              id="planDate"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min={new Date().toISOString().split('T')[0]}
+              value={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Morning Energy Level
+            </label>
+            <select 
+              id="morningEnergy"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-4 mb-6">
+          <button 
+            id="initSystemBtn"
+            class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+          >
+            Initialize System
+          </button>
+          
+          <button 
+            id="testSystemBtn"
+            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            Test System
+          </button>
+          
+          <button 
+            id="generatePlanBtn"
+            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Generate Perfect Day
+          </button>
+        </div>
+
+        <div id="results" class="space-y-4"></div>
+      </div>
+    </div>
+  </main>
+
+  <script define:vars={{ userId: user.id }}>
+    const initSystemBtn = document.getElementById('initSystemBtn');
+    const testSystemBtn = document.getElementById('testSystemBtn');
+    const generatePlanBtn = document.getElementById('generatePlanBtn');
+    const resultsDiv = document.getElementById('results');
+
+    // Initialize system
+    initSystemBtn.addEventListener('click', async () => {
+      initSystemBtn.disabled = true;
+      initSystemBtn.textContent = 'Initializing...';
+      
+      try {
+        const response = await fetch('/api/init-auto-scheduler', {
+          method: 'POST'
+        });
+        const result = await response.json();
+        
+        resultsDiv.innerHTML = `
+          <div class="p-4 rounded-lg ${result.success ? 'bg-purple-50 border border-purple-200' : 'bg-red-50 border border-red-200'}">
+            <h3 class="font-semibold ${result.success ? 'text-purple-800' : 'text-red-800'} mb-2">
+              System Initialization ${result.success ? 'Complete' : 'Failed'}
+            </h3>
+            <pre class="text-sm ${result.success ? 'text-purple-700' : 'text-red-700'} whitespace-pre-wrap">${JSON.stringify(result, null, 2)}</pre>
+          </div>
+        `;
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <h3 class="font-semibold text-red-800 mb-2">Initialization Failed</h3>
+            <p class="text-red-700">${error.message}</p>
+          </div>
+        `;
+      } finally {
+        initSystemBtn.disabled = false;
+        initSystemBtn.textContent = 'Initialize System';
+      }
+    });
+
+    // Test system functionality
+    testSystemBtn.addEventListener('click', async () => {
+      testSystemBtn.disabled = true;
+      testSystemBtn.textContent = 'Testing...';
+      
+      try {
+        const response = await fetch('/api/test-auto-scheduler');
+        const result = await response.json();
+        
+        resultsDiv.innerHTML = `
+          <div class="p-4 rounded-lg ${result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}">
+            <h3 class="font-semibold ${result.success ? 'text-green-800' : 'text-red-800'} mb-2">
+              System Test ${result.success ? 'Passed' : 'Failed'}
+            </h3>
+            <pre class="text-sm ${result.success ? 'text-green-700' : 'text-red-700'} whitespace-pre-wrap">${JSON.stringify(result, null, 2)}</pre>
+          </div>
+        `;
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <h3 class="font-semibold text-red-800 mb-2">Test Failed</h3>
+            <p class="text-red-700">${error.message}</p>
+          </div>
+        `;
+      } finally {
+        testSystemBtn.disabled = false;
+        testSystemBtn.textContent = 'Test System';
+      }
+    });
+
+    // Generate perfect day plan
+    generatePlanBtn.addEventListener('click', async () => {
+      generatePlanBtn.disabled = true;
+      generatePlanBtn.textContent = 'Generating...';
+      
+      try {
+        const planDate = document.getElementById('planDate').value;
+        const morningEnergy = document.getElementById('morningEnergy').value;
+        
+        const requestBody = {
+          date: planDate,
+          energy_preferences: {
+            morning_energy: morningEnergy,
+            afternoon_energy: 'medium',
+            evening_energy: 'low'
+          },
+          gym_preferences: {
+            preferred_time: 'morning',
+            workout_type: 'mixed',
+            duration_preference: 60
+          },
+          meal_preferences: {
+            dietary_restrictions: [],
+            calorie_target: 2200,
+            protein_target: 120,
+            budget_limit: 15
+          }
+        };
+
+        const response = await fetch('/api/auto-scheduler/generate-perfect-day', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          const plan = result.data.plan;
+          const summary = result.data.summary;
+          
+          resultsDiv.innerHTML = `
+            <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h3 class="font-semibold text-green-800 mb-4">Perfect Day Generated! 🎉</h3>
+              
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-green-600">${summary.optimization_score}%</div>
+                  <div class="text-sm text-gray-600">Optimization Score</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-blue-600">${summary.tasks_scheduled}</div>
+                  <div class="text-sm text-gray-600">Tasks Scheduled</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-purple-600">${summary.gym_session_scheduled ? '✅' : '❌'}</div>
+                  <div class="text-sm text-gray-600">Gym Session</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-2xl font-bold text-orange-600">£${summary.total_meal_cost.toFixed(2)}</div>
+                  <div class="text-sm text-gray-600">Meal Cost</div>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <h4 class="font-medium text-gray-800 mb-2">AI Reasoning:</h4>
+                <ul class="text-sm text-gray-700 space-y-1">
+                  ${plan.ai_reasoning.map(reason => `<li>• ${reason}</li>`).join('')}
+                </ul>
+              </div>
+
+              <details class="mt-4">
+                <summary class="cursor-pointer font-medium text-gray-800">View Full Plan Details</summary>
+                <pre class="mt-2 text-xs text-gray-600 whitespace-pre-wrap overflow-auto max-h-96">${JSON.stringify(plan, null, 2)}</pre>
+              </details>
+            </div>
+          `;
+        } else {
+          resultsDiv.innerHTML = `
+            <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h3 class="font-semibold text-red-800 mb-2">Plan Generation Failed</h3>
+              <p class="text-red-700 mb-2">${result.error}</p>
+              ${result.details ? `<p class="text-sm text-red-600">${result.details}</p>` : ''}
+              ${result.suggestions ? `
+                <div class="mt-2">
+                  <p class="text-sm font-medium text-red-800">Suggestions:</p>
+                  <ul class="text-sm text-red-700">
+                    ${result.suggestions.map(suggestion => `<li>• ${suggestion}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <h3 class="font-semibold text-red-800 mb-2">Request Failed</h3>
+            <p class="text-red-700">${error.message}</p>
+          </div>
+        `;
+      } finally {
+        generatePlanBtn.disabled = false;
+        generatePlanBtn.textContent = 'Generate Perfect Day';
+      }
+    });
+  </script>
+</Layout>

@@ -36,7 +36,9 @@
       "Bash(timeout:*)",
       "Bash(node:*)",
       "Bash(supabase db inspect:*)",
-      "Bash(npx supabase db reset:*)"
+      "Bash(npx supabase db reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

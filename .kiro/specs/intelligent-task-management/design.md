@@ -309,44 +309,67 @@ interface ScheduledTask {
 }
 ```
 
-### 6. Comprehensive Time Tracking System
+### 6. AI Auto-Scheduler for Perfect Daily Planning
 
-**Purpose**: Automatic time tracking with productivity analysis and pattern recognition
+**Purpose**: Creates perfectly optimized daily schedules considering sleep, classes, gym, meals, travel, and all tasks with Birmingham UK context
 
 ```typescript
-interface TimeTrackingSystem {
-  startSession(userId: string, taskId: string): Promise<TrackingSession>;
-  detectContextSwitches(userId: string, sessionId: string): Promise<ContextSwitch[]>;
-  endSession(userId: string, sessionId: string, feedback: SessionFeedback): Promise<SessionSummary>;
-  analyzeProductivityPatterns(userId: string, timeRange: DateRange): Promise<ProductivityAnalysis>;
-  generateTimeReports(userId: string, reportType: ReportType): Promise<TimeReport>;
+interface AutoSchedulerSystem {
+  generatePerfectDay(userId: string, date: Date): Promise<OptimizedDayPlan>;
+  optimizeGymScheduling(userId: string, classSchedule: CalendarEvent[], sleepData: SleepData): Promise<GymScheduleOptions>;
+  planMealsWithMacros(userId: string, schedule: DayPlan, nutritionGoals: NutritionGoals): Promise<MealPlan>;
+  optimizeTravelRoutes(userId: string, destinations: Location[], travelMethod: TravelMethod): Promise<RouteOptimization>;
+  scheduleTasksInAvailableSlots(userId: string, tasks: Task[], constraints: SchedulingConstraints): Promise<TaskSchedule>;
 }
 
-interface TrackingSession {
-  id: string;
-  taskId: string;
-  startTime: Date;
-  estimatedDuration: number;
-  currentFocus: number; // 1-10 scale
-  distractions: Distraction[];
-  productivity: number;
+interface OptimizedDayPlan {
+  date: Date;
+  wakeUpTime: Date;
+  sleepSchedule: SleepBlock;
+  gymSession: GymSession;
+  mealPlan: MealPlan;
+  classSchedule: CalendarEvent[];
+  taskBlocks: TaskBlock[];
+  travelOptimization: TravelPlan[];
+  totalOptimizationScore: number;
 }
 
-interface SessionFeedback {
-  productivityRating: number; // 1-10
-  difficultyRating: number; // 1-10
-  energyLevel: number; // 1-10
-  distractions: string[];
-  notes?: string;
-  completionStatus: 'completed' | 'partial' | 'abandoned';
+interface GymSession {
+  scheduledTime: TimeSlot;
+  travelMethod: 'cycling' | 'train' | 'walking';
+  travelTime: number; // minutes
+  workoutDuration: number;
+  showerTime: number;
+  totalTimeRequired: number;
+  energyOptimization: number;
 }
 
-interface ProductivityAnalysis {
-  averageProductivity: number;
-  bestPerformanceTimes: TimeRange[];
-  commonDistractions: string[];
-  focusPatterns: FocusPattern[];
-  improvementSuggestions: string[];
+interface MealPlan {
+  breakfast: MealDetails;
+  lunch: MealDetails;
+  dinner: MealDetails;
+  snacks: MealDetails[];
+  totalMacros: MacroBreakdown;
+  shoppingList: IngredientList;
+}
+
+interface MealDetails {
+  timing: Date;
+  location: 'home' | 'university' | 'restaurant';
+  ingredients: Ingredient[];
+  macros: MacroBreakdown;
+  preparationTime: number;
+  cost: number;
+}
+
+interface TravelPlan {
+  from: Location;
+  to: Location;
+  method: 'cycling' | 'train' | 'walking';
+  duration: number;
+  cost: number;
+  route: MapRoute;
+  weatherConsideration: WeatherImpact;
 }
 ```
 
@@ -455,21 +478,52 @@ CREATE TABLE calendar_events (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Time tracking sessions
-CREATE TABLE time_sessions (
+-- Optimized daily plans with Birmingham UK context
+CREATE TABLE optimized_daily_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
-  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  end_time TIMESTAMP WITH TIME ZONE,
-  estimated_duration INTEGER,
-  actual_duration INTEGER,
-  productivity_rating INTEGER CHECK (productivity_rating >= 1 AND productivity_rating <= 10),
-  difficulty_rating INTEGER CHECK (difficulty_rating >= 1 AND difficulty_rating <= 10),
-  energy_level INTEGER CHECK (energy_level >= 1 AND energy_level <= 10),
-  distractions TEXT[],
-  notes TEXT,
-  completion_status session_status NOT NULL DEFAULT 'active',
+  plan_date DATE NOT NULL,
+  wake_up_time TIME NOT NULL,
+  sleep_duration INTEGER, -- minutes
+  gym_session JSONB, -- GymSession details
+  meal_plan JSONB, -- Complete meal planning with macros
+  travel_optimization JSONB, -- Travel routes and methods
+  task_scheduling JSONB, -- Optimized task placement
+  optimization_score DECIMAL(3,2),
+  birmingham_context JSONB, -- Location-specific data
+  weather_consideration JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, plan_date)
+);
+
+-- Birmingham-specific location and route data
+CREATE TABLE birmingham_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  address TEXT,
+  location_type location_type NOT NULL,
+  coordinates POINT,
+  cycling_distance_from_home DECIMAL(4,2), -- miles
+  cycling_time_estimate INTEGER, -- minutes
+  train_time_estimate INTEGER, -- minutes
+  walking_time_estimate INTEGER, -- minutes
+  cost_considerations JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Meal planning and macro tracking
+CREATE TABLE meal_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  plan_date DATE NOT NULL,
+  meal_type meal_type NOT NULL,
+  location TEXT NOT NULL,
+  ingredients JSONB,
+  macros JSONB,
+  preparation_time INTEGER,
+  estimated_cost DECIMAL(6,2),
+  shopping_list JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -554,7 +608,8 @@ CREATE TYPE calendar_source_type AS ENUM ('google', 'ical', 'outlook', 'manual')
 CREATE TYPE event_type AS ENUM ('class', 'meeting', 'personal', 'workout', 'task', 'break', 'meal');
 CREATE TYPE flexibility_type AS ENUM ('fixed', 'moveable', 'flexible');
 CREATE TYPE importance_level AS ENUM ('low', 'medium', 'high', 'critical');
-CREATE TYPE session_status AS ENUM ('active', 'completed', 'partial', 'abandoned');
+CREATE TYPE location_type AS ENUM ('gym', 'university', 'supermarket', 'restaurant', 'home', 'transport_hub');
+CREATE TYPE meal_type AS ENUM ('breakfast', 'lunch', 'dinner', 'snack');
 CREATE TYPE goal_category AS ENUM ('career', 'health', 'creative', 'financial', 'social', 'personal');
 CREATE TYPE goal_status AS ENUM ('active', 'completed', 'paused', 'cancelled');
 ```

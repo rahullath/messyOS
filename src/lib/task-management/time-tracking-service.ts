@@ -163,20 +163,256 @@ export class TimeTrackingService {
   }
 
   /**
-   * Analyzes productivity patterns (placeholder for future AI integration).
+   * Analyzes productivity patterns from time sessions.
    */
-  static async analyzeProductivityPatterns(userId: string): Promise<any> {
-    console.log(`Analyzing productivity patterns for user ${userId}`);
-    // This will involve more complex logic, potentially using AI to detect focus patterns, common distractions, etc.
-    return { message: 'Productivity analysis logic to be implemented.' };
+  static async analyzeProductivityPatterns(userId: string, dateRange?: { from: string; to: string }): Promise<any> {
+    let query = supabase
+      .from('time_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('completion_status', 'completed')
+      .order('start_time', { ascending: false });
+
+    if (dateRange) {
+      query = query.gte('start_time', dateRange.from).lte('start_time', dateRange.to);
+    }
+
+    const { data: sessions, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch sessions for analysis: ${error.message}`);
+    }
+
+    if (!sessions || sessions.length === 0) {
+      return {
+        averageProductivity: 0,
+        bestPerformanceTimes: [],
+        commonDistractions: [],
+        totalSessions: 0,
+        totalTimeSpent: 0,
+        focusPatterns: []
+      };
+    }
+
+    // Calculate basic statistics
+    const totalSessions = sessions.length;
+    const totalTimeSpent = sessions.reduce((sum, s) => sum + (s.actual_duration || 0), 0);
+    const averageProductivity = sessions.reduce((sum, s) => sum + (s.productivity_rating || 0), 0) / totalSessions;
+    const averageDifficulty = sessions.reduce((sum, s) => sum + (s.difficulty_rating || 0), 0) / totalSessions;
+    const averageEnergy = sessions.reduce((sum, s) => sum + (s.energy_level || 0), 0) / totalSessions;
+
+    // Analyze time patterns
+    const hourlyProductivity = new Map<number, { total: number; count: number; avgProductivity: number }>();
+    const dailyProductivity = new Map<number, { total: number; count: number; avgProductivity: number }>();
+
+    sessions.forEach(session => {
+      const startTime = new Date(session.start_time);
+      const hour = startTime.getHours();
+      const dayOfWeek = startTime.getDay();
+      const productivity = session.productivity_rating || 0;
+
+      // Hourly patterns
+      if (!hourlyProductivity.has(hour)) {
+        hourlyProductivity.set(hour, { total: 0, count: 0, avgProductivity: 0 });
+      }
+      const hourData = hourlyProductivity.get(hour)!;
+      hourData.total += productivity;
+      hourData.count += 1;
+      hourData.avgProductivity = hourData.total / hourData.count;
+
+      // Daily patterns
+      if (!dailyProductivity.has(dayOfWeek)) {
+        dailyProductivity.set(dayOfWeek, { total: 0, count: 0, avgProductivity: 0 });
+      }
+      const dayData = dailyProductivity.get(dayOfWeek)!;
+      dayData.total += productivity;
+      dayData.count += 1;
+      dayData.avgProductivity = dayData.total / dayData.count;
+    });
+
+    // Find best performance times
+    const bestHours = Array.from(hourlyProductivity.entries())
+      .filter(([_, data]) => data.count >= 3) // At least 3 sessions
+      .sort(([_, a], [__, b]) => b.avgProductivity - a.avgProductivity)
+      .slice(0, 3)
+      .map(([hour, data]) => ({
+        hour,
+        avgProductivity: Math.round(data.avgProductivity * 10) / 10,
+        sessionCount: data.count
+      }));
+
+    // Analyze common distractions
+    const distractionMap = new Map<string, number>();
+    sessions.forEach(session => {
+      if (session.distractions && Array.isArray(session.distractions)) {
+        session.distractions.forEach(distraction => {
+          distractionMap.set(distraction, (distractionMap.get(distraction) || 0) + 1);
+        });
+      }
+    });
+
+    const commonDistractions = Array.from(distractionMap.entries())
+      .sort(([_, a], [__, b]) => b - a)
+      .slice(0, 5)
+      .map(([distraction, count]) => ({
+        name: distraction,
+        frequency: count,
+        percentage: Math.round((count / totalSessions) * 100)
+      }));
+
+    // Focus patterns based on session duration vs productivity
+    const focusPatterns = sessions.map(session => ({
+      duration: session.actual_duration || 0,
+      productivity: session.productivity_rating || 0,
+      difficulty: session.difficulty_rating || 0,
+      energy: session.energy_level || 0,
+      distractionCount: (session.distractions && Array.isArray(session.distractions)) ? session.distractions.length : 0
+    }));
+
+    return {
+      totalSessions,
+      totalTimeSpent,
+      averageProductivity: Math.round(averageProductivity * 10) / 10,
+      averageDifficulty: Math.round(averageDifficulty * 10) / 10,
+      averageEnergy: Math.round(averageEnergy * 10) / 10,
+      bestPerformanceTimes: bestHours,
+      commonDistractions,
+      focusPatterns,
+      hourlyProductivity: Array.from(hourlyProductivity.entries()).map(([hour, data]) => ({
+        hour,
+        avgProductivity: Math.round(data.avgProductivity * 10) / 10,
+        sessionCount: data.count
+      })),
+      dailyProductivity: Array.from(dailyProductivity.entries()).map(([day, data]) => ({
+        day,
+        avgProductivity: Math.round(data.avgProductivity * 10) / 10,
+        sessionCount: data.count
+      }))
+    };
   }
 
   /**
-   * Generates time reports (placeholder for future implementation).
+   * Generates time reports for different periods and types.
    */
-  static async generateTimeReports(userId: string, reportType: string): Promise<any> {
-    console.log(`Generating ${reportType} time report for user ${userId}`);
-    // This will involve querying time sessions and aggregating data for various reports.
-    return { message: 'Time report generation logic to be implemented.' };
+  static async generateTimeReports(userId: string, reportType: 'daily' | 'weekly' | 'monthly' = 'weekly'): Promise<any> {
+    const now = new Date();
+    let startDate: Date;
+    let endDate = now;
+
+    switch (reportType) {
+      case 'daily':
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'weekly':
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'monthly':
+        startDate = new Date(now);
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+    }
+
+    const { data: sessions, error } = await supabase
+      .from('time_sessions')
+      .select(`
+        *,
+        tasks (
+          title,
+          category,
+          priority,
+          complexity
+        )
+      `)
+      .eq('user_id', userId)
+      .gte('start_time', startDate.toISOString())
+      .lte('start_time', endDate.toISOString())
+      .order('start_time', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to generate time report: ${error.message}`);
+    }
+
+    if (!sessions || sessions.length === 0) {
+      return {
+        reportType,
+        period: { start: startDate, end: endDate },
+        totalSessions: 0,
+        totalTimeSpent: 0,
+        completedSessions: 0,
+        averageProductivity: 0,
+        categoryBreakdown: {},
+        dailyBreakdown: []
+      };
+    }
+
+    const completedSessions = sessions.filter(s => s.completion_status === 'completed');
+    const totalTimeSpent = sessions.reduce((sum, s) => sum + (s.actual_duration || 0), 0);
+    const averageProductivity = completedSessions.length > 0 
+      ? completedSessions.reduce((sum, s) => sum + (s.productivity_rating || 0), 0) / completedSessions.length
+      : 0;
+
+    // Category breakdown
+    const categoryMap = new Map<string, { time: number; sessions: number; avgProductivity: number }>();
+    sessions.forEach(session => {
+      const category = (session as any).tasks?.category || 'Uncategorized';
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, { time: 0, sessions: 0, avgProductivity: 0 });
+      }
+      const catData = categoryMap.get(category)!;
+      catData.time += session.actual_duration || 0;
+      catData.sessions += 1;
+      catData.avgProductivity = (catData.avgProductivity * (catData.sessions - 1) + (session.productivity_rating || 0)) / catData.sessions;
+    });
+
+    const categoryBreakdown = Array.from(categoryMap.entries()).map(([category, data]) => ({
+      category,
+      timeSpent: data.time,
+      sessionCount: data.sessions,
+      averageProductivity: Math.round(data.avgProductivity * 10) / 10,
+      percentage: Math.round((data.time / totalTimeSpent) * 100)
+    }));
+
+    // Daily breakdown
+    const dailyMap = new Map<string, { time: number; sessions: number; productivity: number }>();
+    sessions.forEach(session => {
+      const date = new Date(session.start_time).toISOString().split('T')[0];
+      if (!dailyMap.has(date)) {
+        dailyMap.set(date, { time: 0, sessions: 0, productivity: 0 });
+      }
+      const dayData = dailyMap.get(date)!;
+      dayData.time += session.actual_duration || 0;
+      dayData.sessions += 1;
+      dayData.productivity = (dayData.productivity * (dayData.sessions - 1) + (session.productivity_rating || 0)) / dayData.sessions;
+    });
+
+    const dailyBreakdown = Array.from(dailyMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, data]) => ({
+        date,
+        timeSpent: data.time,
+        sessionCount: data.sessions,
+        averageProductivity: Math.round(data.productivity * 10) / 10
+      }));
+
+    return {
+      reportType,
+      period: { start: startDate, end: endDate },
+      totalSessions: sessions.length,
+      totalTimeSpent,
+      completedSessions: completedSessions.length,
+      averageProductivity: Math.round(averageProductivity * 10) / 10,
+      categoryBreakdown,
+      dailyBreakdown,
+      sessions: sessions.map(s => ({
+        id: s.id,
+        taskTitle: (s as any).tasks?.title || 'Unknown Task',
+        startTime: s.start_time,
+        duration: s.actual_duration,
+        productivity: s.productivity_rating,
+        status: s.completion_status
+      }))
+    };
   }
 }

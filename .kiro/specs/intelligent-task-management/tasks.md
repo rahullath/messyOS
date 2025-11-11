@@ -38,13 +38,19 @@
   - Add calendar source management interface for users
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 4. Create time tracking system with session management
-  - Build time tracking session components with start/stop functionality
-  - Implement automatic session detection and context switch alerts
-  - Create session feedback modal for productivity and difficulty ratings
-  - Add time tracking analytics and productivity pattern analysis
-  - Build session history view with filtering and search capabilities
-  - _Requirements: 4.1, 4.2, 4.3, 4.4_
+- [x] 4. Build AI-powered auto-scheduler for perfectly planned days
+
+
+
+  - Create Birmingham UK location context with cycling routes and travel times to gym (3.7 miles)
+  - Implement sleep schedule integration with manual input from health module
+  - Build university class schedule integration with MSc course calendar
+  - Create gym scheduling algorithm considering travel method (cycling vs train), workout duration, and shower time
+  - Add meal planning with ingredient lists, macros, and location decisions (university vs home)
+  - Integrate maps API for cycling routes, nearby supermarkets, and travel optimization
+  - Build task scheduling engine that squeezes assignments, cleaning, cat litter, grocery shopping into available slots
+  - Add external service integration framework for Amazon, Deliveroo, Uber Eats account linking
+  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
 - [ ] 5. Build energy pattern learning and scheduling engine
   - Create energy_patterns table and data collection system
@@ -134,10 +140,26 @@
   - Implement database query optimization and caching strategies
   - _Requirements: All requirements - quality assurance and performance_
 
-- [ ] 16. Add final polish and production readiness features
+- [ ] 16. Build Birmingham UK location intelligence and external service integration
+  - Create Birmingham location database with gym (3.7 miles), University of Birmingham, nearby supermarkets
+  - Integrate maps API for real-time cycling routes, walking paths, and train schedules
+  - Add weather API integration for travel method optimization (cycling vs train)
+  - Build external service integration for Amazon, Zooplus, Deliveroo, Uber Eats account linking
+  - Create location-aware shopping list optimization with nearby store recommendations
+  - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
+
+- [ ] 17. Implement conversational AI interface for natural task and schedule management
+  - Build natural language processing for task creation and schedule adjustments
+  - Create conversational interface for daily plan queries and modifications
+  - Implement voice-to-text integration for hands-free schedule management
+  - Add contextual AI responses that explain scheduling decisions and optimizations
+  - Build dynamic schedule adjustment based on real-time user input and energy levels
+  - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5_
+
+- [ ] 18. Add final polish and production readiness features
   - Implement comprehensive error handling and user feedback systems
   - Add loading states and skeleton screens for all async operations
-  - Create onboarding tour for task management features
+  - Create onboarding tour for auto-scheduler and perfect day planning features
   - Build accessibility improvements and keyboard navigation
-  - Add data export/import functionality for task and goal data
+  - Add data export/import functionality for optimized schedules and life optimization data
   - _Requirements: All requirements - production readiness and user experience_

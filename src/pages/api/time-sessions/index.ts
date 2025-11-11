@@ -27,7 +27,7 @@ function validateStartSessionRequest(data: any): ValidationResult {
   };
 }
 
-function buildSessionQuery(params: SessionQueryParams) {
+function buildSessionQuery(supabase: any, params: SessionQueryParams) {
   let query = supabase
     .from('time_sessions')
     .select('*', { count: 'exact' });
@@ -84,7 +84,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
       limit: parseInt(url.searchParams.get('limit') || '20')
     };
 
-    const { query, page, limit } = buildSessionQuery(params);
+    const { query, page, limit } = buildSessionQuery(supabase, params);
     
     const { data: sessions, error, count } = await query.eq('user_id', user.id);
 

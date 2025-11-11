@@ -1,0 +1,41 @@
+---
+// Perfect Day Planner Wrapper Component
+// Astro wrapper for the React Perfect Day Planner
+interface Props {
+  userId: string;
+  initialDate?: Date;
+}
+
+const { userId, initialDate } = Astro.props;
+---
+
+<div id="perfect-day-planner" data-user-id={userId} data-initial-date={initialDate?.toISOString()}></div>
+
+<script>
+  import PerfectDayPlanner from './PerfectDayPlanner.tsx';
+  import { createRoot } from 'react-dom/client';
+  import React from 'react';
+
+  // Wait for DOM to be ready
+  document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('perfect-day-planner');
+    const userId = container?.getAttribute('data-user-id');
+    const initialDateStr = container?.getAttribute('data-initial-date');
+    
+    if (container && userId) {
+      const initialDate = initialDateStr ? new Date(initialDateStr) : new Date();
+      
+      const root = createRoot(container);
+      root.render(React.createElement(PerfectDayPlanner, { 
+        userId: userId,
+        initialDate: initialDate
+      }));
+    }
+  });
+</script>
+
+<style>
+  #perfect-day-planner {
+    min-height: calc(100vh - 4rem);
+  }
+</style>
