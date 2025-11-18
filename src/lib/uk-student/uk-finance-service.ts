@@ -86,8 +86,9 @@ export class UKFinanceService implements UKFinanceServiceInterface {
       console.error('Error adding expense:', error);
       throw error instanceof UKFinanceError ? error : new UKFinanceError('Failed to add expense', 'UNKNOWN_ERROR');
     }
-  }  async up
-dateExpense(id: string, updates: Partial<UKStudentExpense>): Promise<UKStudentExpense> {
+  }
+
+  async updateExpense(id: string, updates: Partial<UKStudentExpense>): Promise<UKStudentExpense> {
     try {
       const updateData: any = {};
       
@@ -181,8 +182,9 @@ dateExpense(id: string, updates: Partial<UKStudentExpense>): Promise<UKStudentEx
       console.error('Error getting expenses:', error);
       throw error instanceof UKFinanceError ? error : new UKFinanceError('Failed to get expenses', 'UNKNOWN_ERROR');
     }
-  }  // Bud
-get Management
+  }
+
+  // Budget Management
   async createBudget(budget: Omit<UKStudentBudget, 'id' | 'currentSpent' | 'createdAt' | 'updatedAt'>): Promise<UKStudentBudget> {
     try {
       const validation = this.validateBudgetData(budget);
@@ -272,8 +274,9 @@ get Management
       console.error('Error getting budgets:', error);
       throw error instanceof UKFinanceError ? error : new UKFinanceError('Failed to get budgets', 'UNKNOWN_ERROR');
     }
-  }  a
-sync getBudgetHealth(userId: string): Promise<BudgetHealth> {
+  }
+
+  async getBudgetHealth(userId: string): Promise<BudgetHealth> {
     try {
       const budgets = await this.getBudgets(userId);
       const alerts = await this.getBudgetAlerts(userId, true);
@@ -395,8 +398,9 @@ sync getBudgetHealth(userId: string): Promise<BudgetHealth> {
         requiresManualInput: true
       };
     }
-  }  async 
-saveReceipt(receipt: Omit<UKStudentReceipt, 'id' | 'createdAt' | 'updatedAt'>): Promise<UKStudentReceipt> {
+  }
+
+  async saveReceipt(receipt: Omit<UKStudentReceipt, 'id' | 'createdAt' | 'updatedAt'>): Promise<UKStudentReceipt> {
     try {
       const { data, error } = await supabase
         .from('uk_student_receipts')
@@ -498,8 +502,9 @@ saveReceipt(receipt: Omit<UKStudentReceipt, 'id' | 'createdAt' | 'updatedAt'>): 
       console.error('Error getting price references:', error);
       throw error instanceof UKFinanceError ? error : new UKFinanceError('Failed to get price references', 'UNKNOWN_ERROR');
     }
-  }  // 
-Bank Account Integration
+  }
+
+  // Bank Account Integration
   async addBankAccount(account: Omit<UKBankAccount, 'id' | 'createdAt' | 'updatedAt'>): Promise<UKBankAccount> {
     try {
       const { data, error } = await supabase
@@ -586,8 +591,9 @@ Bank Account Integration
       console.error('Error getting bank accounts:', error);
       throw error instanceof UKFinanceError ? error : new UKFinanceError('Failed to get bank accounts', 'UNKNOWN_ERROR');
     }
-  } 
- async parseUKBankStatement(file: File, bankType: UKBankType): Promise<Transaction[]> {
+  }
+
+  async parseUKBankStatement(file: File, bankType: UKBankType): Promise<Transaction[]> {
     try {
       const text = await file.text();
       
@@ -694,8 +700,9 @@ Bank Account Integration
       console.error('Error generating spending insights:', error);
       throw error instanceof UKFinanceError ? error : new UKFinanceError('Failed to generate insights', 'UNKNOWN_ERROR');
     }
-  }  as
-ync getSpendingAnalytics(userId: string, period: AnalyticsPeriod): Promise<SpendingAnalytics> {
+  }
+
+  async getSpendingAnalytics(userId: string, period: AnalyticsPeriod): Promise<SpendingAnalytics> {
     try {
       const expenses = await this.getExpenses(userId, {
         startDate: period.startDate,
@@ -805,8 +812,9 @@ ync getSpendingAnalytics(userId: string, period: AnalyticsPeriod): Promise<Spend
       console.error('Error dismissing alert:', error);
       throw error instanceof UKFinanceError ? error : new UKFinanceError('Failed to dismiss alert', 'UNKNOWN_ERROR');
     }
-  }  /
-/ Categories and Templates
+  }
+
+  // Categories and Templates
   async getBudgetTemplates(): Promise<BudgetTemplate[]> {
     try {
       const { data, error } = await supabase
@@ -889,8 +897,9 @@ ync getSpendingAnalytics(userId: string, period: AnalyticsPeriod): Promise<Spend
       console.error('Error categorizing expense:', error);
       return 'other';
     }
-  }  // 
-Private helper methods
+  }
+
+  // Private helper methods
   private validateExpenseData(expense: Omit<UKStudentExpense, 'id' | 'createdAt' | 'updatedAt'>): ValidationResult {
     if (!expense.amount || expense.amount <= 0) {
       return { valid: false, error: 'Amount must be greater than 0' };
@@ -1019,8 +1028,9 @@ Private helper methods
       date,
       confidence: Math.min(1, confidence)
     };
-  }  privat
-e extractItemName(description: string): string | null {
+  }
+
+  private extractItemName(description: string): string | null {
     // Simple heuristic to extract item name from expense description
     const cleaned = description.toLowerCase().trim();
     
@@ -1280,8 +1290,9 @@ e extractItemName(description: string): string | null {
     }
 
     return transactions;
-  }  // Da
-tabase mapping functions
+  }
+
+  // Database mapping functions
   private mapDatabaseExpenseToType(data: any): UKStudentExpense {
     return {
       id: data.id,
