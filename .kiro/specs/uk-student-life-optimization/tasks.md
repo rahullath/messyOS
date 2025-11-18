@@ -100,6 +100,7 @@
 
 
 
+
   - Create RoutineService that integrates with existing habits system
   - Implement structured daily planning with wake time, meals, classes, gym, and personal care
   - Add skincare routine tracking (Cetaphil cleanser, toner, snail mucin, moisturizer, sunscreen)
@@ -109,7 +110,11 @@
   - Write tests for routine optimization and habit integration
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 8. Create laundry scheduling and clothing inventory system
+- [x] 8. Create laundry scheduling and clothing inventory system
+
+
+
+
   - Implement LaundryService with £6-7 cost tracking and 2+ hour scheduling
   - Add clothing inventory tracking to predict laundry needs based on underwear/gym clothes availability
   - Create calendar integration for 2+ hour laundry blocks with washer/dryer notifications
