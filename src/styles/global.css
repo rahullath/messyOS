@@ -10,6 +10,7 @@
 @import './onboarding.css';
 @import './forms-dark-theme-fix.css';
 @import './task-calendar-integration.css';
+@import './uk-student-light-theme.css';
 
 @layer base {
   :root {

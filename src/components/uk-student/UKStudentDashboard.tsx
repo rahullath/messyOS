@@ -86,6 +86,15 @@ export const UKStudentDashboard: React.FC<UKStudentDashboardProps> = ({
   const [energyLevel, setEnergyLevel] = useState(5); // 0-10 scale
   const [showAlerts, setShowAlerts] = useState(true);
 
+  // Force light theme by adding class to body
+  useEffect(() => {
+    document.body.classList.add('uk-student-page');
+
+    return () => {
+      document.body.classList.remove('uk-student-page');
+    };
+  }, []);
+
   // Load dashboard data on component mount and when date changes
   useEffect(() => {
     loadDashboardData();
@@ -305,7 +314,7 @@ export const UKStudentDashboard: React.FC<UKStudentDashboardProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="uk-student-container flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your dashboard...</p>
@@ -315,7 +324,7 @@ export const UKStudentDashboard: React.FC<UKStudentDashboardProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="uk-student-container min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
