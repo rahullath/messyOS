@@ -6,10 +6,18 @@ import Layout from '../layouts/Layout.astro';
 import { MealPlanningDashboard } from '../components/uk-student/MealPlanningDashboard';
 import { InventoryManager } from '../components/uk-student/InventoryManager';
 import { ShoppingListOptimizer } from '../components/uk-student/ShoppingListOptimizer';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
 
-// Mock user data - in a real app this would come from authentication
-// Using a valid UUID format for demo purposes (matches seed data template)
-const userId = '00000000-0000-0000-0000-000000000000';
+// Require authentication
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+// Use authenticated user ID
+const userId = user.id;
 const cookingTimeLimits = {
   breakfast: 10,
   lunch: 20,
