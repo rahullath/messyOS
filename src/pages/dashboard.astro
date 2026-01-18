@@ -1,6 +1,7 @@
 ---
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerAuth } from '../lib/auth/simple-multi-user';
+import DailyPlanCard from '../components/dashboard/cards/DailyPlanCard.tsx';
 
 // Require authentication
 const serverAuth = createServerAuth(Astro.cookies);
@@ -21,6 +22,8 @@ if (!user) {
 
     <!-- Quick Actions -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <DailyPlanCard client:load />
+
       <a href="/tasks" class="card hover:bg-surface-hover transition-colors">
         <div class="flex items-center">
           <div class="text-3xl mr-4">🤖</div>
