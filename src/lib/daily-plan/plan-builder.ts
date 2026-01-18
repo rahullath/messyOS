@@ -95,11 +95,12 @@ export class PlanBuilderService {
     // Step 4: Create time blocks with exit times
     const { timeBlocks, exitTimes, commitmentTravelMap } = await this.createTimeBlocksWithExitTimes(
       activities,
-      inputs.commitments,
+      inputs,
       input.wakeTime,
       input.sleepTime,
       currentLocation,
-      planStartTime
+      planStartTime,
+      input.energyState
     );
 
     // Step 5: Save to database
@@ -253,43 +254,64 @@ export class PlanBuilderService {
       }
     );
 
-    // 4. Tasks (max 1-3 based on energy)
-    // Requirements: 10.2, 10.3, 10.4
+    // 4. Tasks (max 1-3 based on energy) OR Primary Focus Block if no tasks
+    // Requirements: 10.2, 10.3, 10.4, 3.1, 3.2, 3.3, 3.4, 3.5
     const taskLimit = this.getTaskLimit(energyState);
     const selectedTasks = inputs.tasks.slice(0, taskLimit);
     
-    for (const task of selectedTasks) {
+    if (selectedTasks.length === 0) {
+      // No tasks available - insert Primary Focus Block
+      // Requirements: 3.1, 3.2, 3.3, 3.4
       activities.push({
         type: 'task',
-        name: task.title,
-        duration: task.estimated_duration || 60, // Default 60 minutes if not specified
+        name: 'Primary Focus Block',
+        duration: 60, // 60 minutes
         isFixed: false,
-        activityId: task.id,
       });
+    } else {
+      // Tasks exist - add them to activities
+      // Requirement: 3.5
+      for (const task of selectedTasks) {
+        activities.push({
+          type: 'task',
+          name: task.title,
+          duration: task.estimated_duration || 60, // Default 60 minutes if not specified
+          isFixed: false,
+          activityId: task.id,
+        });
+      }
     }
 
-    // 5. Evening routine (if exists, else default 20min block)
-    // Requirement: 7.3
+    // 5. Evening routine - NOT added here, will be scheduled specially at the end
+    // Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
+
+    return activities;
+  }
+
+  /**
+   * Get evening routine activity from inputs
+   * 
+   * Requirements: 7.1, 7.2, 7.3
+   */
+  private getEveningRoutineActivity(inputs: PlanInputs): Activity {
     const eveningRoutine = inputs.routines.evening;
     if (eveningRoutine) {
-      activities.push({
+      return {
         type: 'routine',
         name: eveningRoutine.name,
         duration: eveningRoutine.estimated_duration,
         isFixed: false,
         activityId: eveningRoutine.id,
-      });
+      };
     } else {
       // Default evening routine
-      activities.push({
+      return {
         type: 'routine',
         name: 'Evening Routine',
         duration: 20,
         isFixed: false,
-      });
+      };
     }
-
-    return activities;
   }
 
   /**
@@ -313,25 +335,30 @@ export class PlanBuilderService {
   /**
    * Create time blocks with pinned commitments and gap-fill scheduling
    * 
-   * Requirements: 1.1, 1.4, 1.5, 2.1
+   * Requirements: 1.1, 1.4, 1.5, 2.1, 7.1, 7.2, 7.3, 7.4, 7.5
    */
   private async createTimeBlocksWithExitTimes(
     activities: Activity[],
-    commitments: Commitment[],
+    inputs: PlanInputs,
     wakeTime: Date,
     sleepTime: Date,
     currentLocation: Location,
-    planStartTime: Date
+    planStartTime: Date,
+    energyState: EnergyState
   ): Promise<{ timeBlocks: TimeBlock[]; exitTimes: ExitTimeResult[]; commitmentTravelMap: Map<string, number> }> {
     const BUFFER_MINUTES = 5;
+    const EVENING_ROUTINE_EARLIEST_TIME = 18; // 6:00 PM
     const blocks: Omit<TimeBlock, 'id' | 'planId' | 'createdAt' | 'updatedAt'>[] = [];
     const exitTimes: ExitTimeResult[] = [];
     const commitmentTravelMap = new Map<string, number>(); // Maps commitment ID to travel block sequence order
 
+    // Get evening routine activity (will be scheduled at the end)
+    const eveningRoutineActivity = this.getEveningRoutineActivity(inputs);
+
     // Step 1: Calculate exit times for all commitments
     // Requirement: 2.1
     const exitTimeResults = await this.exitTimeCalculator.calculateExitTimes(
-      commitments,
+      inputs.commitments,
       { currentLocation }
     );
     exitTimes.push(...exitTimeResults);
@@ -344,7 +371,7 @@ export class PlanBuilderService {
       commitmentId?: string;
     }> = [];
 
-    for (const commitment of commitments) {
+    for (const commitment of inputs.commitments) {
       const exitTimeResult = exitTimeResults.find(et => et.commitmentId === commitment.id);
       
       if (exitTimeResult) {
@@ -466,7 +493,7 @@ export class PlanBuilderService {
       currentTime = bufferEnd;
     }
 
-    // Step 4: Fill remaining time after last commitment
+    // Step 4: Fill remaining time after last commitment (excluding evening routine)
     while (flexibleActivities.length > 0 && currentTime < sleepTime) {
       const activity = flexibleActivities.shift()!;
       const activityEnd = new Date(currentTime.getTime() + activity.duration * 60000);
@@ -506,7 +533,55 @@ export class PlanBuilderService {
       }
     }
 
-    // Step 5: Mark blocks that ended before plan start as skipped
+    // Step 5: Schedule evening routine as last non-buffer block
+    // Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
+    const eveningRoutineEarliestTime = new Date(wakeTime);
+    eveningRoutineEarliestTime.setHours(EVENING_ROUTINE_EARLIEST_TIME, 0, 0, 0);
+    
+    // Determine the earliest time evening routine can start
+    // Requirement: 7.2, 7.3
+    const eveningRoutineMinStartTime = sleepTime.getHours() < EVENING_ROUTINE_EARLIEST_TIME
+      ? new Date(Math.max(currentTime.getTime(), planStartTime.getTime())) // If sleep time is before 6pm, start from current time
+      : new Date(Math.max(currentTime.getTime(), eveningRoutineEarliestTime.getTime(), planStartTime.getTime()));
+
+    const eveningRoutineEnd = new Date(
+      eveningRoutineMinStartTime.getTime() + eveningRoutineActivity.duration * 60000
+    );
+
+    // Check if evening routine fits before sleep time
+    // Requirement: 7.5
+    if (eveningRoutineEnd <= sleepTime) {
+      // Add evening routine block
+      // Requirement: 7.1
+      blocks.push({
+        startTime: new Date(eveningRoutineMinStartTime),
+        endTime: eveningRoutineEnd,
+        activityType: eveningRoutineActivity.type,
+        activityName: eveningRoutineActivity.name,
+        activityId: eveningRoutineActivity.activityId,
+        isFixed: false,
+        sequenceOrder: sequenceOrder++,
+        status: 'pending',
+      });
+
+      // Add buffer after evening routine
+      // Requirement: 7.4
+      const bufferEnd = new Date(eveningRoutineEnd.getTime() + BUFFER_MINUTES * 60000);
+      if (bufferEnd <= sleepTime) {
+        blocks.push({
+          startTime: eveningRoutineEnd,
+          endTime: bufferEnd,
+          activityType: 'buffer',
+          activityName: 'Transition',
+          isFixed: false,
+          sequenceOrder: sequenceOrder++,
+          status: 'pending',
+        });
+      }
+    }
+    // If evening routine doesn't fit, it's dropped (Requirement 7.5)
+
+    // Step 6: Mark blocks that ended before plan start as skipped
     // This handles generating plans later in the day
     for (const block of blocks) {
       if (block.endTime <= planStartTime) {
@@ -515,12 +590,171 @@ export class PlanBuilderService {
       }
     }
 
+    // Step 7: Detect if tail plan is needed and generate it
+    // Requirement: 2.1
+    const blocksAfterPlanStart = blocks.filter(
+      block => block.endTime > planStartTime && block.status === 'pending'
+    );
+
+    if (blocksAfterPlanStart.length === 0) {
+      // No blocks after plan start - generate tail plan
+      // Requirement: 2.2, 2.3, 2.4, 2.5
+      const tailBlocks = this.generateTailPlan(planStartTime, sleepTime, energyState, sequenceOrder);
+      blocks.push(...tailBlocks);
+    }
+
     // Cast blocks to TimeBlock type (without id, planId, createdAt, updatedAt)
     return {
       timeBlocks: blocks as TimeBlock[],
       exitTimes,
       commitmentTravelMap,
     };
+  }
+
+  /**
+   * Generate hardcoded tail plan for late-day generation
+   * 
+   * Requirements: 2.2, 2.3, 2.4, 2.5
+   */
+  private generateTailPlan(
+    planStartTime: Date,
+    sleepTime: Date,
+    energyState: EnergyState,
+    startingSequenceOrder: number
+  ): Array<Omit<TimeBlock, 'id' | 'planId' | 'createdAt' | 'updatedAt'>> {
+    const BUFFER_MINUTES = 5;
+    const blocks: Array<Omit<TimeBlock, 'id' | 'planId' | 'createdAt' | 'updatedAt'>> = [];
+    let currentTime = new Date(planStartTime);
+    let sequenceOrder = startingSequenceOrder;
+
+    // 1. Reset/Admin block (10 minutes)
+    // Requirement: 2.2
+    const resetEnd = new Date(currentTime.getTime() + 10 * 60000);
+    if (resetEnd <= sleepTime) {
+      blocks.push({
+        startTime: new Date(currentTime),
+        endTime: resetEnd,
+        activityType: 'task',
+        activityName: 'Reset/Admin',
+        isFixed: false,
+        sequenceOrder: sequenceOrder++,
+        status: 'pending',
+      });
+
+      // Add buffer
+      const bufferEnd = new Date(resetEnd.getTime() + BUFFER_MINUTES * 60000);
+      if (bufferEnd <= sleepTime) {
+        blocks.push({
+          startTime: resetEnd,
+          endTime: bufferEnd,
+          activityType: 'buffer',
+          activityName: 'Transition',
+          isFixed: false,
+          sequenceOrder: sequenceOrder++,
+          status: 'pending',
+        });
+        currentTime = bufferEnd;
+      } else {
+        currentTime = resetEnd;
+      }
+    }
+
+    // 2. Primary Focus Block (60 minutes) if energy ≠ low
+    // Requirement: 2.3
+    if (energyState !== 'low') {
+      const focusEnd = new Date(currentTime.getTime() + 60 * 60000);
+      if (focusEnd <= sleepTime) {
+        blocks.push({
+          startTime: new Date(currentTime),
+          endTime: focusEnd,
+          activityType: 'task',
+          activityName: 'Primary Focus Block',
+          isFixed: false,
+          sequenceOrder: sequenceOrder++,
+          status: 'pending',
+        });
+
+        // Add buffer
+        const bufferEnd = new Date(focusEnd.getTime() + BUFFER_MINUTES * 60000);
+        if (bufferEnd <= sleepTime) {
+          blocks.push({
+            startTime: focusEnd,
+            endTime: bufferEnd,
+            activityType: 'buffer',
+            activityName: 'Transition',
+            isFixed: false,
+            sequenceOrder: sequenceOrder++,
+            status: 'pending',
+          });
+          currentTime = bufferEnd;
+        } else {
+          currentTime = focusEnd;
+        }
+      }
+    }
+
+    // 3. Dinner block (45 minutes)
+    // Requirement: 2.4
+    const dinnerEnd = new Date(currentTime.getTime() + 45 * 60000);
+    if (dinnerEnd <= sleepTime) {
+      blocks.push({
+        startTime: new Date(currentTime),
+        endTime: dinnerEnd,
+        activityType: 'meal',
+        activityName: 'Dinner',
+        isFixed: false,
+        sequenceOrder: sequenceOrder++,
+        status: 'pending',
+      });
+
+      // Add buffer
+      const bufferEnd = new Date(dinnerEnd.getTime() + BUFFER_MINUTES * 60000);
+      if (bufferEnd <= sleepTime) {
+        blocks.push({
+          startTime: dinnerEnd,
+          endTime: bufferEnd,
+          activityType: 'buffer',
+          activityName: 'Transition',
+          isFixed: false,
+          sequenceOrder: sequenceOrder++,
+          status: 'pending',
+        });
+        currentTime = bufferEnd;
+      } else {
+        currentTime = dinnerEnd;
+      }
+    }
+
+    // 4. Evening Routine block (20 minutes)
+    // Requirement: 2.5
+    const eveningEnd = new Date(currentTime.getTime() + 20 * 60000);
+    if (eveningEnd <= sleepTime) {
+      blocks.push({
+        startTime: new Date(currentTime),
+        endTime: eveningEnd,
+        activityType: 'routine',
+        activityName: 'Evening Routine',
+        isFixed: false,
+        sequenceOrder: sequenceOrder++,
+        status: 'pending',
+      });
+
+      // Add final buffer
+      const bufferEnd = new Date(eveningEnd.getTime() + BUFFER_MINUTES * 60000);
+      if (bufferEnd <= sleepTime) {
+        blocks.push({
+          startTime: eveningEnd,
+          endTime: bufferEnd,
+          activityType: 'buffer',
+          activityName: 'Transition',
+          isFixed: false,
+          sequenceOrder: sequenceOrder++,
+          status: 'pending',
+        });
+      }
+    }
+
+    return blocks;
   }
 
   /**
@@ -534,6 +768,12 @@ export class PlanBuilderService {
     exitTimes: ExitTimeResult[],
     commitmentTravelMap: Map<string, number>
   ): Promise<DailyPlan> {
+    // Calculate plan start time and generated_after_now flag
+    const now = new Date();
+    const roundedNow = this.roundUpToNext5Minutes(now);
+    const planStart = new Date(Math.max(input.wakeTime.getTime(), roundedNow.getTime()));
+    const generatedAfterNow = planStart.getTime() > input.wakeTime.getTime();
+
     // Create daily plan record
     const planData: CreateDailyPlan = {
       user_id: input.userId,
@@ -542,6 +782,8 @@ export class PlanBuilderService {
       sleep_time: input.sleepTime.toISOString(),
       energy_state: input.energyState,
       status: 'active',
+      generated_after_now: generatedAfterNow,
+      plan_start: planStart.toISOString(),
     };
 
     const plan = await createDailyPlan(this.supabase, planData);

@@ -13,25 +13,50 @@ export default function DegradePlanButton({ plan, onDegrade, isDegrading = false
 
   useEffect(() => {
     // Check if we should show the degrade button
-    // Only show if current time > current activity end time + 30 minutes
+    // Requirements 5.1, 5.2, 5.3, 5.4, 5.5
     const checkShouldShow = () => {
       if (!plan.timeBlocks || plan.timeBlocks.length === 0) {
         setShouldShow(false);
         return;
       }
 
-      // Find current block (first pending block)
-      const currentBlock = plan.timeBlocks.find(block => block.status === 'pending');
+      const now = new Date();
+      const planStart = new Date(plan.planStart);
+
+      // Requirement 5.1: Only consider blocks after planStart
+      const blocksAfterPlanStart = plan.timeBlocks.filter(block => {
+        const blockEnd = new Date(block.endTime);
+        return blockEnd > planStart;
+      });
+
+      if (blocksAfterPlanStart.length === 0) {
+        setShouldShow(false);
+        return;
+      }
+
+      // Requirement 5.2: Ignore blocks with status = 'skipped'
+      // Find current block (first pending block after planStart)
+      const currentBlock = blocksAfterPlanStart.find(block => block.status === 'pending');
       
+      // Requirement 5.5: Hide if no current block exists
       if (!currentBlock) {
         setShouldShow(false);
         return;
       }
 
-      const now = new Date();
+      // Requirement 5.5: Hide if all remaining blocks are after now
+      const currentBlockStart = new Date(currentBlock.startTime);
+      if (currentBlockStart > now) {
+        setShouldShow(false);
+        return;
+      }
+
+      // Requirement 5.3: Check if now > currentBlock.endTime + 30 minutes
       const endTime = new Date(currentBlock.endTime);
       const thirtyMinutesAfterEnd = new Date(endTime.getTime() + 30 * 60 * 1000);
 
+      // Requirement 5.4: When all blocks before now are skipped, don't consider user behind schedule
+      // This is handled by finding the first pending block (skipped blocks are ignored)
       setShouldShow(now > thirtyMinutesAfterEnd);
     };
 

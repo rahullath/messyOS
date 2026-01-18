@@ -4,6 +4,7 @@ import ActivityList from './ActivityList';
 import ExitTimeDisplay from './ExitTimeDisplay';
 import DegradePlanButton from './DegradePlanButton';
 import DeletePlanButton from './DeletePlanButton';
+import PlanContextDisplay from './PlanContextDisplay';
 import type { DailyPlan, EnergyState } from '../../types/daily-plan';
 
 export default function DailyPlanPageContent() {
@@ -262,6 +263,9 @@ export default function DailyPlanPageContent() {
       <div className="flex justify-end">
         <DeletePlanButton planId={plan.id} onDeleted={handleDeleted} />
       </div>
+
+      {/* Plan Context Display - Requirements 1.4, 4.5 */}
+      <PlanContextDisplay plan={plan} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content - Activity List */}

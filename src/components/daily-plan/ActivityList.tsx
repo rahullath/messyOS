@@ -24,6 +24,34 @@ export default function ActivityList({ plan, onComplete, onSkip, isUpdating = fa
         .slice(0, 2)
     : [];
 
+  // Check if plan is truly complete (Requirements 6.1, 6.2, 6.3, 6.4, 6.5)
+  const isPlanComplete = () => {
+    if (!plan.timeBlocks || plan.timeBlocks.length === 0) return false;
+    
+    // Get all blocks after planStart (Requirement 6.1)
+    const planStartTime = new Date(plan.planStart);
+    const blocksAfterPlanStart = plan.timeBlocks.filter(block => {
+      const blockEndTime = new Date(block.endTime);
+      return blockEndTime > planStartTime;
+    });
+    
+    // Filter to blocks after now (Requirement 6.1)
+    const now = new Date();
+    const blocksAfterNow = blocksAfterPlanStart.filter(block => {
+      const blockEndTime = new Date(block.endTime);
+      return blockEndTime > now;
+    });
+    
+    // Check if any have status='pending' (Requirement 6.3)
+    const hasPendingBlocks = blocksAfterNow.some(block => block.status === 'pending');
+    
+    // Check if plan status ≠ 'degraded' (Requirement 6.3)
+    const isNotDegraded = plan.status !== 'degraded';
+    
+    // Show celebration only if no pending blocks AND status ≠ 'degraded' (Requirement 6.5)
+    return !hasPendingBlocks && isNotDegraded;
+  };
+
   const formatTime = (date: Date | string) => {
     const d = typeof date === 'string' ? new Date(date) : date;
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -163,12 +191,12 @@ export default function ActivityList({ plan, onComplete, onSkip, isUpdating = fa
               </div>
             )}
           </div>
-        ) : (
+        ) : isPlanComplete() ? (
           <div className="bg-accent-success/10 border border-accent-success rounded-lg p-4 text-center">
             <p className="text-lg font-semibold text-accent-success">🎉 All activities completed!</p>
             <p className="text-sm text-text-muted mt-1">Great job finishing your plan for today</p>
           </div>
-        )}
+        ) : null}
 
         {/* Next Activities */}
         {nextBlocks.length > 0 && (

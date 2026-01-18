@@ -28,6 +28,9 @@ function rowToDailyPlan(row: DailyPlanRow): DailyPlan {
     sleepTime: new Date(row.sleep_time),
     energyState: row.energy_state,
     status: row.status,
+    generatedAt: new Date(row.generated_at),
+    generatedAfterNow: row.generated_after_now,
+    planStart: new Date(row.plan_start),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };

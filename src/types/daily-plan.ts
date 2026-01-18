@@ -14,6 +14,9 @@ export interface DailyPlan {
   sleepTime: Date;
   energyState: EnergyState;
   status: PlanStatus;
+  generatedAt: Date;
+  generatedAfterNow: boolean;
+  planStart: Date;
   createdAt: Date;
   updatedAt: Date;
   timeBlocks?: TimeBlock[];
@@ -66,6 +69,9 @@ export interface DailyPlanRow {
   sleep_time: string;
   energy_state: EnergyState;
   status: PlanStatus;
+  generated_at: string;
+  generated_after_now: boolean;
+  plan_start: string;
   created_at: string;
   updated_at: string;
 }
@@ -99,7 +105,7 @@ export interface ExitTimeRow {
 }
 
 // Helper type for creating new records (without generated fields)
-export type CreateDailyPlan = Omit<DailyPlanRow, 'id' | 'created_at' | 'updated_at'>;
+export type CreateDailyPlan = Omit<DailyPlanRow, 'id' | 'created_at' | 'updated_at' | 'generated_at'>;
 export type CreateTimeBlock = Omit<TimeBlockRow, 'id' | 'created_at' | 'updated_at'>;
 export type CreateExitTime = Omit<ExitTimeRow, 'id' | 'created_at'>;
 
