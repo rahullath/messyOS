@@ -61,27 +61,48 @@ export class PlanBuilderService {
   }
 
   /**
+   * Round up to next 5-minute interval
+   */
+  private roundUpToNext5Minutes(date: Date): Date {
+    const rounded = new Date(date);
+    const minutes = rounded.getMinutes();
+    const remainder = minutes % 5;
+    if (remainder !== 0) {
+      rounded.setMinutes(minutes + (5 - remainder));
+    }
+    rounded.setSeconds(0);
+    rounded.setMilliseconds(0);
+    return rounded;
+  }
+
+  /**
    * Generate a daily plan
    * 
    * Requirements: 1.1, 9.1
    */
   async generateDailyPlan(input: PlanInput, currentLocation: Location): Promise<DailyPlan> {
-    // Step 1: Gather inputs
+    // Step 1: Compute plan start time (max of wake time or current time rounded up)
+    const now = new Date();
+    const roundedNow = this.roundUpToNext5Minutes(now);
+    const planStartTime = new Date(Math.max(input.wakeTime.getTime(), roundedNow.getTime()));
+
+    // Step 2: Gather inputs
     const inputs = await this.gatherInputs(input.userId, input.date);
 
-    // Step 2: Build activity list
+    // Step 3: Build activity list
     const activities = this.buildActivityList(inputs, input.energyState);
 
-    // Step 3: Create time blocks with exit times
+    // Step 4: Create time blocks with exit times
     const { timeBlocks, exitTimes, commitmentTravelMap } = await this.createTimeBlocksWithExitTimes(
       activities,
       inputs.commitments,
       input.wakeTime,
       input.sleepTime,
-      currentLocation
+      currentLocation,
+      planStartTime
     );
 
-    // Step 4: Save to database
+    // Step 5: Save to database
     const plan = await this.savePlan(input, timeBlocks, exitTimes, commitmentTravelMap);
 
     return plan;
@@ -299,7 +320,8 @@ export class PlanBuilderService {
     commitments: Commitment[],
     wakeTime: Date,
     sleepTime: Date,
-    currentLocation: Location
+    currentLocation: Location,
+    planStartTime: Date
   ): Promise<{ timeBlocks: TimeBlock[]; exitTimes: ExitTimeResult[]; commitmentTravelMap: Map<string, number> }> {
     const BUFFER_MINUTES = 5;
     const blocks: Omit<TimeBlock, 'id' | 'planId' | 'createdAt' | 'updatedAt'>[] = [];
@@ -481,6 +503,15 @@ export class PlanBuilderService {
         currentTime = bufferEnd;
       } else {
         currentTime = activityEnd;
+      }
+    }
+
+    // Step 5: Mark blocks that ended before plan start as skipped
+    // This handles generating plans later in the day
+    for (const block of blocks) {
+      if (block.endTime <= planStartTime) {
+        block.status = 'skipped';
+        block.skipReason = 'Occurred before plan start';
       }
     }
 
