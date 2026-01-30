@@ -49,6 +49,11 @@ function rowToTimeBlock(row: TimeBlockRow): TimeBlock {
     sequenceOrder: row.sequence_order,
     status: row.status,
     skipReason: row.skip_reason,
+    metadata: row.metadata ? {
+      targetTime: row.metadata.target_time ? new Date(row.metadata.target_time) : undefined,
+      placementReason: row.metadata.placement_reason,
+      skipReason: row.metadata.skip_reason,
+    } : undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };

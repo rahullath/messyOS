@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { EnergyState } from '../../types/daily-plan';
 
 interface PlanGeneratorFormProps {
@@ -10,13 +10,47 @@ interface PlanGeneratorFormProps {
   isGenerating?: boolean;
 }
 
+/**
+ * Calculate default wake time based on current time
+ * Requirements: 8.1, 8.2, 8.5
+ * 
+ * - If current time < 12:00, default wake time = 07:00
+ * - If current time >= 12:00, default wake time = now rounded down to nearest 15 min
+ */
+function calculateDefaultWakeTime(): string {
+  const now = new Date();
+  const currentHour = now.getHours();
+  
+  // Requirement 8.1: If current time < 12:00, default to 07:00
+  if (currentHour < 12) {
+    return '07:00';
+  }
+  
+  // Requirement 8.2: If current time >= 12:00, round down to nearest 15 minutes
+  const currentMinute = now.getMinutes();
+  const roundedMinute = Math.floor(currentMinute / 15) * 15;
+  
+  const hours = currentHour.toString().padStart(2, '0');
+  const minutes = roundedMinute.toString().padStart(2, '0');
+  
+  return `${hours}:${minutes}`;
+}
+
 export default function PlanGeneratorForm({ onGenerate, isGenerating = false }: PlanGeneratorFormProps) {
-  const [wakeTime, setWakeTime] = useState('07:00');
+  // Requirement 8.5: Display the calculated default wake time
+  const [wakeTime, setWakeTime] = useState(() => calculateDefaultWakeTime());
   const [sleepTime, setSleepTime] = useState('23:00');
   const [energyState, setEnergyState] = useState<EnergyState>('medium');
+  
+  // Update default wake time when component mounts or time changes significantly
+  useEffect(() => {
+    const defaultWakeTime = calculateDefaultWakeTime();
+    setWakeTime(defaultWakeTime);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Requirement 8.3: Allow user to override the default wake time
     onGenerate({ wakeTime, sleepTime, energyState });
   };
 

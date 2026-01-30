@@ -35,6 +35,11 @@ export interface TimeBlock {
   sequenceOrder: number;
   status: BlockStatus;
   skipReason?: string;
+  metadata?: {
+    targetTime?: Date;
+    placementReason?: 'anchor-aware' | 'default';
+    skipReason?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,6 +93,11 @@ export interface TimeBlockRow {
   sequence_order: number;
   status: BlockStatus;
   skip_reason?: string;
+  metadata?: {
+    target_time?: string;
+    placement_reason?: 'anchor-aware' | 'default';
+    skip_reason?: string;
+  };
   created_at: string;
   updated_at: string;
 }

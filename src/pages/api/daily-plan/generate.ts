@@ -9,7 +9,10 @@ import type { Location } from '../../../types/uk-student-travel';
  * 
  * Generate a daily plan based on wake time, sleep time, and energy state
  * 
- * Requirements: 1.1, 1.2, 1.3
+ * Requirements: 1.1, 1.2, 1.3, 8.4
+ * 
+ * Requirement 8.4: Accept wake time from form and use planStart = max(wakeTime, now)
+ * The plan builder handles the planStart calculation internally.
  */
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {

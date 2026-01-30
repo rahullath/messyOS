@@ -89,19 +89,48 @@ export const CalendarSourceManager: React.FC<CalendarSourceManagerProps> = ({
     return new Date(lastSync).toLocaleString();
   };
 
+  console.log('CalendarSourceManager render - sources.length:', sources.length, 'showAddModal:', showAddModal);
+
   if (sources.length === 0) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon">📅</div>
-        <h3>No Calendar Sources</h3>
-        <p>Add your first calendar source to get started with unified calendar management.</p>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="btn btn-primary"
-        >
-          Add Calendar Source
-        </button>
-      </div>
+      <>
+        <div className="empty-state">
+          <div className="empty-icon">📅</div>
+          <h3>No Calendar Sources</h3>
+          <p>Add your first calendar source to get started with unified calendar management.</p>
+          <button 
+            onClick={() => {
+              console.log('Add Calendar Source button clicked (empty state)');
+              setShowAddModal(true);
+              console.log('showAddModal set to true');
+            }}
+            className="btn btn-primary"
+          >
+            Add Calendar Source
+          </button>
+        </div>
+
+        {/* Add Source Modal - must be here too for empty state */}
+        {showAddModal ? (
+          <AddSourceModal 
+            key="add-source-modal"
+            onSubmit={handleAddSource}
+            onClose={() => {
+              console.log('Closing modal');
+              setShowAddModal(false);
+            }}
+            setShowCsvImporter={setShowCsvImporter}
+          />
+        ) : null}
+
+        {/* CSV Importer Modal */}
+        {showCsvImporter && (
+          <CSVImporter
+            onImport={handleCsvImport}
+            onClose={() => setShowCsvImporter(false)}
+          />
+        )}
+      </>
     );
   }
 
@@ -110,7 +139,11 @@ export const CalendarSourceManager: React.FC<CalendarSourceManagerProps> = ({
       <div className="manager-header">
         <h2>Calendar Sources</h2>
         <button 
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            console.log('Add Source button clicked (header)');
+            setShowAddModal(true);
+            console.log('showAddModal set to true');
+          }}
           className="btn btn-primary"
         >
           <span className="icon">➕</span>
@@ -192,13 +225,17 @@ export const CalendarSourceManager: React.FC<CalendarSourceManagerProps> = ({
       </div>
 
       {/* Add Source Modal */}
-      {showAddModal && (
+      {showAddModal ? (
         <AddSourceModal 
+          key="add-source-modal"
           onSubmit={handleAddSource}
-          onClose={() => setShowAddModal(false)}
+          onClose={() => {
+            console.log('Closing modal');
+            setShowAddModal(false);
+          }}
           setShowCsvImporter={setShowCsvImporter}
         />
-      )}
+      ) : null}
 
       {/* Edit Source Modal */}
       {editingSource && (
@@ -231,6 +268,7 @@ interface AddSourceModalProps {
 }
 
 const AddSourceModal: React.FC<AddSourceModalProps> = ({ onSubmit, onClose, setShowCsvImporter }) => {
+  console.log('AddSourceModal component rendering');
   const [sourceType, setSourceType] = useState<'google' | 'ical' | 'outlook' | 'manual'>('ical');
   const [loading, setLoading] = useState(false);
 
