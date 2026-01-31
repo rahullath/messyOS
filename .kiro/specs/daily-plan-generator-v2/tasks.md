@@ -209,8 +209,8 @@ Implementation follows this order:
     - Test blocked gate display
     - _Requirements: 14.1, 14.2, 14.3, 14.4_
 
-- [ ] 13. Implement degradation logic (chain-aware)
-  - [ ] 13.1 Add degradation service
+- [-] 13. Implement degradation logic (chain-aware)
+  - [x] 13.1 Add degradation service
     - Implement `shouldTriggerDegradation()` method (current time > Chain Completion Deadline)
     - Implement `degradeChain()` method (drop optional steps, preserve required)
     - Mark dropped steps with status = 'skipped' and skip_reason = "Running late"
@@ -226,8 +226,8 @@ Implementation follows this order:
     - **Property 11: Degradation Preserves Required Steps**
     - **Validates: Requirements 15.3**
 
-- [ ] 14. Implement momentum preservation logic
-  - [ ] 14.1 Add chain status tracking
+- [x] 14. Implement momentum preservation logic
+  - [x] 14.1 Add chain status tracking
     - Define chain status (pending, in-progress, completed, failed)
     - Implement `updateChainStatus()` method
     - Add logic: late but complete → SUCCESS, on time but missing steps → FAILURE
@@ -244,7 +244,7 @@ Implementation follows this order:
     - **Property 10: Chain Integrity on Overrun**
     - **Validates: Requirements 16.3, 20.1**
 
-- [ ] 15. Checkpoint - Verify degradation and momentum work
+- [x] 15. Checkpoint - Verify degradation and momentum work
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 16. Create API endpoint for chains
