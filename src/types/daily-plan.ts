@@ -6,6 +6,11 @@ export type ActivityType = 'commitment' | 'task' | 'routine' | 'meal' | 'buffer'
 export type BlockStatus = 'pending' | 'completed' | 'skipped';
 export type TravelMethod = 'bike' | 'train' | 'walk' | 'bus';
 
+// V2 Chain-Based Execution imports
+import type { ExecutionChain } from '../lib/chains/types';
+import type { HomeInterval, LocationPeriod } from '../lib/chains/location-state';
+import type { WakeRamp } from '../lib/chains/wake-ramp';
+
 export interface DailyPlan {
   id: string;
   userId: string;
@@ -21,6 +26,13 @@ export interface DailyPlan {
   updatedAt: Date;
   timeBlocks?: TimeBlock[];
   exitTimes?: ExitTime[];
+  
+  // V2 Chain-Based Execution fields
+  // Requirements: 12.5, 18.1, 18.2, 18.3, 18.4
+  chains?: ExecutionChain[];
+  wakeRamp?: WakeRamp;
+  locationPeriods?: LocationPeriod[];
+  homeIntervals?: HomeInterval[];
 }
 
 export interface TimeBlock {

@@ -31,6 +31,13 @@ import {
   createTimeBlock,
 } from './database';
 
+// V2 Chain-Based Execution imports
+import { AnchorService } from '../anchors/anchor-service';
+import { ChainGenerator } from '../chains/chain-generator';
+import { LocationStateTracker } from '../chains/location-state';
+import { WakeRampGenerator } from '../chains/wake-ramp';
+import type { ExecutionChain, HomeInterval, LocationPeriod, WakeRamp } from '../chains/types';
+
 // Internal types for plan building
 interface Activity {
   type: ActivityType;
@@ -288,14 +295,37 @@ function calculateMealTargetTime(
 }
 
 /**
+ * Check if a time falls within any home interval
+ * Requirements: 8.5, 11.2, 17.5
+ */
+function isInHomeInterval(
+  time: Date,
+  homeIntervals: HomeInterval[]
+): boolean {
+  if (homeIntervals.length === 0) {
+    // If no home intervals provided (V1.2 mode), assume always at home
+    return true;
+  }
+
+  const timeMs = time.getTime();
+  for (const interval of homeIntervals) {
+    if (timeMs >= interval.start.getTime() && timeMs <= interval.end.getTime()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Place meals with constraints
- * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5
+ * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 8.5, 11.2, 11.3, 17.5
  */
 function placeMeals(
   anchors: TimeBlock[],
   wakeTime: Date,
   sleepTime: Date,
-  now: Date
+  now: Date,
+  homeIntervals: HomeInterval[] = [] // V2: Home intervals for location-aware placement
 ): MealPlacement[] {
   const meals: MealType[] = ['breakfast', 'lunch', 'dinner'];
   const placements: MealPlacement[] = [];
@@ -303,6 +333,7 @@ function placeMeals(
 
   console.log('[placeMeals] Starting meal placement');
   console.log(`[placeMeals] Wake: ${wakeTime.toLocaleTimeString()}, Sleep: ${sleepTime.toLocaleTimeString()}, Now: ${now.toLocaleTimeString()}`);
+  console.log(`[placeMeals] Home intervals: ${homeIntervals.length}`);
 
   for (const meal of meals) {
     console.log(`[placeMeals] Processing ${meal}...`);
@@ -350,7 +381,20 @@ function placeMeals(
     }
     console.log(`[placeMeals]   Available slot found: ${slot.toLocaleTimeString()}`);
     
-    // 5. Check if meal fits before sleep time
+    // 5. V2: Check if meal time falls in home interval
+    // Requirements: 8.5, 11.2, 11.3, 17.5
+    if (!isInHomeInterval(slot, homeIntervals)) {
+      console.log(`[placeMeals]   SKIP: Not in home interval`);
+      placements.push({
+        meal,
+        skipped: true,
+        skipReason: 'No home interval',
+      });
+      continue;
+    }
+    console.log(`[placeMeals]   Home interval check passed`);
+    
+    // 6. Check if meal fits before sleep time
     const mealEnd = new Date(slot.getTime() + duration * 60000);
     if (mealEnd > sleepTime) {
       console.log(`[placeMeals]   SKIP: Would exceed sleep time (${mealEnd.toLocaleTimeString()} > ${sleepTime.toLocaleTimeString()})`);
@@ -362,7 +406,7 @@ function placeMeals(
       continue;
     }
     
-    // 6. Place meal
+    // 7. Place meal
     const placementReason = anchors.length > 0 ? 'anchor-aware' : 'default';
     console.log(`[placeMeals]   PLACED: ${slot.toLocaleTimeString()} - ${mealEnd.toLocaleTimeString()} (${placementReason})`);
     placements.push({
@@ -386,10 +430,22 @@ function placeMeals(
 export class PlanBuilderService {
   private supabase: SupabaseClient<any, any, any>;
   private exitTimeCalculator: ExitTimeCalculator;
+  
+  // V2 Chain-Based Execution services
+  private anchorService: AnchorService;
+  private chainGenerator: ChainGenerator;
+  private locationStateTracker: LocationStateTracker;
+  private wakeRampGenerator: WakeRampGenerator;
 
   constructor(supabase: SupabaseClient<any, any, any>) {
     this.supabase = supabase;
     this.exitTimeCalculator = new ExitTimeCalculator();
+    
+    // Initialize V2 services
+    this.anchorService = new AnchorService();
+    this.chainGenerator = new ChainGenerator();
+    this.locationStateTracker = new LocationStateTracker();
+    this.wakeRampGenerator = new WakeRampGenerator();
   }
 
   /**
@@ -410,7 +466,7 @@ export class PlanBuilderService {
   /**
    * Generate a daily plan
    * 
-   * Requirements: 1.1, 9.1
+   * Requirements: 1.1, 9.1, 12.1, 12.2, 12.3, 12.4, 12.5
    */
   async generateDailyPlan(input: PlanInput, currentLocation: Location): Promise<DailyPlan> {
     // Step 1: Compute plan start time (max of wake time or current time rounded up)
@@ -418,13 +474,55 @@ export class PlanBuilderService {
     const roundedNow = this.roundUpToNext5Minutes(now);
     const planStartTime = new Date(Math.max(input.wakeTime.getTime(), roundedNow.getTime()));
 
-    // Step 2: Gather inputs
+    // Step 2: Generate Wake Ramp (V2)
+    // Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 10.1, 10.2
+    const wakeRamp = this.wakeRampGenerator.generateWakeRamp(
+      planStartTime,
+      input.wakeTime,
+      input.energyState
+    );
+    
+    console.log('[V2 Chain Generation] Wake Ramp:', wakeRamp.skipped ? 'SKIPPED' : `${wakeRamp.duration} minutes`);
+
+    // Step 3: Get anchors from calendar (V2)
+    // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
+    const anchors = await this.anchorService.getAnchorsForDate(input.date, input.userId, this.supabase);
+    console.log(`[V2 Chain Generation] Found ${anchors.length} anchors`);
+
+    // Step 4: Generate execution chains (V2)
+    // Requirements: 12.1, 12.2, 12.3, 12.4
+    const chains = await this.chainGenerator.generateChainsForDate(
+      anchors,
+      {
+        userId: input.userId,
+        date: input.date,
+        config: {
+          currentLocation,
+        },
+      }
+    );
+    console.log(`[V2 Chain Generation] Generated ${chains.length} execution chains`);
+
+    // Step 5: Calculate location periods and home intervals (V2)
+    // Requirements: 8.1, 8.2, 8.3, 8.4, 17.1, 17.2, 17.3, 17.4
+    const locationPeriods = this.locationStateTracker.calculateLocationPeriods(
+      chains,
+      planStartTime,
+      input.sleepTime
+    );
+    const homeIntervals = this.locationStateTracker.calculateHomeIntervals(
+      locationPeriods
+    );
+    console.log(`[V2 Chain Generation] Calculated ${homeIntervals.length} home intervals`);
+
+    // Step 6: Gather inputs (V1.2 - kept for backward compatibility)
     const inputs = await this.gatherInputs(input.userId, input.date);
 
-    // Step 3: Build activity list
+    // Step 7: Build activity list (V1.2 - kept for backward compatibility)
     const activities = this.buildActivityList(inputs, input.energyState);
 
-    // Step 4: Create time blocks with exit times
+    // Step 8: Create time blocks with exit times (V1.2 - demoted to timeline generation)
+    // Now includes home intervals for meal placement
     const { timeBlocks, exitTimes, commitmentTravelMap } = await this.createTimeBlocksWithExitTimes(
       activities,
       inputs,
@@ -432,11 +530,21 @@ export class PlanBuilderService {
       input.sleepTime,
       currentLocation,
       planStartTime,
-      input.energyState
+      input.energyState,
+      homeIntervals // Pass home intervals for meal placement
     );
 
-    // Step 5: Save to database
-    const plan = await this.savePlan(input, timeBlocks, exitTimes, commitmentTravelMap);
+    // Step 9: Save to database (includes chains, wake_ramp, location_periods, home_intervals)
+    const plan = await this.savePlan(
+      input,
+      timeBlocks,
+      exitTimes,
+      commitmentTravelMap,
+      chains,
+      wakeRamp,
+      locationPeriods,
+      homeIntervals
+    );
 
     return plan;
   }
@@ -648,7 +756,7 @@ export class PlanBuilderService {
   /**
    * Create time blocks with pinned commitments and gap-fill scheduling
    * 
-   * Requirements: 1.1, 1.4, 1.5, 2.1, 7.1, 7.2, 7.3, 7.4, 7.5, 4.1, 4.2, 4.3, 4.4, 4.5
+   * Requirements: 1.1, 1.4, 1.5, 2.1, 7.1, 7.2, 7.3, 7.4, 7.5, 4.1, 4.2, 4.3, 4.4, 4.5, 8.5, 11.2, 11.3, 17.5
    */
   private async createTimeBlocksWithExitTimes(
     activities: Activity[],
@@ -657,7 +765,8 @@ export class PlanBuilderService {
     sleepTime: Date,
     currentLocation: Location,
     planStartTime: Date,
-    energyState: EnergyState
+    energyState: EnergyState,
+    homeIntervals: HomeInterval[] = [] // V2: Home intervals for meal placement
   ): Promise<{ timeBlocks: TimeBlock[]; exitTimes: ExitTimeResult[]; commitmentTravelMap: Map<string, number> }> {
     const BUFFER_MINUTES = 5;
     const EVENING_ROUTINE_EARLIEST_TIME = 18; // 6:00 PM
@@ -727,13 +836,13 @@ export class PlanBuilderService {
     anchorBlocks.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
 
     // Step 3: Place meals using the meal placement algorithm
-    // Requirements: 4.3
+    // Requirements: 4.3, 8.5, 11.2, 11.3, 17.5
     // Use max(now, wakeTime) as effective "now" for meal placement
     // This ensures that when generating a plan late in the day (wake time > current time),
     // meals are evaluated relative to the wake time, not the actual current time
     const actualNow = new Date();
     const effectiveNow = new Date(Math.max(actualNow.getTime(), wakeTime.getTime()));
-    const mealPlacements = placeMeals(anchorBlocks, wakeTime, sleepTime, effectiveNow);
+    const mealPlacements = placeMeals(anchorBlocks, wakeTime, sleepTime, effectiveNow, homeIntervals);
     
     // Log meal placement decisions for debugging
     // Requirement: 9.4
@@ -1156,13 +1265,17 @@ export class PlanBuilderService {
   /**
    * Save plan to database
    * 
-   * Requirements: 1.1, 9.1
+   * Requirements: 1.1, 9.1, 12.5, 18.1, 18.2, 18.3, 18.4
    */
   private async savePlan(
     input: PlanInput,
     timeBlocks: TimeBlock[],
     exitTimes: ExitTimeResult[],
-    commitmentTravelMap: Map<string, number>
+    commitmentTravelMap: Map<string, number>,
+    chains: ExecutionChain[] = [],
+    wakeRamp?: WakeRamp,
+    locationPeriods: LocationPeriod[] = [],
+    homeIntervals: HomeInterval[] = []
   ): Promise<DailyPlan> {
     // Calculate plan start time and generated_after_now flag
     const now = new Date();
@@ -1170,7 +1283,7 @@ export class PlanBuilderService {
     const planStart = new Date(Math.max(input.wakeTime.getTime(), roundedNow.getTime()));
     const generatedAfterNow = planStart.getTime() > input.wakeTime.getTime();
 
-    // Create daily plan record
+    // Create daily plan record with V2 metadata
     const planData: CreateDailyPlan = {
       user_id: input.userId,
       plan_date: input.date.toISOString().split('T')[0],
@@ -1200,6 +1313,8 @@ export class PlanBuilderService {
         target_time: block.metadata.targetTime?.toISOString(),
         placement_reason: block.metadata.placementReason,
         skip_reason: block.metadata.skipReason,
+        // V2: Add chain metadata if present
+        ...(block.metadata as any),
       } : undefined,
     }));
 
@@ -1243,6 +1358,14 @@ export class PlanBuilderService {
     if (!completePlan) {
       throw new Error('Failed to fetch created plan');
     }
+
+    // V2: Attach chain data to the plan object
+    // Note: This data is not persisted to database in V2, but returned in memory
+    // Requirements: 12.5, 18.1, 18.2, 18.3, 18.4
+    (completePlan as any).chains = chains;
+    (completePlan as any).wakeRamp = wakeRamp;
+    (completePlan as any).locationPeriods = locationPeriods;
+    (completePlan as any).homeIntervals = homeIntervals;
 
     return completePlan;
   }

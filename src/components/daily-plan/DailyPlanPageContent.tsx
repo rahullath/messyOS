@@ -5,7 +5,10 @@ import ExitTimeDisplay from './ExitTimeDisplay';
 import DegradePlanButton from './DegradePlanButton';
 import DeletePlanButton from './DeletePlanButton';
 import PlanContextDisplay from './PlanContextDisplay';
+import ChainView from './ChainView';
+import { ExitGateService } from '../../lib/chains/exit-gate';
 import type { DailyPlan, EnergyState } from '../../types/daily-plan';
+import type { ExitGate } from '../../lib/chains/types';
 
 export default function DailyPlanPageContent() {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
@@ -14,11 +17,32 @@ export default function DailyPlanPageContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDegrading, setIsDegrading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'chain' | 'timeline'>('chain');
+  const [exitGateService, setExitGateService] = useState<ExitGateService | null>(null);
+  const [exitGate, setExitGate] = useState<ExitGate | null>(null);
 
   // Fetch today's plan on mount
   useEffect(() => {
     fetchTodaysPlan();
   }, []);
+
+  // Initialize exit gate when plan changes
+  useEffect(() => {
+    if (plan?.chains && plan.chains.length > 0) {
+      // Initialize exit gate service for the first chain
+      const service = ExitGateService.createDefault();
+      setExitGateService(service);
+      setExitGate(service.evaluateGate());
+      
+      // Set chain view as default when chains exist
+      setActiveTab('chain');
+    } else {
+      // No chains, default to timeline view
+      setActiveTab('timeline');
+      setExitGateService(null);
+      setExitGate(null);
+    }
+  }, [plan]);
 
   const fetchTodaysPlan = async () => {
     try {
@@ -192,6 +216,29 @@ export default function DailyPlanPageContent() {
     setError(null);
   };
 
+  const handleStepComplete = async (stepId: string) => {
+    // TODO: Implement step completion API call
+    // For now, just log it
+    console.log('Step completed:', stepId);
+    
+    // In a full implementation, this would:
+    // 1. Call API to mark step as completed
+    // 2. Refresh the plan to get updated chain state
+  };
+
+  const handleGateConditionToggle = (conditionId: string, satisfied: boolean) => {
+    if (!exitGateService) return;
+    
+    // Toggle the condition
+    exitGateService.toggleCondition(conditionId, satisfied);
+    
+    // Re-evaluate the gate
+    const updatedGate = exitGateService.evaluateGate();
+    setExitGate(updatedGate);
+    
+    // TODO: Persist gate state to backend if needed
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -267,33 +314,124 @@ export default function DailyPlanPageContent() {
       {/* Plan Context Display - Requirements 1.4, 4.5 */}
       <PlanContextDisplay plan={plan} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main content - Activity List */}
-        <div className="lg:col-span-2">
-          <ActivityList
-            plan={plan}
-            onComplete={handleComplete}
-            onSkip={handleSkip}
-            isUpdating={isUpdating}
-          />
+      {/* Tab Navigation - Requirements 13.4, 14.1 */}
+      {plan.chains && plan.chains.length > 0 && (
+        <div className="flex space-x-2 border-b border-border-primary">
+          <button
+            onClick={() => setActiveTab('chain')}
+            className={`
+              px-6 py-3 font-medium transition-colors relative
+              ${activeTab === 'chain'
+                ? 'text-accent-primary border-b-2 border-accent-primary'
+                : 'text-text-muted hover:text-text-primary'
+              }
+            `}
+          >
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Chain View
+              <span className="ml-2 px-2 py-0.5 text-xs bg-accent-primary/20 text-accent-primary rounded">
+                Primary
+              </span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`
+              px-6 py-3 font-medium transition-colors relative
+              ${activeTab === 'timeline'
+                ? 'text-accent-primary border-b-2 border-accent-primary'
+                : 'text-text-muted hover:text-text-primary'
+              }
+            `}
+          >
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Timeline
+            </div>
+          </button>
         </div>
+      )}
 
-        {/* Sidebar - Exit Times and Degrade Button */}
-        <div className="space-y-6">
-          {plan.exitTimes && plan.exitTimes.length > 0 && (
-            <ExitTimeDisplay
-              exitTimes={plan.exitTimes}
-              timeBlocks={plan.timeBlocks}
+      {/* Chain View - Primary Interface - Requirements 13.4, 14.1 */}
+      {activeTab === 'chain' && plan.chains && plan.chains.length > 0 && exitGate && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main content - Chain View */}
+          <div className="lg:col-span-2">
+            <ChainView
+              chain={plan.chains[0]}
+              exitGate={exitGate}
+              onStepComplete={handleStepComplete}
+              onGateConditionToggle={handleGateConditionToggle}
             />
-          )}
-          
-          <DegradePlanButton
-            plan={plan}
-            onDegrade={handleDegrade}
-            isDegrading={isDegrading}
-          />
+          </div>
+
+          {/* Sidebar - Exit Times and Degrade Button */}
+          <div className="space-y-6">
+            {plan.exitTimes && plan.exitTimes.length > 0 && (
+              <ExitTimeDisplay
+                exitTimes={plan.exitTimes}
+                timeBlocks={plan.timeBlocks}
+              />
+            )}
+            
+            <DegradePlanButton
+              plan={plan}
+              onDegrade={handleDegrade}
+              isDegrading={isDegrading}
+            />
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Timeline View - Secondary - Requirements 13.1, 13.3 */}
+      {(activeTab === 'timeline' || !plan.chains || plan.chains.length === 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main content - Activity List */}
+          <div className="lg:col-span-2">
+            <ActivityList
+              plan={plan}
+              onComplete={handleComplete}
+              onSkip={handleSkip}
+              isUpdating={isUpdating}
+            />
+          </div>
+
+          {/* Sidebar - Exit Times and Degrade Button */}
+          <div className="space-y-6">
+            {plan.exitTimes && plan.exitTimes.length > 0 && (
+              <ExitTimeDisplay
+                exitTimes={plan.exitTimes}
+                timeBlocks={plan.timeBlocks}
+              />
+            )}
+            
+            <DegradePlanButton
+              plan={plan}
+              onDegrade={handleDegrade}
+              isDegrading={isDegrading}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* No Anchors Message - Requirements 14.5 */}
+      {(!plan.chains || plan.chains.length === 0) && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 mr-2 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-blue-400">
+              No anchors today. Your day is flexible! The timeline view shows your planned activities.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

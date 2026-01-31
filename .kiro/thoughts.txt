@@ -1,0 +1,192 @@
+thoughts and execution - messy0S v1.2
+branch v5 currently - can merge it to main and start this new plan maybe (not sure if it's convenient for us)
+
+MAIN - "V2 direction: Execution Chain Engine (CBE) as the real spine
+What stays true
+
+Calendar events + travel + exit time is working and valuable.
+
+Time blocks are still useful as a view, but they shouldn’t drive behavior.
+
+What changes
+
+The “unit of planning” becomes: Anchor → Chain → Exit Gate
+
+“Daily plan” becomes secondary.
+
+Add / Modify / Delete (concrete)
+✅ ADD (new features)
+1) Anchor Parser + Anchor Registry
+
+Add: src/lib/anchors/anchor-service.ts
+
+Pull today’s calendar events
+
+Classify as anchor (lecture/tutorial/seminar/workshop etc.)
+
+Extract:
+
+start time
+
+location string
+
+type (for prep defaults)
+
+“must attend” flag (optional later)
+
+Output: Anchor[]
+
+This becomes the authoritative input for chains.
+
+2) Chain Templates (DAG → linear chain)
+
+Add: src/lib/chains/templates.ts
+
+Define templates per anchor type:
+
+Example for “class”:
+
+Feed cat
+→ Bathroom
+→ Hygiene (brush)
+→ Shower (optional rule)
+→ Dress
+→ Pack bag
+→ Exit readiness gate
+→ Leave
+→ Travel
+→ Anchor event
+→ Recovery buffer
+
+
+Each step has:
+
+duration_estimate
+
+is_required
+
+can_skip_when_late (e.g., shower)
+
+gate_tags (things that must be true before leaving)
+
+This is your “prosthetic executive function”.
+
+3) Exit Readiness Checklist (boolean gate)
+
+Add: src/lib/chains/exit-gate.ts
+
+A gate evaluates a set of conditions:
+
+keys present
+
+phone charged >= X
+
+water bottle filled
+
+umbrella if rain probability > threshold (later)
+
+meds taken
+
+cat fed
+
+bag packed
+
+This is not a list of “tasks”, it’s a state machine:
+
+exit_gate.status = blocked | ready
+
+blocked_reasons[]
+
+You can start with manual toggles in UI. No sensors needed.
+
+4) Recovery Buffers as first-class steps
+
+Just another step type in chain templates:
+
+“Recovery (post travel)” 10–20m required
+
+5) “Chain View” UI (separate from timeline)
+
+Add: /day page (or /chains) that shows:
+
+Next Anchor (big)
+
+Exit time + “complete chain by T-45”
+
+The chain steps (checkbox style)
+
+Exit Gate status (blocked/reasons)
+
+This becomes your actual daily driver.
+
+✏️ MODIFY (surgical changes to existing code)
+A) Keep V1.2 timeline generator, but demote it
+
+Rename mentally: it’s a visualization, not “the plan”
+
+Don’t fight it into human realism.
+
+B) Add a new API endpoint: generate chains for date
+
+Add: GET /api/day/today or POST /api/chains/generate
+
+It returns:
+
+anchors
+
+chain(s)
+
+computed “latest safe chain completion time” (anchorStart - travel - prep - buffer)
+
+No time blocks required.
+
+C) Modify daily-plan generator to stop hard-imposing 3 meals
+
+This is important because it’s poisoning perceived usefulness.
+
+Change rule:
+
+Meals become suggestions unless the user explicitly turns “meal scaffolding” on.
+
+Default: only schedule one meal block in the next feasible home window (or none).
+
+This is literally a one-line product decision that makes the output stop looking insane.
+
+❌ DELETE (to stop the spiral)
+Delete the requirement “Daily plan must fill the day”
+
+That’s the root of the “three meals before 9am / everything ends at 19:45 / fake day” vibe.
+
+Your system is not a day-filler.
+It’s an anchor survival engine.
+
+Why this avoids another V1.3 disaster
+
+Because you’re no longer trying to make one algorithm do two incompatible jobs:
+
+Timeline generator = fills time
+
+Chain engine = preserves dependency integrity + exit readiness
+
+You keep timeline for reference.
+You use chain engine for execution."
+
+RAW VERSION OF MAIN ->
+
+# 1. Problem Definition (Technical, not emotional) ### Target user profile * ADHD / autistic traits * Depression (low baseline energy, failure-sensitive) * Time blindness * High completion standards once engaged * Catastrophic collapse when execution chains break ### Core failure mode (this is key) > **Bed-rot is not caused by lack of motivation. > It is caused by *chain breakage under time pressure*.** Once a single required task is: * forgotten * rushed * partially completed → the system enters an unrecoverable state (avoidance + paralysis). --- # 2. Formal Model: Chain-Based Execution (CBE) ### Concept Life is not a list of tasks. It is a **directed acyclic graph (DAG) of dependencies** anchored around **immovable events**. ### Definitions #### **Anchor Event** A fixed external commitment. * Class at 5:00pm * Train departure * Appointment Anchors are **hard constraints**. --- #### **Execution Chain** A *linearised dependency path* required to safely reach an anchor. Example:
+Feed cat
+→ Eat
+→ Wash dishes
+→ Shower
+→ Groom
+→ Pack bag
+→ Leave house
+→ Travel
+→ Anchor event
+The chain must be **completed in order**. Partial completion is **invalid**. --- #### **Chain Integrity Rule** > A day is successful if the chain completes, > even if total duration exceeds estimates. Clock accuracy is **secondary** to chain integrity. --- # 3. Time Is Elastic, Dependencies Are Not This is the fundamental departure from traditional planners. ### Traditional systems optimise: * Task duration * Schedule adherence ### Your system optimises: * **Dependency satisfaction** * **Pre-anchor readiness** You *do* still need time constraints — but only at **anchor boundaries**. --- ## 3.1 Anchor-Relative Deadlines (ARD) Instead of: > “Shower at 4:50” You use: > “All pre-anchor chains must complete by **T-45 minutes**” So the model becomes:
+Anchor event: 17:00
+Required readiness buffer: 45 min
+Absolute completion deadline: 16:15
+Everything before that is **elastic**. --- # 4. Parallel Task Bundling (Why You Forget Umbrellas) You’re not forgetting because you’re careless. You’re forgetting because: * You’re executing **parallel micro-tasks** * Without a **stateful checklist** Example: * Charging devices * Packing bag * Dressing * Medication * Hydration * Weather prep These tasks *overlap in time*, but **must all resolve before exit**. --- ## 4.1 Exit Readiness Checklist (ERC) Before “Leave House” becomes valid, the system must confirm: ### Exit State = TRUE only if: * Phone charged ≥ X% * Keys present * Wallet present * Umbrella (if weather condition = true) * Meds taken * Water bottle filled * Bag packed * Cat fed This is **not a to-do list**. It’s a **boolean gate**. If one condition fails → exit is blocked. That’s how you stop forgetting umbrellas. --- # 5. Recovery Buffers as First-Class Objects This is something most systems *completely ignore*. You already discovered this intuitively. ### Recovery buffers are: * Not “breaks” * Not “rest” * **State transitions** Examples: * Post-travel decompression * Post-class recovery * Sensory reset windows They are **required nodes**, not optional gaps.
+Travel → Recovery → Next task
+Skipping recovery increases probability of chain collapse later. --- # 6. Momentum Preservation Logic Your system must explicitly **not punish overruns**. ### Rule: > If a task overruns but the chain continues, > **do not reschedule or re-optimise mid-flow**. Why? * Replanning kills momentum * Momentum is your strongest asset once engaged So: * 6:35 → 8:00 is fine * Chain completion > punctuality --- # 7. Failure-Tolerant Success Criteria Traditional planners define failure as: * “Task not completed by scheduled time” Your framework defines failure as: * **Chain interruption** This is subtle but profound. ### Success states: * Late but complete → SUCCESS * On time but missing steps → FAILURE This aligns with how your nervous system actually works. --- # 8. External Systems Integration (Your instincts are correct) ## 8.1 Calendar Integration * Anchors pulled from calendar * Each anchor spawns a required execution chain --- ## 8.2 Routes / Transport API Used to: * Compute **latest safe departure time** * Inject travel + recovery buffers * Trigger ticket purchase windows Important: You don’t optimise for “shortest route”, but for **lowest execution risk**. --- ## 8.3 Food System (Don’t reinvent unnecessarily) You’re right to consider **composing**, not rebuilding. Your system only needs: * Meal duration * Ingredients availability * Energy cost You don’t need: * Perfect nutrition optimisation * Social food features Meals are **execution support**, not goals. --- # 9. Household Systems as Latent Time Bombs You identified this perfectly. ### Examples: * Cat litter + room cleaning coupling * Laundry time underestimated * Grocery shopping cascading fatigue These must be treated as **compound tasks** with inflated time estimates and recovery buffers. --- # 10. Why This Actually Attacks Bed-Rot at the Source Bed-rot happens when: 1. A task fails 2. The chain breaks 3. The system has no recovery path 4. Avoidance becomes rational Your framework: * Prevents silent failures * Makes all dependencies explicit * Allows time drift without moral penalty * Preserves momentum once started That’s not productivity. That’s **existential damage control**. --- # 11. What You’re Really Building (Zoomed out) You are building: > **An external executive function layer > that converts chaotic human reality > into survivable execution chains.** This is not about happiness. It’s about **making life traversable** so happiness is even possible. Reading books, building things, socialising — all of that sits *above* this layer. Right now you’re building the **OS**, not the apps."
