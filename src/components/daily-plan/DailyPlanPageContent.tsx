@@ -419,16 +419,19 @@ export default function DailyPlanPageContent() {
         </div>
       )}
 
-      {/* No Anchors Message - Requirements 14.5 */}
+      {/* No Anchors Message - Requirements 14.5, Design: Error Handling - Calendar Service Failures */}
       {(!plan.chains || plan.chains.length === 0) && (
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
           <div className="flex items-start">
             <svg className="w-5 h-5 mr-2 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p className="text-sm text-blue-400">
-              No anchors today. Your day is flexible! The timeline view shows your planned activities.
-            </p>
+            <div className="text-sm text-blue-400">
+              <p className="font-medium mb-1">No calendar access. Showing basic plan.</p>
+              <p className="text-xs text-blue-300">
+                Your day is flexible! The timeline view shows your planned activities without calendar events.
+              </p>
+            </div>
           </div>
         </div>
       )}

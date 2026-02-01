@@ -9,7 +9,8 @@ import type {
   ChainStep,
 } from './types';
 import type { Anchor } from '../anchors/types';
-import { getChainTemplate } from './templates';
+import type { TimeBlock, TimeBlockMetadata } from '../../types/daily-plan';
+import { getChainTemplate, CHAIN_TEMPLATES } from './templates';
 import { TravelService } from '../uk-student/travel-service';
 import type { Location, TravelConditions, TravelPreferences } from '../../types/uk-student-travel';
 
@@ -99,23 +100,58 @@ export class ChainGenerator {
    * @param options - Generation options
    * @returns Execution chain
    * 
-   * Requirements: 12.2, 12.3, 12.4
+   * Requirements: 12.2, 12.3, 12.4, Design - Error Handling - Chain Generation Failures
+   * Requirements: 18.5 - Log chain generation steps
    */
   private async generateChainForAnchor(
     anchor: Anchor,
     options: ChainGeneratorOptions
   ): Promise<ExecutionChain> {
-    // Get travel duration
-    const travelDuration = await this.getTravelDuration(anchor, options.config);
+    console.log('[Chain Generator] Starting chain generation for anchor:', {
+      anchorId: anchor.id,
+      title: anchor.title,
+      type: anchor.type,
+      start: anchor.start.toLocaleString(),
+      location: anchor.location || 'none',
+    });
+
+    // Get travel duration (with fallback handling)
+    const { duration: travelDuration, fallbackUsed: travelFallbackUsed } = await this.getTravelDuration(anchor, options.config);
+    
+    console.log('[Chain Generator] Travel duration calculated:', {
+      anchorId: anchor.id,
+      duration: travelDuration,
+      fallbackUsed: travelFallbackUsed,
+    });
 
     // Calculate Chain Completion Deadline
     const chainCompletionDeadline = this.calculateChainCompletionDeadline(
       anchor,
       travelDuration
     );
+    
+    console.log('[Chain Generator] Chain Completion Deadline:', {
+      anchorId: anchor.id,
+      deadline: chainCompletionDeadline.toLocaleString(),
+      anchorStart: anchor.start.toLocaleString(),
+      bufferMinutes: CHAIN_COMPLETION_BUFFER_MINUTES,
+    });
 
-    // Load chain template for anchor type
+    // Load chain template for anchor type (with fallback handling)
+    // Requirements: Design - Error Handling - Chain Generation Failures
     const template = getChainTemplate(anchor.type);
+    const templateFallbackUsed = !CHAIN_TEMPLATES[anchor.type];
+    
+    if (templateFallbackUsed) {
+      console.warn(`[Chain Generator] Using fallback template for anchor type "${anchor.type}" (anchor: ${anchor.id})`);
+    }
+    
+    console.log('[Chain Generator] Chain template loaded:', {
+      anchorId: anchor.id,
+      anchorType: anchor.type,
+      templateSteps: template.steps.length,
+      fallbackUsed: templateFallbackUsed,
+    });
 
     // Generate backward chain from deadline
     const chainSteps = this.generateBackwardChain(
@@ -124,13 +160,33 @@ export class ChainGenerator {
       chainCompletionDeadline,
       travelDuration
     );
+    
+    console.log('[Chain Generator] Backward chain generated:', {
+      anchorId: anchor.id,
+      totalSteps: chainSteps.length,
+      firstStep: chainSteps[0]?.name,
+      lastStep: chainSteps[chainSteps.length - 1]?.name,
+      chainStart: chainSteps[0]?.start_time.toLocaleString(),
+      chainEnd: chainSteps[chainSteps.length - 1]?.end_time.toLocaleString(),
+    });
 
     // Generate commitment envelope
     const commitmentEnvelope = this.generateCommitmentEnvelope(
       anchor,
       chainSteps,
-      travelDuration
+      travelDuration,
+      travelFallbackUsed
     );
+    
+    console.log('[Chain Generator] Commitment envelope generated:', {
+      anchorId: anchor.id,
+      envelopeId: commitmentEnvelope.envelope_id,
+      prep: `${commitmentEnvelope.prep.start_time.toLocaleTimeString()} - ${commitmentEnvelope.prep.end_time.toLocaleTimeString()}`,
+      travelThere: `${commitmentEnvelope.travel_there.start_time.toLocaleTimeString()} - ${commitmentEnvelope.travel_there.end_time.toLocaleTimeString()}`,
+      anchor: `${commitmentEnvelope.anchor.start_time.toLocaleTimeString()} - ${commitmentEnvelope.anchor.end_time.toLocaleTimeString()}`,
+      travelBack: `${commitmentEnvelope.travel_back.start_time.toLocaleTimeString()} - ${commitmentEnvelope.travel_back.end_time.toLocaleTimeString()}`,
+      recovery: `${commitmentEnvelope.recovery.start_time.toLocaleTimeString()} - ${commitmentEnvelope.recovery.end_time.toLocaleTimeString()}`,
+    });
 
     // Create execution chain
     const chain: ExecutionChain = {
@@ -141,7 +197,21 @@ export class ChainGenerator {
       steps: chainSteps,
       commitment_envelope: commitmentEnvelope,
       status: 'pending',
+      // Add metadata for template fallback
+      // Requirements: Design - Error Handling - Chain Generation Failures
+      metadata: templateFallbackUsed ? {
+        template_fallback: true,
+        original_anchor_type: anchor.type,
+        fallback_template: 'other',
+      } : undefined,
     };
+    
+    console.log('[Chain Generator] Chain generation complete:', {
+      chainId: chain.chain_id,
+      anchorId: anchor.id,
+      status: chain.status,
+      templateFallback: templateFallbackUsed,
+    });
 
     return chain;
   }
@@ -227,14 +297,16 @@ export class ChainGenerator {
    * @param anchor - Anchor for the envelope
    * @param chainSteps - Chain steps (for timing)
    * @param travelDuration - Travel duration in minutes
+   * @param travelFallbackUsed - Whether travel service fallback was used
    * @returns Commitment envelope
    * 
-   * Requirements: 7.1, 7.2, 7.3, 7.4, 12.4
+   * Requirements: 7.1, 7.2, 7.3, 7.4, 12.4, Design - Error Handling - Travel Service Failures
    */
   private generateCommitmentEnvelope(
     anchor: Anchor,
     chainSteps: ChainStepInstance[],
-    travelDuration: number
+    travelDuration: number,
+    travelFallbackUsed: boolean = false
   ): CommitmentEnvelope {
     const envelopeId = uuidv4();
     const chainId = chainSteps[0]?.chain_id || uuidv4();
@@ -279,6 +351,12 @@ export class ChainGenerator {
       can_skip_when_late: false,
       status: 'pending',
       role: 'chain-step',
+      // Add metadata for travel fallback
+      // Requirements: Design - Error Handling - Travel Service Failures
+      metadata: travelFallbackUsed ? {
+        fallback_used: true,
+        fallback_reason: 'Travel service unavailable',
+      } : undefined,
     };
 
     // Calculate anchor block
@@ -310,6 +388,12 @@ export class ChainGenerator {
       can_skip_when_late: false,
       status: 'pending',
       role: 'chain-step',
+      // Add metadata for travel fallback
+      // Requirements: Design - Error Handling - Travel Service Failures
+      metadata: travelFallbackUsed ? {
+        fallback_used: true,
+        fallback_reason: 'Travel service unavailable',
+      } : undefined,
     };
 
     // Calculate recovery buffer (duration based on anchor length)
@@ -354,16 +438,18 @@ export class ChainGenerator {
    * 
    * @param anchor - Anchor to get travel duration for
    * @param config - Chain generator config
-   * @returns Travel duration in minutes
+   * @returns Travel duration in minutes and fallback flag
+   * 
+   * Requirements: Design - Error Handling - Travel Service Failures
    */
   private async getTravelDuration(
     anchor: Anchor,
     config: ChainGeneratorConfig
-  ): Promise<number> {
+  ): Promise<{ duration: number; fallbackUsed: boolean }> {
     // If no location, use default
     if (!anchor.location) {
-      console.log(`No location for anchor ${anchor.id}, using default travel duration`);
-      return DEFAULT_TRAVEL_DURATION_MINUTES;
+      console.log(`[Chain Generator] No location for anchor ${anchor.id}, using default travel duration`);
+      return { duration: DEFAULT_TRAVEL_DURATION_MINUTES, fallbackUsed: false };
     }
 
     try {
@@ -418,14 +504,26 @@ export class ChainGenerator {
 
       // Validate route duration
       if (!route.duration || route.duration <= 0) {
-        console.warn(`Invalid travel duration (${route.duration}) for anchor ${anchor.id}, using default`);
-        return DEFAULT_TRAVEL_DURATION_MINUTES;
+        console.warn(`[Chain Generator] Invalid travel duration (${route.duration}) for anchor ${anchor.id}, using fallback`);
+        return { duration: DEFAULT_TRAVEL_DURATION_MINUTES, fallbackUsed: true };
       }
 
-      return route.duration;
+      return { duration: route.duration, fallbackUsed: false };
     } catch (error) {
-      console.error(`Travel service failed for anchor ${anchor.id}, using default duration:`, error);
-      return DEFAULT_TRAVEL_DURATION_MINUTES;
+      // Travel Service Error Handling
+      // Requirements: Design - Error Handling - Travel Service Failures
+      console.error(`[Chain Generator] Travel service failed for anchor ${anchor.id}, using fallback duration:`, error);
+      console.error(`[Chain Generator] Error details:`, {
+        anchorId: anchor.id,
+        anchorLocation: anchor.location,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
+      
+      // Use fallback duration: 30 minutes (conservative estimate)
+      // Mark travel block with metadata: fallback_used = true
+      // UI will display: "Travel time estimated (service unavailable)"
+      return { duration: DEFAULT_TRAVEL_DURATION_MINUTES, fallbackUsed: true };
     }
   }
 
@@ -442,6 +540,158 @@ export class ChainGenerator {
       visibility: 10,
       timestamp: new Date(),
     };
+  }
+
+  /**
+   * Convert chain steps to TimeBlocks with chain metadata
+   * 
+   * This method adds chain semantics to TimeBlocks without schema changes.
+   * 
+   * @param chain - Execution chain to convert
+   * @param planId - Plan ID for the TimeBlocks
+   * @param locationState - Current location state ('at_home' | 'not_home')
+   * @returns Array of TimeBlocks with chain metadata
+   * 
+   * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 18.1, 18.2, 18.3, 18.4
+   */
+  convertChainToTimeBlocks(
+    chain: ExecutionChain,
+    planId: string,
+    locationState: 'at_home' | 'not_home' = 'at_home'
+  ): Omit<TimeBlock, 'id' | 'createdAt' | 'updatedAt'>[] {
+    const timeBlocks: Omit<TimeBlock, 'id' | 'createdAt' | 'updatedAt'>[] = [];
+    let sequenceOrder = 1;
+
+    // Convert chain steps to TimeBlocks
+    for (const step of chain.steps) {
+      const metadata: TimeBlockMetadata = {
+        // Chain semantics
+        // Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+        role: {
+          type: step.role,
+          required: step.is_required,
+          chain_id: chain.chain_id,
+        },
+        
+        // Chain linkage
+        // Requirements: 18.1, 18.2
+        chain_id: chain.chain_id,
+        step_id: step.step_id,
+        anchor_id: chain.anchor_id,
+        
+        // Location state
+        // Requirements: 18.3
+        location_state: locationState,
+      };
+
+      // Add gate conditions for exit-gate steps
+      if (step.role === 'exit-gate') {
+        // Default gate conditions (will be populated by Exit Gate service)
+        metadata.role!.gate_conditions = [
+          { id: 'keys', name: 'Keys present', satisfied: false },
+          { id: 'phone', name: 'Phone charged >= 20%', satisfied: false },
+          { id: 'water', name: 'Water bottle filled', satisfied: false },
+          { id: 'meds', name: 'Meds taken', satisfied: false },
+          { id: 'cat-fed', name: 'Cat fed', satisfied: false },
+          { id: 'bag-packed', name: 'Bag packed', satisfied: false },
+        ];
+      }
+
+      // Add step metadata (fallback info if present)
+      if (step.metadata) {
+        Object.assign(metadata, step.metadata);
+      }
+
+      timeBlocks.push({
+        planId,
+        startTime: step.start_time,
+        endTime: step.end_time,
+        activityType: this.mapRoleToActivityType(step.role),
+        activityName: step.name,
+        activityId: chain.anchor_id,
+        isFixed: true,
+        sequenceOrder: sequenceOrder++,
+        status: 'pending',
+        metadata,
+      });
+    }
+
+    // Convert commitment envelope to TimeBlocks
+    const envelope = chain.commitment_envelope;
+    const envelopeSteps = [
+      { step: envelope.prep, type: 'prep' as const },
+      { step: envelope.travel_there, type: 'travel_there' as const },
+      { step: envelope.anchor, type: 'anchor' as const },
+      { step: envelope.travel_back, type: 'travel_back' as const },
+      { step: envelope.recovery, type: 'recovery' as const },
+    ];
+
+    for (const { step, type } of envelopeSteps) {
+      const metadata: TimeBlockMetadata = {
+        // Chain semantics
+        role: {
+          type: step.role,
+          required: step.is_required,
+          chain_id: chain.chain_id,
+        },
+        
+        // Chain linkage
+        chain_id: chain.chain_id,
+        step_id: step.step_id,
+        anchor_id: chain.anchor_id,
+        
+        // Location state (travel and anchor are not_home, others depend on context)
+        location_state: 
+          type === 'travel_there' || type === 'anchor' || type === 'travel_back'
+            ? 'not_home'
+            : 'at_home',
+        
+        // Commitment envelope tracking
+        // Requirements: 18.4
+        commitment_envelope: {
+          envelope_id: envelope.envelope_id,
+          envelope_type: type,
+        },
+      };
+
+      // Add step metadata (fallback info if present)
+      if (step.metadata) {
+        Object.assign(metadata, step.metadata);
+      }
+
+      timeBlocks.push({
+        planId,
+        startTime: step.start_time,
+        endTime: step.end_time,
+        activityType: this.mapRoleToActivityType(step.role),
+        activityName: step.name,
+        activityId: chain.anchor_id,
+        isFixed: true,
+        sequenceOrder: sequenceOrder++,
+        status: 'pending',
+        metadata,
+      });
+    }
+
+    return timeBlocks;
+  }
+
+  /**
+   * Map chain step role to activity type
+   */
+  private mapRoleToActivityType(role: ChainStepInstance['role']): TimeBlock['activityType'] {
+    switch (role) {
+      case 'anchor':
+        return 'commitment';
+      case 'chain-step':
+        return 'routine';
+      case 'exit-gate':
+        return 'routine';
+      case 'recovery':
+        return 'buffer';
+      default:
+        return 'routine';
+    }
   }
 }
 

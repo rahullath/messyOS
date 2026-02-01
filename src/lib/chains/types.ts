@@ -38,6 +38,11 @@ export interface ChainStepInstance {
   status: ChainStepStatus;
   role: ChainStepRole;
   skip_reason?: string;
+  metadata?: {
+    fallback_used?: boolean;
+    fallback_reason?: string;
+    [key: string]: any;
+  };
 }
 
 /**
@@ -51,6 +56,12 @@ export interface ExecutionChain {
   steps: ChainStepInstance[];
   commitment_envelope: CommitmentEnvelope;
   status: ChainStatus;
+  metadata?: {
+    template_fallback?: boolean;
+    original_anchor_type?: string;
+    fallback_template?: string;
+    [key: string]: any;
+  };
 }
 
 /**

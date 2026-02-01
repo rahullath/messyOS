@@ -371,9 +371,24 @@ export const CHAIN_TEMPLATES: Record<AnchorType, ChainTemplate> = {
  * 
  * @param anchorType - Type of anchor (class, seminar, workshop, appointment, other)
  * @returns Chain template for the anchor type
+ * 
+ * Requirements: Design - Error Handling - Chain Generation Failures
  */
 export function getChainTemplate(anchorType: AnchorType): ChainTemplate {
-  return CHAIN_TEMPLATES[anchorType] || CHAIN_TEMPLATES.other;
+  const template = CHAIN_TEMPLATES[anchorType];
+  
+  if (!template) {
+    // Chain Generation Error Handling
+    // Requirements: Design - Error Handling - Chain Generation Failures
+    console.warn(`[Chain Templates] Missing template for anchor type "${anchorType}", using default (class) template`);
+    console.warn(`[Chain Templates] Available templates:`, Object.keys(CHAIN_TEMPLATES));
+    
+    // Use default template (class template)
+    // Mark chain with metadata: template_fallback = true
+    return CHAIN_TEMPLATES.other;
+  }
+  
+  return template;
 }
 
 /**

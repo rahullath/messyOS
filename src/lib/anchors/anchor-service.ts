@@ -59,9 +59,19 @@ export class AnchorService {
 
       return anchors;
     } catch (error) {
-      console.error('Failed to get anchors for date:', error);
+      // Calendar Service Error Handling
+      // Requirements: Design - Error Handling - Calendar Service Failures
+      console.error('[Anchor Service] Calendar API error - returning empty anchors array:', error);
+      console.error('[Anchor Service] Error details:', {
+        userId,
+        date: date.toISOString(),
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
+      
       // Return empty array on error (graceful degradation)
       // This allows the system to continue with a basic plan
+      // UI will display: "No calendar access. Showing basic plan."
       return [];
     }
   }
@@ -98,34 +108,48 @@ export class AnchorService {
    * @returns Anchor type classification
    * 
    * Requirements: 1.4 - Classify anchor type (lecture/tutorial/seminar/workshop)
+   * Requirements: 18.5 - Log anchor classification
    */
   classifyAnchorType(event: CalendarEvent): AnchorType {
     const title = event.title.toLowerCase();
     const description = (event.description || '').toLowerCase();
     const combinedText = `${title} ${description}`;
 
+    let type: AnchorType;
+
     // Check for workshop keywords first (more specific than seminar)
     if (this.containsAnyKeyword(combinedText, this.config.workshopKeywords)) {
-      return 'workshop';
+      type = 'workshop';
     }
-
     // Check for class/lecture keywords
-    if (this.containsAnyKeyword(combinedText, this.config.classKeywords)) {
-      return 'class';
+    else if (this.containsAnyKeyword(combinedText, this.config.classKeywords)) {
+      type = 'class';
     }
-
     // Check for seminar keywords
-    if (this.containsAnyKeyword(combinedText, this.config.seminarKeywords)) {
-      return 'seminar';
+    else if (this.containsAnyKeyword(combinedText, this.config.seminarKeywords)) {
+      type = 'seminar';
     }
-
     // Check for appointment keywords
-    if (this.containsAnyKeyword(combinedText, this.config.appointmentKeywords)) {
-      return 'appointment';
+    else if (this.containsAnyKeyword(combinedText, this.config.appointmentKeywords)) {
+      type = 'appointment';
+    }
+    // Default to 'other' if no keywords match
+    else {
+      type = 'other';
     }
 
-    // Default to 'other' if no keywords match
-    return 'other';
+    // Debug logging for anchor classification
+    // Requirements: 18.5
+    console.log('[Anchor Service] Classified anchor:', {
+      eventId: event.id,
+      title: event.title,
+      type,
+      location: event.location || 'none',
+      start: new Date(event.start_time).toLocaleString(),
+      end: new Date(event.end_time).toLocaleString(),
+    });
+
+    return type;
   }
 
   /**

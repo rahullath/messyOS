@@ -7,6 +7,9 @@ import type {
   LocationState 
 } from './types';
 
+// Re-export types for external use
+export type { LocationPeriod, HomeInterval, LocationState };
+
 /**
  * Location State Tracker
  * 
@@ -38,16 +41,24 @@ export class LocationStateTracker {
    * @returns Array of location periods with state transitions
    * 
    * **Validates: Requirements 8.1, 8.2, 8.3, 8.4**
+   * **Requirements: 18.5 - Log location period calculation**
    */
   calculateLocationPeriods(
     chains: ExecutionChain[],
     planStart: Date,
     sleepTime: Date
   ): LocationPeriod[] {
+    console.log('[Location State] Starting location period calculation:', {
+      planStart: planStart.toLocaleString(),
+      sleepTime: sleepTime.toLocaleString(),
+      chainCount: chains.length,
+    });
+
     const periods: LocationPeriod[] = [];
     
     // If no chains, entire day is at home
     if (chains.length === 0) {
+      console.log('[Location State] No chains - entire day at home');
       periods.push({
         start: planStart,
         end: sleepTime,
@@ -69,20 +80,39 @@ export class LocationStateTracker {
     for (const chain of sortedChains) {
       const { travel_there, recovery } = chain.commitment_envelope;
       
+      console.log('[Location State] Processing chain:', {
+        chainId: chain.chain_id,
+        anchorTitle: chain.anchor.title,
+        travelStart: travel_there.start_time.toLocaleString(),
+        recoveryEnd: recovery.end_time.toLocaleString(),
+      });
+
       // Add at_home period before this chain (if any time exists)
       if (currentState === 'at_home' && currentTime < travel_there.start_time) {
-        periods.push({
+        const atHomePeriod = {
           start: currentTime,
           end: travel_there.start_time,
-          state: 'at_home'
+          state: 'at_home' as const
+        };
+        periods.push(atHomePeriod);
+        console.log('[Location State] Added at_home period:', {
+          start: atHomePeriod.start.toLocaleString(),
+          end: atHomePeriod.end.toLocaleString(),
+          durationMinutes: Math.floor((atHomePeriod.end.getTime() - atHomePeriod.start.getTime()) / (1000 * 60)),
         });
       }
 
       // Transition to not_home when travel starts
-      periods.push({
+      const notHomePeriod = {
         start: travel_there.start_time,
         end: recovery.end_time,
-        state: 'not_home'
+        state: 'not_home' as const
+      };
+      periods.push(notHomePeriod);
+      console.log('[Location State] Added not_home period:', {
+        start: notHomePeriod.start.toLocaleString(),
+        end: notHomePeriod.end.toLocaleString(),
+        durationMinutes: Math.floor((notHomePeriod.end.getTime() - notHomePeriod.start.getTime()) / (1000 * 60)),
       });
 
       // Update current time and state
@@ -92,12 +122,24 @@ export class LocationStateTracker {
 
     // Add final at_home period (if any time remains)
     if (currentTime < sleepTime) {
-      periods.push({
+      const finalPeriod = {
         start: currentTime,
         end: sleepTime,
-        state: 'at_home'
+        state: 'at_home' as const
+      };
+      periods.push(finalPeriod);
+      console.log('[Location State] Added final at_home period:', {
+        start: finalPeriod.start.toLocaleString(),
+        end: finalPeriod.end.toLocaleString(),
+        durationMinutes: Math.floor((finalPeriod.end.getTime() - finalPeriod.start.getTime()) / (1000 * 60)),
       });
     }
+
+    console.log('[Location State] Location period calculation complete:', {
+      totalPeriods: periods.length,
+      atHomePeriods: periods.filter(p => p.state === 'at_home').length,
+      notHomePeriods: periods.filter(p => p.state === 'not_home').length,
+    });
 
     return periods;
   }
@@ -112,17 +154,30 @@ export class LocationStateTracker {
    * @returns Array of home intervals (>= minDuration)
    * 
    * **Validates: Requirements 17.1, 17.2, 17.3**
+   * **Requirements: 18.5 - Log home interval calculation**
    */
   calculateHomeIntervals(
     locationPeriods: LocationPeriod[],
     minDurationMinutes: number = 30
   ): HomeInterval[] {
+    console.log('[Location State] Starting home interval calculation:', {
+      totalPeriods: locationPeriods.length,
+      minDurationMinutes,
+    });
+
     const homeIntervals: HomeInterval[] = [];
 
     for (const period of locationPeriods) {
       if (period.state === 'at_home') {
         const durationMs = period.end.getTime() - period.start.getTime();
         const durationMinutes = Math.floor(durationMs / (1000 * 60));
+
+        console.log('[Location State] Found at_home period:', {
+          start: period.start.toLocaleString(),
+          end: period.end.toLocaleString(),
+          durationMinutes,
+          meetsMinimum: durationMinutes >= minDurationMinutes,
+        });
 
         // Only include intervals >= minimum duration
         if (durationMinutes >= minDurationMinutes) {
@@ -131,9 +186,17 @@ export class LocationStateTracker {
             end: period.end,
             duration: durationMinutes
           });
+          console.log('[Location State] Added home interval (meets minimum duration)');
+        } else {
+          console.log('[Location State] Skipped home interval (too short)');
         }
       }
     }
+
+    console.log('[Location State] Home interval calculation complete:', {
+      totalHomeIntervals: homeIntervals.length,
+      totalHomeMinutes: homeIntervals.reduce((sum, i) => sum + i.duration, 0),
+    });
 
     return homeIntervals;
   }

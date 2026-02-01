@@ -247,8 +247,9 @@ Implementation follows this order:
 - [x] 15. Checkpoint - Verify degradation and momentum work
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 16. Create API endpoint for chains
-  - [ ] 16.1 Create GET /api/chains/today endpoint
+
+- [x] 16. Create API endpoint for chains
+  - [x] 16.1 Create GET /api/chains/today endpoint
     - Implement endpoint handler
     - Call Anchor Service to get anchors
     - Call Chain Generator to generate chains
@@ -263,22 +264,22 @@ Implementation follows this order:
     - Test with travel service failure
     - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5_
 
-- [ ] 17. Add error handling and fallbacks
-  - [ ] 17.1 Add calendar service error handling
+- [x] 17. Add error handling and fallbacks
+  - [x] 17.1 Add calendar service error handling
     - Catch calendar API errors
     - Return empty anchors array
     - Log error for debugging
     - Display message in UI: "No calendar access. Showing basic plan."
     - _Design: Error Handling - Calendar Service Failures_
 
-  - [ ] 17.2 Add travel service error handling
+  - [x] 17.2 Add travel service error handling
     - Catch travel API errors
     - Use fallback duration: 30 minutes
     - Mark travel block with metadata: fallback_used = true
     - Display warning in UI: "Travel time estimated (service unavailable)"
     - _Design: Error Handling - Travel Service Failures_
 
-  - [ ] 17.3 Add chain generation error handling
+  - [x] 17.3 Add chain generation error handling
     - Catch missing template errors
     - Use default template (class template)
     - Mark chain with metadata: template_fallback = true
@@ -291,15 +292,15 @@ Implementation follows this order:
     - Test missing template handling
     - _Design: Error Handling_
 
-- [ ] 18. Add metadata and debugging support
-  - [ ] 18.1 Add chain metadata to TimeBlocks
+- [x] 18. Add metadata and debugging support
+  - [x] 18.1 Add chain metadata to TimeBlocks
     - Extend TimeBlock metadata with role field
     - Add chain_id, step_id, anchor_id to metadata
     - Add location_state to metadata
     - Add commitment_envelope to metadata
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 18.1, 18.2, 18.3, 18.4, 18.5_
 
-  - [ ] 18.2 Add debug logging
+  - [x] 18.2 Add debug logging
     - Log anchor classification
     - Log chain generation steps
     - Log location period calculation
@@ -311,11 +312,12 @@ Implementation follows this order:
     - **Property 14: Chain Metadata Linkage**
     - **Validates: Requirements 18.2**
 
-- [ ] 19. Checkpoint - Verify error handling and metadata
+- [x] 19. Checkpoint - Verify error handling and metadata
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 20. End-to-end testing and validation
-  - [ ]* 20.1 Write E2E test: Day with no anchors
+- [x] 20. End-to-end testing and validation
+  - [x] 20.1 Write E2E test: Day with no anchors
+
     - Generate plan with no calendar events
     - Verify Wake Ramp included
     - Verify basic plan structure
@@ -360,24 +362,24 @@ Implementation follows this order:
     - Verify status = FAILURE (incomplete)
     - _Requirements: 16.3, 16.4, 20.1, 20.2_
 
-- [ ] 21. Final checkpoint - Verify all E2E tests pass
+- [x] 21. Final checkpoint - Verify all E2E tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 22. Documentation and cleanup
-  - [ ] 22.1 Update API documentation
+- [x] 22. Documentation and cleanup
+  - [x] 22.1 Update API documentation
     - Document GET /api/chains/today endpoint
     - Document modified POST /api/daily-plan/generate response
     - Add examples for chain responses
     - _Requirements: 19.1, 19.2_
 
-  - [ ] 22.2 Add inline code documentation
+  - [x] 22.2 Add inline code documentation
     - Add JSDoc comments to all new classes and methods
     - Document chain generation algorithm
     - Document location state calculation
     - Document degradation logic
     - _Design: Components and Interfaces_
 
-  - [ ] 22.3 Create migration guide
+  - [x] 22.3 Create migration guide
     - Document V1.2 → V2 changes
     - Document backward compatibility
     - Document new features (chains, Exit Gate, Chain View)

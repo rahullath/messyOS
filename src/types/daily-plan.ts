@@ -47,13 +47,56 @@ export interface TimeBlock {
   sequenceOrder: number;
   status: BlockStatus;
   skipReason?: string;
-  metadata?: {
-    targetTime?: Date;
-    placementReason?: 'anchor-aware' | 'default';
-    skipReason?: string;
-  };
+  metadata?: TimeBlockMetadata;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// V2 Chain-Based Execution: Extended metadata for TimeBlocks
+// Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 18.1, 18.2, 18.3, 18.4, 18.5
+export interface TimeBlockMetadata {
+  // V1.2 fields (existing)
+  targetTime?: Date;
+  placementReason?: 'anchor-aware' | 'default';
+  skipReason?: string;
+  
+  // V2 Chain semantics fields
+  // Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
+  role?: {
+    type: 'anchor' | 'chain-step' | 'exit-gate' | 'recovery';
+    required: boolean;
+    chain_id?: string;
+    gate_conditions?: Array<{
+      id: string;
+      name: string;
+      satisfied: boolean;
+    }>;
+  };
+  
+  // Chain linkage fields
+  // Requirements: 18.1, 18.2
+  chain_id?: string;
+  step_id?: string;
+  anchor_id?: string;
+  
+  // Location state tracking
+  // Requirements: 18.3
+  location_state?: 'at_home' | 'not_home';
+  
+  // Commitment envelope tracking
+  // Requirements: 18.4
+  commitment_envelope?: {
+    envelope_id: string;
+    envelope_type: 'prep' | 'travel_there' | 'anchor' | 'travel_back' | 'recovery';
+  };
+  
+  // Error handling metadata
+  // Design: Error Handling
+  fallback_used?: boolean;
+  fallback_reason?: string;
+  template_fallback?: boolean;
+  original_anchor_type?: string;
+  fallback_template?: string;
 }
 
 export interface ExitTime {
@@ -105,11 +148,7 @@ export interface TimeBlockRow {
   sequence_order: number;
   status: BlockStatus;
   skip_reason?: string;
-  metadata?: {
-    target_time?: string;
-    placement_reason?: 'anchor-aware' | 'default';
-    skip_reason?: string;
-  };
+  metadata?: TimeBlockMetadata;
   created_at: string;
   updated_at: string;
 }

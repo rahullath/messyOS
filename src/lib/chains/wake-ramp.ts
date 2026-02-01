@@ -2,6 +2,9 @@
 
 import type { WakeRamp, WakeRampComponents, EnergyState } from './types';
 
+// Re-export types for external use
+export type { WakeRamp, WakeRampComponents };
+
 /**
  * Wake Ramp Generator
  * 

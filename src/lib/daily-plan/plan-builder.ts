@@ -488,6 +488,13 @@ export class PlanBuilderService {
     // Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
     const anchors = await this.anchorService.getAnchorsForDate(input.date, input.userId, this.supabase);
     console.log(`[V2 Chain Generation] Found ${anchors.length} anchors`);
+    
+    // Check if calendar service failed (empty anchors could indicate error)
+    // Requirements: Design - Error Handling - Calendar Service Failures
+    const calendarServiceFailed = anchors.length === 0;
+    if (calendarServiceFailed) {
+      console.warn('[V2 Chain Generation] No anchors found - calendar service may have failed or no events exist');
+    }
 
     // Step 4: Generate execution chains (V2)
     // Requirements: 12.1, 12.2, 12.3, 12.4
