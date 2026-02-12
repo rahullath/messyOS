@@ -3,13 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../../types/supabase';
 import type { AuthConfig, SessionStorage } from './types';
 
-// Environment variables
-const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
-const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+// Environment variables - support both Vite (import.meta.env) and Node.js (process.env)
+// Note: In Node.js test scripts, dotenv must be loaded before importing this module
+let supabaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
+  ? import.meta.env.PUBLIC_SUPABASE_URL 
+  : process.env.PUBLIC_SUPABASE_URL;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
-}
+let supabaseKey = typeof import.meta !== 'undefined' && import.meta.env
+  ? import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+  : process.env.PUBLIC_SUPABASE_ANON_KEY;
 
 // Standard session storage (no manual cookie sync - handled by session-sync.ts)
 const createSessionStorage = (): SessionStorage => {
@@ -45,12 +47,18 @@ const createSessionStorage = (): SessionStorage => {
 // Get redirect URL based on environment
 const getRedirectURL = (): string => {
   if (typeof window === 'undefined') {
-    return import.meta.env.PROD 
+    const isProd = typeof import.meta !== 'undefined' && import.meta.env 
+      ? import.meta.env.PROD 
+      : process.env.NODE_ENV === 'production';
+    
+    return isProd
       ? 'https://messy-os.vercel.app/auth/callback'
       : 'http://localhost:4321/auth/callback';
   }
   
-  const isDev = import.meta.env.DEV || window.location.hostname === 'localhost';
+  const isDev = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) 
+    || window.location.hostname === 'localhost';
+  
   return isDev 
     ? `${window.location.origin}/auth/callback`
     : 'https://messy-os.vercel.app/auth/callback';
@@ -67,6 +75,22 @@ export const defaultAuthConfig: AuthConfig = {
 
 // Create enhanced Supabase client with proper auth settings
 export const createAuthClient = (config: Partial<AuthConfig> = {}) => {
+  // Re-check environment variables in case they were loaded after module initialization
+  if (!supabaseUrl) {
+    supabaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
+      ? import.meta.env.PUBLIC_SUPABASE_URL 
+      : process.env.PUBLIC_SUPABASE_URL;
+  }
+  if (!supabaseKey) {
+    supabaseKey = typeof import.meta !== 'undefined' && import.meta.env
+      ? import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+      : process.env.PUBLIC_SUPABASE_ANON_KEY;
+  }
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables. Please check your .env file.');
+  }
+
   const authConfig = { ...defaultAuthConfig, ...config };
   
   return createClient<Database>(supabaseUrl, supabaseKey, {
@@ -85,8 +109,16 @@ export const createAuthClient = (config: Partial<AuthConfig> = {}) => {
   });
 };
 
-// Default auth client instance
-export const authClient = createAuthClient();
+// Default auth client instance (lazy-loaded)
+let _authClient: ReturnType<typeof createAuthClient> | null = null;
+export const authClient = new Proxy({} as ReturnType<typeof createAuthClient>, {
+  get(target, prop) {
+    if (!_authClient) {
+      _authClient = createAuthClient();
+    }
+    return (_authClient as any)[prop];
+  }
+});
 
 // Initialize session and setup sync on client-side
 if (typeof window !== 'undefined') {

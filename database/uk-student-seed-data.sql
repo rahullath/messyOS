@@ -77,7 +77,7 @@ INSERT INTO uk_student_recipes (name, description, ingredients, instructions, co
  15, 5, 1, 1, 
  '{"calories": 350, "protein": 12, "carbs": 65, "fat": 8}',
  '{"fridge_days": 3, "reheating_instructions": "Microwave for 1-2 minutes or reheat in pan"}',
- 4, '["quick", "budget", "vegetarian", "pasta"]', true),
+ 4, ARRAY['quick', 'budget', 'vegetarian', 'pasta'], true),
 
 ('Overnight Oats', 'No-cook breakfast that saves morning time', 
  '[{"name": "rolled oats", "quantity": 50, "unit": "g"}, {"name": "milk", "quantity": 100, "unit": "ml"}, {"name": "yogurt", "quantity": 2, "unit": "tbsp"}, {"name": "honey", "quantity": 1, "unit": "tsp"}, {"name": "banana", "quantity": 0.5, "unit": "piece", "optional": true}]',
@@ -85,7 +85,7 @@ INSERT INTO uk_student_recipes (name, description, ingredients, instructions, co
  0, 5, 1, 1,
  '{"calories": 280, "protein": 12, "carbs": 45, "fat": 6, "fiber": 5}',
  '{"fridge_days": 3}',
- 5, '["breakfast", "no-cook", "healthy", "meal-prep"]', true),
+ 5, ARRAY['breakfast', 'no-cook', 'healthy', 'meal-prep'], true),
 
 ('Student Stir Fry', 'Versatile stir fry using whatever vegetables you have', 
  '[{"name": "rice", "quantity": 75, "unit": "g"}, {"name": "mixed vegetables", "quantity": 150, "unit": "g"}, {"name": "soy sauce", "quantity": 2, "unit": "tbsp"}, {"name": "oil", "quantity": 1, "unit": "tbsp"}, {"name": "garlic", "quantity": 1, "unit": "clove"}, {"name": "ginger", "quantity": 1, "unit": "tsp", "optional": true}]',
@@ -93,7 +93,7 @@ INSERT INTO uk_student_recipes (name, description, ingredients, instructions, co
  20, 10, 2, 1,
  '{"calories": 320, "protein": 8, "carbs": 58, "fat": 8, "fiber": 4}',
  '{"fridge_days": 4, "freezer_days": 30, "reheating_instructions": "Microwave for 2-3 minutes, stirring halfway"}',
- 3, '["quick", "healthy", "vegetarian", "customizable"]', true),
+ 3, ARRAY['quick', 'healthy', 'vegetarian', 'customizable'], true),
 
 ('Tuna Pasta Salad', 'Cold pasta salad perfect for meal prep', 
  '[{"name": "pasta", "quantity": 100, "unit": "g"}, {"name": "canned tuna", "quantity": 1, "unit": "can"}, {"name": "mayonnaise", "quantity": 2, "unit": "tbsp"}, {"name": "sweetcorn", "quantity": 50, "unit": "g"}, {"name": "cucumber", "quantity": 0.5, "unit": "piece"}, {"name": "cherry tomatoes", "quantity": 6, "unit": "pieces"}]',
@@ -101,7 +101,7 @@ INSERT INTO uk_student_recipes (name, description, ingredients, instructions, co
  15, 10, 1, 2,
  '{"calories": 420, "protein": 25, "carbs": 45, "fat": 15}',
  '{"fridge_days": 3}',
- 2, '["meal-prep", "protein", "cold", "lunch"]', true),
+ 2, ARRAY['meal-prep', 'protein', 'cold', 'lunch'], true),
 
 ('Microwave Jacket Potato', 'Quick and filling meal using microwave', 
  '[{"name": "large potato", "quantity": 1, "unit": "piece"}, {"name": "butter", "quantity": 1, "unit": "tsp"}, {"name": "cheese", "quantity": 30, "unit": "g", "optional": true}, {"name": "baked beans", "quantity": 100, "unit": "g", "optional": true}]',
@@ -109,7 +109,7 @@ INSERT INTO uk_student_recipes (name, description, ingredients, instructions, co
  8, 2, 1, 1,
  '{"calories": 250, "protein": 6, "carbs": 50, "fat": 4, "fiber": 6}',
  '{"fridge_days": 2, "reheating_instructions": "Microwave for 1-2 minutes"}',
- 1, '["quick", "microwave", "filling", "budget"]', true);
+ 1, ARRAY['quick', 'microwave', 'filling', 'budget'], true);
 
 -- Insert common travel routes for Birmingham students
 INSERT INTO uk_student_travel_routes (user_id, from_location, to_location, preferred_method, duration_minutes, cost_pence, weather_conditions) VALUES
@@ -152,7 +152,7 @@ INSERT INTO uk_student_routines (user_id, routine_type, name, steps, estimated_d
 INSERT INTO uk_student_preferences (user_id, home_location, transport_preference, cooking_time_limits, dietary_restrictions, bulk_cooking_frequency) VALUES
 ('00000000-0000-0000-0000-000000000000', 'five-ways', 'mixed', 
  '{"breakfast": 10, "lunch": 20, "dinner": 30}', 
- '{}', 2);
+ ARRAY[]::TEXT[], 2);
 
 -- Create indexes for better performance on seed data
 CREATE INDEX IF NOT EXISTS idx_locations_name_type ON uk_student_locations(name, type);

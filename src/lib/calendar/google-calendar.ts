@@ -39,9 +39,11 @@ export class GoogleCalendarIntegration {
   ];
 
   constructor() {
-    this.clientId = import.meta.env.GOOGLE_CLIENT_ID || '';
-    this.clientSecret = import.meta.env.GOOGLE_CLIENT_SECRET || '';
-    this.redirectUri = import.meta.env.GOOGLE_REDIRECT_URI || `${import.meta.env.SITE}/api/calendar/google/callback`;
+    // Handle both browser (import.meta.env) and Node.js (process.env) environments
+    const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : process.env;
+    this.clientId = env.GOOGLE_CLIENT_ID || '';
+    this.clientSecret = env.GOOGLE_CLIENT_SECRET || '';
+    this.redirectUri = env.GOOGLE_REDIRECT_URI || `${env.SITE || 'http://localhost:4321'}/api/calendar/google/callback`;
   }
 
   /**
