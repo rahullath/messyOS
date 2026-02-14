@@ -1,5 +1,6 @@
 // src/components/habits/HabitCreationModal.tsx
 import React, { useState, useEffect } from 'react';
+import { SemanticType, inferSemanticType } from '../../lib/habits/taxonomy';
 
 interface HabitTemplate {
   id: string;
@@ -20,6 +21,8 @@ interface NewHabitData {
   measurement_type: 'boolean' | 'count' | 'duration';
   target_value?: number;
   target_unit?: string;
+  target_operator?: 'AT_LEAST' | 'AT_MOST' | 'EXACTLY';
+  semantic_type?: SemanticType;
   color: string;
   reminder_time?: string;
   allows_skips: boolean;
@@ -120,6 +123,50 @@ const COLORS = [
   '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#6366F1', '#EC4899'
 ];
 
+// Recognized units for numerical habits (Requirements 10.1)
+const NUMERICAL_UNITS = [
+  'pouches',
+  'puffs',
+  'meals',
+  'sessions',
+  'drinks',
+  'minutes'
+];
+
+// Semantic type to unit mapping (Requirements 10.4)
+const SEMANTIC_TYPE_UNITS: Record<SemanticType, string[]> = {
+  [SemanticType.NICOTINE_POUCHES]: ['pouches'],
+  [SemanticType.VAPING_PUFFS]: ['puffs'],
+  [SemanticType.POT_USE]: ['sessions'],
+  [SemanticType.ENERGY_DRINK]: ['drinks'],
+  [SemanticType.MEALS_COOKED]: ['meals'],
+  [SemanticType.ORAL_HYGIENE_SESSIONS]: ['sessions'],
+  [SemanticType.SHOWER]: ['minutes'],
+  [SemanticType.SKINCARE]: ['minutes'],
+  [SemanticType.MEDS]: ['minutes'],
+  [SemanticType.STEP_OUT]: ['minutes'],
+  [SemanticType.SOCIALIZE]: ['minutes'],
+  [SemanticType.GYM]: ['minutes'],
+  [SemanticType.SLEEP_PROXY]: ['minutes'],
+};
+
+// Semantic type display names
+const SEMANTIC_TYPE_LABELS: Record<SemanticType, string> = {
+  [SemanticType.NICOTINE_POUCHES]: 'Nicotine Pouches',
+  [SemanticType.VAPING_PUFFS]: 'Vaping/Puffs',
+  [SemanticType.POT_USE]: 'Cannabis Use',
+  [SemanticType.ENERGY_DRINK]: 'Energy Drinks',
+  [SemanticType.MEALS_COOKED]: 'Meals Cooked',
+  [SemanticType.ORAL_HYGIENE_SESSIONS]: 'Oral Hygiene',
+  [SemanticType.SHOWER]: 'Shower',
+  [SemanticType.SKINCARE]: 'Skincare',
+  [SemanticType.MEDS]: 'Medications',
+  [SemanticType.STEP_OUT]: 'Step Out',
+  [SemanticType.SOCIALIZE]: 'Socialize',
+  [SemanticType.GYM]: 'Gym/Exercise',
+  [SemanticType.SLEEP_PROXY]: 'Sleep',
+};
+
 export default function HabitCreationModal({ isOpen, onClose, onSave }: HabitCreationModalProps) {
   const [step, setStep] = useState<'templates' | 'basic' | 'measurement' | 'preferences' | 'review'>('templates');
   const [selectedTemplate, setSelectedTemplate] = useState<HabitTemplate | null>(null);
@@ -134,6 +181,33 @@ export default function HabitCreationModal({ isOpen, onClose, onSave }: HabitCre
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestedUnits, setSuggestedUnits] = useState<string[]>(NUMERICAL_UNITS);
+
+  // Auto-suggest units based on semantic type (Requirements 10.4)
+  useEffect(() => {
+    if (habitData.semantic_type) {
+      const units = SEMANTIC_TYPE_UNITS[habitData.semantic_type];
+      if (units && units.length > 0) {
+        setSuggestedUnits(units);
+        // Auto-select first suggested unit if no unit is set
+        if (!habitData.target_unit && habitData.measurement_type !== 'boolean') {
+          setHabitData(prev => ({ ...prev, target_unit: units[0] }));
+        }
+      }
+    } else {
+      setSuggestedUnits(NUMERICAL_UNITS);
+    }
+  }, [habitData.semantic_type, habitData.measurement_type]);
+
+  // Auto-infer semantic type from habit name (Requirements 10.3)
+  useEffect(() => {
+    if (habitData.name && !habitData.semantic_type) {
+      const inferred = inferSemanticType(habitData.name, habitData.target_unit);
+      if (inferred) {
+        setHabitData(prev => ({ ...prev, semantic_type: inferred }));
+      }
+    }
+  }, [habitData.name, habitData.target_unit]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -448,48 +522,110 @@ export default function HabitCreationModal({ isOpen, onClose, onSave }: HabitCre
                   </div>
                 </div>
 
+                {/* Semantic Type Selector (Requirements 10.3) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Semantic Type (Optional)
+                  </label>
+                  <select
+                    value={habitData.semantic_type || ''}
+                    onChange={(e) => setHabitData({ ...habitData, semantic_type: e.target.value as SemanticType || undefined })}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">None (Auto-detect)</option>
+                    {Object.entries(SEMANTIC_TYPE_LABELS).map(([type, label]) => (
+                      <option key={type} value={type}>{label}</option>
+                    ))}
+                  </select>
+                  <p className="text-gray-400 text-xs mt-1">
+                    Helps the system understand your habit for better insights
+                  </p>
+                </div>
+
                 {(habitData.measurement_type === 'count' || habitData.measurement_type === 'duration') && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Target Value *
-                      </label>
-                      <input
-                        type="number"
-                        value={habitData.target_value || ''}
-                        onChange={(e) => setHabitData({ ...habitData, target_value: parseInt(e.target.value) || undefined })}
-                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., 30"
-                        min="1"
-                      />
-                      {errors.target_value && <p className="text-red-400 text-sm mt-1">{errors.target_value}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Unit *
-                      </label>
-                      {habitData.measurement_type === 'duration' ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Target Value *
+                        </label>
+                        <input
+                          type="number"
+                          value={habitData.target_value || ''}
+                          onChange={(e) => setHabitData({ ...habitData, target_value: parseInt(e.target.value) || undefined })}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="e.g., 30"
+                          min="1"
+                        />
+                        {errors.target_value && <p className="text-red-400 text-sm mt-1">{errors.target_value}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Unit * (Requirements 10.1)
+                        </label>
                         <select
                           value={habitData.target_unit || ''}
                           onChange={(e) => setHabitData({ ...habitData, target_unit: e.target.value })}
                           className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">Select unit</option>
-                          <option value="minutes">Minutes</option>
-                          <option value="hours">Hours</option>
+                          {suggestedUnits.map((unit) => (
+                            <option key={unit} value={unit}>{unit}</option>
+                          ))}
                         </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={habitData.target_unit || ''}
-                          onChange={(e) => setHabitData({ ...habitData, target_unit: e.target.value })}
-                          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="e.g., glasses, reps, pages"
-                        />
-                      )}
-                      {errors.target_unit && <p className="text-red-400 text-sm mt-1">{errors.target_unit}</p>}
+                        {errors.target_unit && <p className="text-red-400 text-sm mt-1">{errors.target_unit}</p>}
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Target Operator (Requirements 10.2) */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Target Type
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <label className="flex items-center justify-center space-x-2 p-3 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700 border-2 border-transparent has-[:checked]:border-blue-500">
+                          <input
+                            type="radio"
+                            name="target_operator"
+                            value="AT_LEAST"
+                            checked={habitData.target_operator === 'AT_LEAST' || !habitData.target_operator}
+                            onChange={(e) => setHabitData({ ...habitData, target_operator: e.target.value as any })}
+                            className="text-blue-600"
+                          />
+                          <span className="text-white text-sm">At Least</span>
+                        </label>
+                        <label className="flex items-center justify-center space-x-2 p-3 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700 border-2 border-transparent has-[:checked]:border-blue-500">
+                          <input
+                            type="radio"
+                            name="target_operator"
+                            value="EXACTLY"
+                            checked={habitData.target_operator === 'EXACTLY'}
+                            onChange={(e) => setHabitData({ ...habitData, target_operator: e.target.value as any })}
+                            className="text-blue-600"
+                          />
+                          <span className="text-white text-sm">Exactly</span>
+                        </label>
+                        <label className="flex items-center justify-center space-x-2 p-3 bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-700 border-2 border-transparent has-[:checked]:border-blue-500">
+                          <input
+                            type="radio"
+                            name="target_operator"
+                            value="AT_MOST"
+                            checked={habitData.target_operator === 'AT_MOST'}
+                            onChange={(e) => setHabitData({ ...habitData, target_operator: e.target.value as any })}
+                            className="text-blue-600"
+                          />
+                          <span className="text-white text-sm">At Most</span>
+                        </label>
+                      </div>
+                      <p className="text-gray-400 text-xs mt-1">
+                        {habitData.target_operator === 'AT_MOST' 
+                          ? 'Success if value is less than or equal to target'
+                          : habitData.target_operator === 'EXACTLY'
+                          ? 'Success only if value matches target exactly'
+                          : 'Success if value is greater than or equal to target'}
+                      </p>
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -578,8 +714,9 @@ export default function HabitCreationModal({ isOpen, onClose, onSave }: HabitCre
                       <span className="text-gray-400">Measurement:</span>
                       <span className="text-white ml-2">
                         {habitData.measurement_type === 'boolean' ? 'Yes/No' :
-                         habitData.measurement_type === 'count' ? `Count (${habitData.target_value} ${habitData.target_unit})` :
-                         `Duration (${habitData.target_value} ${habitData.target_unit})`}
+                         habitData.measurement_type === 'count' ? 
+                           `${habitData.target_operator === 'AT_MOST' ? '≤' : habitData.target_operator === 'EXACTLY' ? '=' : '≥'} ${habitData.target_value} ${habitData.target_unit}` :
+                           `${habitData.target_operator === 'AT_MOST' ? '≤' : habitData.target_operator === 'EXACTLY' ? '=' : '≥'} ${habitData.target_value} ${habitData.target_unit}`}
                       </span>
                     </div>
                     <div>
@@ -588,6 +725,14 @@ export default function HabitCreationModal({ isOpen, onClose, onSave }: HabitCre
                         {habitData.allows_skips ? 'Flexible' : 'Strict'}
                       </span>
                     </div>
+                    {habitData.semantic_type && (
+                      <div className="col-span-2">
+                        <span className="text-gray-400">Semantic Type:</span>
+                        <span className="text-white ml-2">
+                          {SEMANTIC_TYPE_LABELS[habitData.semantic_type]}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   
                   {habitData.reminder_time && (

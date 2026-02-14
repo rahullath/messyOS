@@ -213,8 +213,8 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
 - [x] 9. Checkpoint - Ensure aggregator tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Implement daily context API endpoint
-  - [ ] 10.1 Create src/pages/api/context/today.ts
+- [x] 10. Implement daily context API endpoint
+  - [x] 10.1 Create src/pages/api/context/today.ts
     - Implement GET handler
     - Add authentication check (return 401 if not authenticated)
     - Generate DailyContext using aggregator
@@ -223,7 +223,7 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Handle errors gracefully (503, 504, 400)
     - _Requirements: 6.1, 6.2, 6.3, 6.6, 6.7_
   
-  - [ ] 10.2 Implement cache invalidation hooks
+  - [x] 10.2 Implement cache invalidation hooks
     - Add cache invalidation on new habit_entry
     - Add cache invalidation on new wake_event
     - Update habit logging endpoints to invalidate cache
@@ -257,11 +257,11 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Test invalid responses (400)
     - _Requirements: 6.6_
 
-- [ ] 11. Checkpoint - Ensure API tests pass
+- [x] 11. Checkpoint - Ensure API tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Implement Chain View integration service
-  - [ ] 12.1 Create src/lib/chains/context-integration.ts
+- [x] 12. Implement Chain View integration service
+  - [x] 12.1 Create src/lib/chains/context-integration.ts
     - Define ChainContextEnhancement interface
     - Implement enhanceChainWithContext main function
     - Implement generateExitGateSuggestions (meds, phone charger based on flags)
@@ -311,8 +311,8 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Test edge cases: missing priors, invalid durations, zero reliability
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 13. Update Chain View to consume DailyContext
-  - [ ] 13.1 Update src/lib/chains/chain-generator.ts
+- [x] 13. Update Chain View to consume DailyContext
+  - [x] 13.1 Update src/lib/chains/chain-generator.ts
     - Add DailyContext fetch in generateChainsForDate
     - Pass DailyContext to enhanceChainWithContext
     - Apply exit gate suggestions to exit-gate steps
@@ -322,7 +322,7 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Handle DailyContext fetch errors (use defaults)
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 8.2, 8.3, 8.4, 8.5_
   
-  - [ ] 13.2 Update src/components/daily-plan/ChainView.tsx
+  - [x] 13.2 Update src/components/daily-plan/ChainView.tsx
     - Display duration ranges instead of single values (e.g., "8-12 min")
     - Display total chain length as range (e.g., "~55-75 min")
     - Display only "Complete by" constraints, not "Start by" times
@@ -330,11 +330,11 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Handle missing DailyContext gracefully
     - _Requirements: 7.5, 7.6, 7.7_
 
-- [ ] 14. Checkpoint - Ensure Chain View integration works
+- [x] 14. Checkpoint - Ensure Chain View integration works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Implement notes-first logging UI (Nice-to-Have)
-  - [ ] 15.1 Create src/components/habits/NotesFirstLoggingUI.tsx
+- [x] 15. Implement notes-first logging UI (Nice-to-Have)
+  - [x] 15.1 Create src/components/habits/NotesFirstLoggingUI.tsx
     - Create notes input component with chip suggestions
     - Implement chip generation based on semantic type
     - Add chips for nicotine: strength, count, timing
@@ -346,8 +346,8 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Wire to habit logging API
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
-- [ ] 16. Implement habit creation upgrades (Nice-to-Have)
-  - [ ] 16.1 Update src/components/habits/HabitCreationModal.tsx
+- [x] 16. Implement habit creation upgrades (Nice-to-Have)
+  - [x] 16.1 Update src/components/habits/HabitCreationModal.tsx
     - Add unit dropdown for numerical habits (pouches, puffs, meals, sessions, drinks, minutes)
     - Add target value and comparison type inputs (AT_LEAST, AT_MOST, EXACTLY)
     - Add semantic type selector (optional)
@@ -355,8 +355,8 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Store semantic type in habit metadata
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 17. Implement AI enrichment fallback (Nice-to-Have)
-  - [ ] 17.1 Create src/lib/habits/ai-note-enrichment.ts
+- [x] 17. Implement AI enrichment fallback (Nice-to-Have)
+  - [x] 17.1 Create src/lib/habits/ai-note-enrichment.ts
     - Implement AI enrichment function
     - Call AI only when deterministic parsing has low confidence
     - Mark enriched data with source: "ai_enriched"

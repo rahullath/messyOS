@@ -2,6 +2,7 @@
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../../lib/supabase/server';
 import { updateHabitStreak } from '../../../../lib/habits/streaks';
+import { invalidateDailyContextCache } from '../../context/today';
 
 export const POST: APIRoute = async ({ request, params, cookies }) => {
   const habitId = params.id as string;
@@ -66,6 +67,9 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
       // Recalculate streak
       await updateHabitStreak(supabase, habitId, user.id);
       
+      // Invalidate daily context cache
+      invalidateDailyContextCache(user.id);
+      
       return new Response(JSON.stringify({
         ...updatedEntry,
         message: 'Entry updated successfully'
@@ -98,6 +102,9 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
 
     // Update streak count with skip logic
     await updateHabitStreak(supabase, habitId, user.id);
+
+    // Invalidate daily context cache
+    invalidateDailyContextCache(user.id);
 
     return new Response(JSON.stringify({
       ...entry,

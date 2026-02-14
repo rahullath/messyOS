@@ -13,6 +13,8 @@ import type { TimeBlock, TimeBlockMetadata } from '../../types/daily-plan';
 import { getChainTemplate, CHAIN_TEMPLATES } from './templates';
 import { TravelService } from '../uk-student/travel-service';
 import type { Location, TravelConditions, TravelPreferences } from '../../types/uk-student-travel';
+import type { DailyContext } from '../context/daily-context';
+import { enhanceChainWithContext, type ChainContextEnhancement } from './context-integration';
 
 /**
  * Chain Generator Configuration
@@ -68,11 +70,13 @@ export class ChainGenerator {
   /**
    * Generate execution chains for all anchors on a given date
    * 
+   * Fetches DailyContext and applies enhancements to all chains.
+   * 
    * @param anchors - Array of anchors to generate chains for
    * @param options - Generation options (userId, date, config)
    * @returns Array of execution chains
    * 
-   * Requirements: 12.1, 12.2, 12.5
+   * Requirements: 7.1, 7.2, 7.3, 7.4, 8.2, 8.3, 8.4, 8.5, 12.1, 12.2, 12.5
    */
   async generateChainsForDate(
     anchors: Anchor[],
@@ -80,9 +84,32 @@ export class ChainGenerator {
   ): Promise<ExecutionChain[]> {
     const chains: ExecutionChain[] = [];
 
+    // Fetch DailyContext for today
+    // Requirements: 7.1, 7.2, 7.3, 7.4, 8.2, 8.3, 8.4
+    let dailyContext: DailyContext | null = null;
+    try {
+      const response = await fetch('/api/context/today');
+      if (response.ok) {
+        dailyContext = await response.json();
+        if (dailyContext) {
+          console.log('[Chain Generator] DailyContext fetched successfully:', {
+            date: dailyContext.date,
+            medsReliability: dailyContext.meds.reliability,
+            medsTaken: dailyContext.meds.taken,
+            lowEnergyRisk: dailyContext.day_flags.low_energy_risk,
+            sleepDebtRisk: dailyContext.day_flags.sleep_debt_risk,
+          });
+        }
+      } else {
+        console.warn('[Chain Generator] Failed to fetch DailyContext, using defaults:', response.status);
+      }
+    } catch (error) {
+      console.error('[Chain Generator] Error fetching DailyContext, using defaults:', error);
+    }
+
     for (const anchor of anchors) {
       try {
-        const chain = await this.generateChainForAnchor(anchor, options);
+        const chain = await this.generateChainForAnchor(anchor, options, dailyContext);
         chains.push(chain);
       } catch (error) {
         console.error(`Failed to generate chain for anchor ${anchor.id}:`, error);
@@ -98,14 +125,16 @@ export class ChainGenerator {
    * 
    * @param anchor - Anchor to generate chain for
    * @param options - Generation options
+   * @param dailyContext - Daily context data (optional, uses defaults if null)
    * @returns Execution chain
    * 
-   * Requirements: 12.2, 12.3, 12.4, Design - Error Handling - Chain Generation Failures
+   * Requirements: 7.1, 7.2, 7.3, 7.4, 12.2, 12.3, 12.4, Design - Error Handling - Chain Generation Failures
    * Requirements: 18.5 - Log chain generation steps
    */
   private async generateChainForAnchor(
     anchor: Anchor,
-    options: ChainGeneratorOptions
+    options: ChainGeneratorOptions,
+    dailyContext: DailyContext | null = null
   ): Promise<ExecutionChain> {
     console.log('[Chain Generator] Starting chain generation for anchor:', {
       anchorId: anchor.id,
@@ -212,6 +241,129 @@ export class ChainGenerator {
       status: chain.status,
       templateFallback: templateFallbackUsed,
     });
+
+    // Apply DailyContext enhancements if available
+    // Requirements: 7.1, 7.2, 7.3, 7.4
+    if (dailyContext) {
+      try {
+        const enhancement = await enhanceChainWithContext(chain, dailyContext);
+        
+        console.log('[Chain Generator] Applying DailyContext enhancements:', {
+          chainId: chain.chain_id,
+          exitGateSuggestions: enhancement.exitGateSuggestions.length,
+          injectedSteps: enhancement.injectedSteps.length,
+          durationAdjustments: Object.keys(enhancement.durationAdjustments).length,
+          riskInflators: enhancement.riskInflators,
+        });
+        
+        // Apply exit gate suggestions to exit-gate steps
+        // Requirements: 7.1
+        for (const step of chain.steps) {
+          if (step.role === 'exit-gate') {
+            if (!step.metadata) {
+              step.metadata = {};
+            }
+            step.metadata.gate_suggestions = enhancement.exitGateSuggestions;
+          }
+        }
+        
+        // Inject missing steps (e.g., "Take meds")
+        // Requirements: 7.2
+        if (enhancement.injectedSteps.length > 0) {
+          // Find the first step after wake-up to inject meds
+          const firstStepIndex = chain.steps.findIndex(s => s.name.toLowerCase().includes('wake') || s.name.toLowerCase().includes('bathroom'));
+          const insertIndex = firstStepIndex >= 0 ? firstStepIndex + 1 : 0;
+          
+          for (const injectedStep of enhancement.injectedSteps) {
+            // Create step instance with timing
+            const previousStep = chain.steps[insertIndex - 1];
+            const nextStep = chain.steps[insertIndex];
+            
+            const startTime = previousStep ? previousStep.end_time : chain.steps[0].start_time;
+            const endTime = new Date(startTime.getTime() + injectedStep.duration_estimate * 60 * 1000);
+            
+            const stepInstance: ChainStepInstance = {
+              step_id: injectedStep.id,
+              chain_id: chain.chain_id,
+              name: injectedStep.name,
+              start_time: startTime,
+              end_time: endTime,
+              duration: injectedStep.duration_estimate,
+              is_required: injectedStep.is_required,
+              can_skip_when_late: injectedStep.can_skip_when_late,
+              status: 'pending',
+              role: 'chain-step',
+              metadata: {
+                injected: true,
+                reason: 'meds_not_taken_yesterday',
+              },
+            };
+            
+            chain.steps.splice(insertIndex, 0, stepInstance);
+            
+            // Adjust timing of subsequent steps
+            for (let i = insertIndex + 1; i < chain.steps.length; i++) {
+              const step = chain.steps[i];
+              const prevStep = chain.steps[i - 1];
+              step.start_time = prevStep.end_time;
+              step.end_time = new Date(step.start_time.getTime() + step.duration * 60 * 1000);
+            }
+          }
+        }
+        
+        // Apply duration priors to step estimates
+        // Requirements: 7.3
+        for (const [stepId, adjustedDuration] of Object.entries(enhancement.durationAdjustments)) {
+          const step = chain.steps.find(s => s.step_id === stepId);
+          if (step) {
+            const oldDuration = step.duration;
+            step.duration = adjustedDuration;
+            step.end_time = new Date(step.start_time.getTime() + adjustedDuration * 60 * 1000);
+            
+            if (!step.metadata) {
+              step.metadata = {};
+            }
+            step.metadata.duration_prior_applied = true;
+            step.metadata.original_duration = oldDuration;
+            
+            // Adjust timing of subsequent steps
+            const stepIndex = chain.steps.indexOf(step);
+            for (let i = stepIndex + 1; i < chain.steps.length; i++) {
+              const nextStep = chain.steps[i];
+              const prevStep = chain.steps[i - 1];
+              nextStep.start_time = prevStep.end_time;
+              nextStep.end_time = new Date(nextStep.start_time.getTime() + nextStep.duration * 60 * 1000);
+            }
+          }
+        }
+        
+        // Apply risk inflators to total chain duration
+        // Requirements: 7.4
+        const totalInflator = enhancement.riskInflators.low_energy * enhancement.riskInflators.sleep_debt;
+        if (totalInflator > 1.0) {
+          // Store risk inflator in chain metadata
+          if (!chain.metadata) {
+            chain.metadata = {};
+          }
+          chain.metadata.risk_inflator = totalInflator;
+          chain.metadata.low_energy_risk = enhancement.riskInflators.low_energy > 1.0;
+          chain.metadata.sleep_debt_risk = enhancement.riskInflators.sleep_debt > 1.0;
+          
+          console.log('[Chain Generator] Risk inflator applied:', {
+            chainId: chain.chain_id,
+            inflator: totalInflator,
+            lowEnergyRisk: chain.metadata.low_energy_risk,
+            sleepDebtRisk: chain.metadata.sleep_debt_risk,
+          });
+        }
+        
+      } catch (error) {
+        console.error('[Chain Generator] Error applying DailyContext enhancements:', error);
+        // Continue without enhancements - graceful degradation
+      }
+    } else {
+      console.log('[Chain Generator] No DailyContext available, using defaults');
+    }
 
     return chain;
   }

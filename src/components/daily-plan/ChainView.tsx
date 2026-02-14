@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ExecutionChain, ExitGate, ChainStepInstance } from '../../lib/chains/types';
+import type { DailyContext } from '../../lib/context/daily-context';
 
 interface ChainViewProps {
   chain: ExecutionChain;
@@ -13,12 +14,13 @@ interface ChainViewProps {
  * 
  * Primary interface for executing chains. Displays:
  * - Next anchor (prominent, large)
- * - Chain Completion Deadline ("Complete chain by [time]")
- * - Chain steps (checkbox style)
+ * - Chain Completion Deadline ("Complete by [time]")
+ * - Chain steps (checkbox style) with duration ranges
  * - Exit Gate status (blocked/ready with reasons)
  * - Current step highlight
+ * - Reliability indicators for low-confidence data
  * 
- * Requirements: 14.1, 14.2, 14.3, 14.4, 14.5
+ * Requirements: 7.5, 7.6, 7.7, 14.1, 14.2, 14.3, 14.4, 14.5
  */
 export default function ChainView({
   chain,
@@ -27,6 +29,24 @@ export default function ChainView({
   onGateConditionToggle,
 }: ChainViewProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [dailyContext, setDailyContext] = useState<DailyContext | null>(null);
+
+  // Fetch DailyContext for reliability indicators
+  useEffect(() => {
+    const fetchDailyContext = async () => {
+      try {
+        const response = await fetch('/api/context/today');
+        if (response.ok) {
+          const context = await response.json();
+          setDailyContext(context);
+        }
+      } catch (error) {
+        console.error('Failed to fetch DailyContext:', error);
+      }
+    };
+    
+    fetchDailyContext();
+  }, []);
 
   // Format time for display
   const formatTime = (date: Date): string => {
@@ -37,8 +57,29 @@ export default function ChainView({
     });
   };
 
-  // Format duration for display
-  const formatDuration = (minutes: number): string => {
+  // Format duration for display with range support
+  // Requirements: 7.5
+  const formatDuration = (minutes: number, showRange: boolean = false): string => {
+    if (showRange) {
+      // Show ±20% range for duration estimates
+      const minDuration = Math.round(minutes * 0.8);
+      const maxDuration = Math.round(minutes * 1.2);
+      
+      if (minutes < 60) {
+        return `${minDuration}-${maxDuration}m`;
+      }
+      
+      const minHours = Math.floor(minDuration / 60);
+      const minMins = minDuration % 60;
+      const maxHours = Math.floor(maxDuration / 60);
+      const maxMins = maxDuration % 60;
+      
+      const minStr = minMins > 0 ? `${minHours}h ${minMins}m` : `${minHours}h`;
+      const maxStr = maxMins > 0 ? `${maxHours}h ${maxMins}m` : `${maxHours}h`;
+      
+      return `${minStr}-${maxStr}`;
+    }
+    
     if (minutes < 60) {
       return `${minutes}m`;
     }
@@ -46,6 +87,24 @@ export default function ChainView({
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
+
+  // Calculate total chain duration with range
+  // Requirements: 7.6
+  const calculateTotalDuration = (): { min: number; max: number; estimate: number } => {
+    const totalMinutes = chain.steps.reduce((sum, step) => sum + step.duration, 0);
+    
+    // Apply risk inflator if present
+    const riskInflator = chain.metadata?.risk_inflator || 1.0;
+    const adjustedTotal = Math.round(totalMinutes * riskInflator);
+    
+    // Calculate range (±20%)
+    const minDuration = Math.round(adjustedTotal * 0.8);
+    const maxDuration = Math.round(adjustedTotal * 1.2);
+    
+    return { min: minDuration, max: maxDuration, estimate: adjustedTotal };
+  };
+
+  const totalDuration = calculateTotalDuration();
 
   // Get current step (first pending or in-progress step)
   const getCurrentStep = (): ChainStepInstance | null => {
@@ -123,21 +182,45 @@ export default function ChainView({
           </div>
         </div>
 
-        {/* Chain Completion Deadline - Requirements 14.1, 4.2 */}
+        {/* Chain Completion Deadline - Requirements 7.7, 14.1, 4.2 */}
         <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <svg className="w-5 h-5 mr-2 text-accent-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-sm font-medium text-text-primary">
-                Complete chain by
+                Complete by
               </span>
             </div>
             <span className="text-lg font-bold text-accent-warning">
               {formatTime(chain.chain_completion_deadline)}
             </span>
           </div>
+          
+          {/* Total chain duration range - Requirements 7.6 */}
+          <div className="flex items-center justify-between text-sm text-text-muted">
+            <span>Estimated duration:</span>
+            <span className="font-medium">
+              ~{formatDuration(totalDuration.min)}-{formatDuration(totalDuration.max)}
+            </span>
+          </div>
+          
+          {/* Risk indicators - Requirements 7.4 */}
+          {(chain.metadata?.low_energy_risk || chain.metadata?.sleep_debt_risk) && (
+            <div className="mt-2 pt-2 border-t border-white/10">
+              <div className="flex items-center text-xs text-orange-400">
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>
+                  {chain.metadata.low_energy_risk && 'Low energy risk detected'}
+                  {chain.metadata.low_energy_risk && chain.metadata.sleep_debt_risk && ' • '}
+                  {chain.metadata.sleep_debt_risk && 'Sleep debt risk detected'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -205,23 +288,40 @@ export default function ChainView({
                             )}
                           </div>
                           
-                          {/* Step Details */}
+                          {/* Step Details - Requirements 7.5 */}
                           <div className="flex items-center mt-1 text-sm text-text-muted space-x-3">
                             <span className="flex items-center">
                               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              {formatDuration(step.duration)}
+                              {formatDuration(step.duration, true)}
                             </span>
                             {step.status === 'pending' && (
-                              <span className="flex items-center">
-                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                                {formatTime(step.start_time)}
+                              <span className="flex items-center text-xs text-text-muted/70">
+                                Complete by {formatTime(step.end_time)}
                               </span>
                             )}
                           </div>
+
+                          {/* Duration prior indicator - Requirements 7.3 */}
+                          {step.metadata?.duration_prior_applied && (
+                            <div className="mt-1 text-xs text-blue-400 flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                              </svg>
+                              Duration based on your history
+                            </div>
+                          )}
+                          
+                          {/* Injected step indicator - Requirements 7.2 */}
+                          {step.metadata?.injected && (
+                            <div className="mt-1 text-xs text-purple-400 flex items-center">
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              Added based on yesterday's habits
+                            </div>
+                          )}
 
                           {/* Skip Reason */}
                           {step.skip_reason && (
@@ -307,6 +407,20 @@ export default function ChainView({
             {exitGate.status === 'blocked' ? '🚫 Blocked' : '✅ Ready to Leave'}
           </div>
         </div>
+
+        {/* Reliability indicator for exit gate suggestions - Requirements 7.1 */}
+        {dailyContext && dailyContext.meds.reliability < 0.5 && (
+          <div className="mb-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+            <div className="flex items-center text-sm text-yellow-400">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                Exit gate suggestions may be less accurate due to limited recent data
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Blocked Reasons - Requirements 14.3 */}
         {exitGate.status === 'blocked' && exitGate.blocked_reasons.length > 0 && (
