@@ -365,7 +365,7 @@ Each task builds on previous tasks, with testing integrated throughout. The plan
     - Allow disabling via configuration
     - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5_
 
-- [ ] 18. Final checkpoint - End-to-end testing
+- [x] 18. Final checkpoint - End-to-end testing
   - Test complete flow: import → parse → aggregate → API → Chain View
   - Verify temporal boundaries respected throughout
   - Verify cache invalidation works correctly
