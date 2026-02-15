@@ -1,5 +1,5 @@
 // src/components/import/EnhancedLoopHabitsImport.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import type { ImportProgress, ImportSummary, ConflictResolution, ImportError } from '../../lib/import/enhanced-loop-habits';
 import { detectImportFormat, fuzzyMatchHabit, type ImportFormat, type FuzzyMatchResult } from '../../lib/import/enhanced-loop-habits-v2';
 
@@ -56,8 +56,35 @@ export default function EnhancedLoopHabitsImport() {
   };
 
   const handlePerHabitFilesChange = async (fileList: FileList) => {
-    const filesArray = Array.from(fileList);
+    // Per-habit flow only supports checkmarks CSVs; ignore scores and other CSVs.
+    const filesArray = Array.from(fileList).filter((file) => {
+      if (file.name.toLowerCase() !== 'checkmarks.csv') {
+        return false;
+      }
+
+      // Ignore root-level Checkmarks.csv when selecting the entire export directory.
+      // Valid per-habit files are expected in nested folders:
+      //   ExportRoot/<Habit Folder>/Checkmarks.csv
+      const relativePath = (file as any).webkitRelativePath as string | undefined;
+      if (relativePath) {
+        const parts = relativePath.split('/').filter(Boolean);
+        if (parts.length < 3) {
+          return false;
+        }
+      }
+
+      return true;
+    });
     setFiles(prev => ({ ...prev, perHabitFiles: filesArray }));
+
+    if (filesArray.length === 0) {
+      setImportState(prev => ({
+        ...prev,
+        stage: 'idle',
+        error: 'No per-habit Checkmarks.csv files found in selected folder.',
+      }));
+      return;
+    }
     
     // Detect format and show preview
     const format = detectImportFormat(filesArray);
@@ -70,10 +97,10 @@ export default function EnhancedLoopHabitsImport() {
       }));
       
       // Fetch existing habits for fuzzy matching
-      await fetchExistingHabits();
+      const habits = await fetchExistingHabits();
       
       // Generate fuzzy match preview
-      await generateFuzzyMatchPreview(filesArray);
+      await generateFuzzyMatchPreview(filesArray, habits);
     } else {
       setImportState(prev => ({
         ...prev,
@@ -83,19 +110,30 @@ export default function EnhancedLoopHabitsImport() {
     }
   };
 
-  const fetchExistingHabits = async () => {
+  const fetchExistingHabits = async (): Promise<Array<{ id: string; name: string }>> => {
     try {
       const response = await fetch('/api/habits');
       if (response.ok) {
         const data = await response.json();
-        setExistingHabits(data.habits || []);
+        const habits = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.habits)
+            ? data.habits
+            : [];
+        setExistingHabits(habits);
+        return habits;
       }
     } catch (error) {
       console.error('Failed to fetch existing habits:', error);
     }
+    setExistingHabits([]);
+    return [];
   };
 
-  const generateFuzzyMatchPreview = async (filesArray: File[]) => {
+  const generateFuzzyMatchPreview = async (
+    filesArray: File[],
+    habitsToMatch: Array<{ id: string; name: string }>
+  ) => {
     const matches: Array<{
       fileName: string;
       habitName: string;
@@ -112,7 +150,7 @@ export default function EnhancedLoopHabitsImport() {
       }
       
       // Fuzzy match to existing habits
-      const match = fuzzyMatchHabit(habitName, existingHabits);
+      const match = fuzzyMatchHabit(habitName, habitsToMatch);
       
       matches.push({
         fileName: file.name,
@@ -136,7 +174,8 @@ export default function EnhancedLoopHabitsImport() {
       const parts = path.split('/');
       
       // Format: "001 Habit Name/Checkmarks.csv"
-      if (parts.length >= 2) {
+      // When selecting the whole export folder, root-level Checkmarks.csv should be ignored.
+      if (parts.length >= 3) {
         const folderName = parts[parts.length - 2];
         // Remove leading numbers and trim
         const habitName = folderName.replace(/^\d+\s*/, '').trim();
@@ -265,7 +304,12 @@ export default function EnhancedLoopHabitsImport() {
               }));
               return;
             } else if (data.type === 'error') {
-              throw new Error(data.message);
+              setImportState(prev => ({
+                ...prev,
+                stage: 'error',
+                error: data.message || 'Import failed',
+              }));
+              return;
             }
           } catch (parseError) {
             console.warn('Failed to parse progress update:', line);
@@ -420,7 +464,7 @@ export default function EnhancedLoopHabitsImport() {
           />
           {files.perHabitFiles && files.perHabitFiles.length > 0 && (
             <p className="text-xs text-accent-success mt-1">
-              ✅ {files.perHabitFiles.length} files selected
+              ✅ {files.perHabitFiles.length} Checkmarks.csv files selected
             </p>
           )}
         </div>

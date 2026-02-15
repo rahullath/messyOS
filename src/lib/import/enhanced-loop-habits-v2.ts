@@ -88,20 +88,20 @@ export interface FuzzyMatchResult {
  */
 export function detectImportFormat(files: File[]): ImportFormat {
   const fileNames = files.map(f => f.name.toLowerCase());
+  const checkmarksCount = fileNames.filter(name => name === 'checkmarks.csv').length;
   
+  // Prefer per-habit when multiple Checkmarks.csv files are present.
+  // This covers selecting the whole export directory that includes both root and per-habit subfolders.
+  if (checkmarksCount > 1) {
+    return 'per-habit';
+  }
+
   // Check for root export files
   const hasHabitsCSV = fileNames.some(name => name === 'habits.csv');
-  const hasCheckmarksCSV = fileNames.some(name => name === 'checkmarks.csv');
-  const hasScoresCSV = fileNames.some(name => name === 'scores.csv');
+  const hasCheckmarksCSV = checkmarksCount === 1;
   
   if (hasHabitsCSV && hasCheckmarksCSV) {
     return 'root';
-  }
-  
-  // Check for per-habit structure (multiple Checkmarks.csv files)
-  const checkmarksCount = fileNames.filter(name => name === 'checkmarks.csv').length;
-  if (checkmarksCount > 1) {
-    return 'per-habit';
   }
   
   // Default to root if ambiguous
@@ -260,22 +260,30 @@ export function normalizeLoopValue(
     return 0;
   }
   
-  // Convert to number if string
-  const numValue = typeof value === 'string' ? parseFloat(value) : value;
-  
-  if (isNaN(numValue)) {
-    return 0;
-  }
+  const rawString = typeof value === 'string' ? value.trim() : '';
+  const normalizedText = rawString.toUpperCase();
+  const numValue = typeof value === 'string' ? Number(rawString) : value;
   
   if (type === 'NUMERICAL') {
-    // Divide by 1000 to get actual value (Requirement 1.3)
-    return numValue / 1000;
+    if (isNaN(numValue)) return 0;
+    // Loop often stores numerical values multiplied by 1000.
+    // Keep small values as-is to avoid over-dividing already-normalized data.
+    return Math.abs(numValue) >= 1000 ? numValue / 1000 : numValue;
   }
+
+  // Text token mapping for per-habit exports
+  if (normalizedText.startsWith('YES')) return 1;
+  if (normalizedText.startsWith('NO')) return 0;
+  if (normalizedText.startsWith('SKIP')) return 2;
+  if (normalizedText.startsWith('UNKNOWN')) return 2;
+
+  if (isNaN(numValue)) return 0;
   
   // YES_NO mapping (Requirement 1.4)
   // Loop Habits: 0 = missed, 2 = completed, 3 = skipped
   // Internal: 0 = missed, 1 = completed, 2 = skipped
   if (numValue === 0) return 0; // Missed
+  if (numValue === 1) return 1; // Completed (some exports)
   if (numValue === 2) return 1; // Completed
   if (numValue === 3) return 2; // Skipped
   
@@ -479,60 +487,69 @@ export class EnhancedLoopHabitsImporterV2 {
     const csvContent = await file.text();
     const entries = this.parsePerHabitCSV(csvContent, habitName);
     
-    // Process each entry
+    const valueMode = this.inferValueMode(entries, measurementType);
+
+    // Deduplicate dates inside a single file (keep latest row per date).
+    const dedupedByDate = new Map<string, { date: string; valueRaw: string; notes: string | null }>();
     for (const entry of entries) {
+      dedupedByDate.set(entry.date, entry);
+    }
+    const dedupedEntries = Array.from(dedupedByDate.values());
+
+    // Skip records that already exist for this habit/date, so re-import remains append-only.
+    const entryDates = dedupedEntries.map((e) => e.date);
+    let existingDateSet = new Set<string>();
+    if (entryDates.length > 0) {
+      const { data: existingRows, error: existingError } = await this.supabase
+        .from('habit_entries')
+        .select('date')
+        .eq('user_id', this.userId)
+        .eq('habit_id', habitId)
+        .in('date', entryDates);
+
+      if (existingError) {
+        result.errors.push({
+          type: 'database',
+          severity: 'warning',
+          message: `Failed to check existing entries for ${habitName}: ${existingError.message}`,
+          habitName,
+        });
+      } else {
+        existingDateSet = new Set((existingRows || []).map((r: { date: string }) => r.date));
+      }
+    }
+
+    const rowsToInsert: Array<Record<string, unknown>> = [];
+    let skippedExisting = 0;
+
+    for (const entry of dedupedEntries) {
       try {
-        // Parse notes if present (Requirement 1.2)
+        if (existingDateSet.has(entry.date)) {
+          skippedExisting++;
+          continue;
+        }
+
         let parsedData: ParsedNoteData | null = null;
         let numericValue: number | null = null;
         
         if (entry.notes) {
           parsedData = parseNote(entry.notes, semanticType || undefined);
-          
-          // Extract numeric value from parsed data
           numericValue = this.extractNumericValue(parsedData, measurementType);
         }
         
-        // Normalize Loop value (Requirement 1.3, 1.4)
-        const normalizedValue = normalizeLoopValue(
-          entry.value,
-          measurementType === 'count' ? 'NUMERICAL' : 'YES_NO'
-        );
+        const normalizedValue = normalizeLoopValue(entry.valueRaw, valueMode);
         
-        // Insert entry with structured data
-        const { error: insertError } = await this.supabase
-          .from('habit_entries')
-          .insert({
-            habit_id: habitId,
-            user_id: this.userId,
-            date: entry.date,
-            value: normalizedValue,
-            notes: entry.notes,
-            numeric_value: numericValue, // New field (Requirement 2.1)
-            parsed: parsedData ? JSON.stringify(parsedData) : null, // New field (Requirement 2.2)
-            source: 'loop_per_habit', // New field (Requirement 2.6)
-            logged_at: new Date(entry.date).toISOString(),
-          });
-        
-        if (insertError) {
-          // Check for duplicate entry
-          if (insertError.code === '23505') {
-            result.warnings.push({
-              type: 'conflict',
-              message: `Duplicate entry for ${habitName} on ${entry.date}`,
-              habitName,
-            });
-          } else {
-            result.errors.push({
-              type: 'database',
-              severity: 'warning',
-              message: `Failed to insert entry for ${habitName} on ${entry.date}: ${insertError.message}`,
-              habitName,
-            });
-          }
-        } else {
-          result.importedEntries++;
-        }
+        rowsToInsert.push({
+          habit_id: habitId,
+          user_id: this.userId,
+          date: entry.date,
+          value: normalizedValue,
+          notes: entry.notes,
+          numeric_value: numericValue,
+          parsed: parsedData ? JSON.stringify(parsedData) : null,
+          source: 'loop_per_habit',
+          logged_at: new Date(`${entry.date}T00:00:00.000Z`).toISOString(),
+        });
       } catch (error: any) {
         result.errors.push({
           type: 'parsing',
@@ -541,6 +558,31 @@ export class EnhancedLoopHabitsImporterV2 {
           habitName,
         });
       }
+    }
+
+    if (rowsToInsert.length > 0) {
+      const { error: insertError } = await this.supabase
+        .from('habit_entries')
+        .insert(rowsToInsert);
+
+      if (insertError) {
+        result.errors.push({
+          type: 'database',
+          severity: 'warning',
+          message: `Failed to insert entries for ${habitName}: ${insertError.message}`,
+          habitName,
+        });
+      } else {
+        result.importedEntries += rowsToInsert.length;
+      }
+    }
+
+    if (skippedExisting > 0) {
+      result.warnings.push({
+        type: 'conflict',
+        message: `Skipped ${skippedExisting} existing entries for "${habitName}"`,
+        habitName,
+      });
     }
     
     result.success = true;
@@ -551,13 +593,17 @@ export class EnhancedLoopHabitsImporterV2 {
    * Extract habit name from file path
    */
   private extractHabitNameFromFile(file: File): string | null {
+    const normalizeParts = (path: string) =>
+      path.replace(/\\/g, '/').split('/').filter(Boolean);
+
     // Try to extract from webkitRelativePath (folder structure)
     if ((file as any).webkitRelativePath) {
       const path = (file as any).webkitRelativePath as string;
-      const parts = path.split('/');
+      const parts = normalizeParts(path);
       
       // Format: "001 Habit Name/Checkmarks.csv"
-      if (parts.length >= 2) {
+      // Ignore root-level Checkmarks.csv when whole export directory is selected.
+      if (parts.length >= 3) {
         const folderName = parts[parts.length - 2];
         // Remove leading numbers and trim
         const habitName = folderName.replace(/^\d+\s*/, '').trim();
@@ -565,9 +611,17 @@ export class EnhancedLoopHabitsImporterV2 {
       }
     }
     
-    // Fallback: try to extract from file name
-    if (file.name !== 'Checkmarks.csv') {
-      return file.name.replace(/\.csv$/i, '').trim();
+    // Fallback: parse from file.name (may include relative path when sent via FormData)
+    if (file.name) {
+      const parts = normalizeParts(file.name);
+      if (parts.length >= 2) {
+        const parent = parts[parts.length - 2];
+        return parent.replace(/^\d+\s*/, '').trim();
+      }
+      const base = parts[parts.length - 1] || '';
+      if (!/^checkmarks\.csv$/i.test(base)) {
+        return base.replace(/\.csv$/i, '').trim();
+      }
     }
     
     return null;
@@ -579,59 +633,172 @@ export class EnhancedLoopHabitsImporterV2 {
   private parsePerHabitCSV(
     csvContent: string,
     habitName: string
-  ): Array<{ date: string; value: number; notes: string | null }> {
-    const lines = csvContent.split('\n');
-    const entries: Array<{ date: string; value: number; notes: string | null }> = [];
-    
-    if (lines.length < 2) {
-      return entries;
-    }
-    
-    // Parse header
-    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const dateIndex = header.findIndex(h => h === 'timestamp' || h === 'date');
-    const valueIndex = header.findIndex(h => h === 'value');
-    const notesIndex = header.findIndex(h => h === 'notes');
-    
+  ): Array<{ date: string; valueRaw: string; notes: string | null }> {
+    const entries: Array<{ date: string; valueRaw: string; notes: string | null }> = [];
+    const rows = this.parseDelimitedRows(csvContent);
+    if (rows.length < 2) return entries;
+
+    const headers = rows[0].map((h) => h.trim().toLowerCase());
+    const dateIndex = headers.findIndex((h) => h === 'date' || h === 'timestamp');
+    const valueIndex = headers.findIndex((h) => h === 'value');
+    const notesIndex = headers.findIndex((h) => h === 'notes' || h === 'note' || h === 'comment');
+
     if (dateIndex === -1 || valueIndex === -1) {
+      console.warn(`Per-habit CSV missing required columns for ${habitName}`);
       return entries;
     }
-    
-    // Parse data rows
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      
-      const values = line.split(',').map(v => v.trim());
-      
-      if (values.length <= Math.max(dateIndex, valueIndex)) {
-        continue;
-      }
-      
-      const dateStr = values[dateIndex];
-      const valueStr = values[valueIndex];
-      const notes = notesIndex !== -1 && values[notesIndex] ? values[notesIndex] : null;
-      
-      // Parse date
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) {
-        continue;
-      }
-      
-      // Parse value
-      const value = parseInt(valueStr, 10);
-      if (isNaN(value)) {
-        continue;
-      }
-      
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const rawDate = (row[dateIndex] || '').trim();
+      const rawValue = (row[valueIndex] || '').trim();
+      const rawNotes = notesIndex >= 0 ? (row[notesIndex] || '').trim() : '';
+
+      if (!rawDate || !rawValue) continue;
+
+      const dateIso = this.parseLoopDate(rawDate);
+      if (!dateIso) continue;
+
       entries.push({
-        date: date.toISOString().split('T')[0],
-        value,
-        notes,
+        date: dateIso,
+        valueRaw: rawValue,
+        notes: rawNotes.length > 0 ? rawNotes : null,
       });
     }
-    
+
     return entries;
+  }
+
+  private parseDelimitedRows(content: string): string[][] {
+    const delimiter = this.detectDelimiter(content);
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < content.length; i++) {
+      const ch = content[i];
+      const next = content[i + 1];
+
+      if (ch === '"') {
+        if (inQuotes && next === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (!inQuotes && ch === delimiter) {
+        row.push(field);
+        field = '';
+        continue;
+      }
+
+      if (!inQuotes && (ch === '\n' || ch === '\r')) {
+        if (ch === '\r' && next === '\n') i++;
+        row.push(field);
+        field = '';
+        if (row.some((c) => c.trim() !== '')) rows.push(row);
+        row = [];
+        continue;
+      }
+
+      field += ch;
+    }
+
+    row.push(field);
+    if (row.some((c) => c.trim() !== '')) rows.push(row);
+    return rows;
+  }
+
+  private detectDelimiter(content: string): ',' | '\t' {
+    const firstLine = (content.split(/\r?\n/)[0] || '').trim();
+    return firstLine.includes('\t') ? '\t' : ',';
+  }
+
+  private parseLoopDate(rawDate: string): string | null {
+    const value = rawDate.trim();
+
+    // DD-MM-YYYY from Loop exports
+    const dmY = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (dmY) {
+      const day = Number(dmY[1]);
+      const month = Number(dmY[2]);
+      const year = Number(dmY[3]);
+      if (year < 2010 || year > 2100) return null;
+      const d = new Date(Date.UTC(year, month - 1, day));
+      if (
+        d.getUTCFullYear() === year &&
+        d.getUTCMonth() === month - 1 &&
+        d.getUTCDate() === day
+      ) {
+        return d.toISOString().split('T')[0];
+      }
+      return null;
+    }
+
+    // Epoch seconds/milliseconds fallback
+    if (/^\d{10,13}$/.test(value)) {
+      const n = Number(value);
+      const ms = value.length === 13 ? n : n * 1000;
+      const d = new Date(ms);
+      const year = d.getUTCFullYear();
+      if (!isNaN(d.getTime()) && year >= 2010 && year <= 2100) {
+        return d.toISOString().split('T')[0];
+      }
+      return null;
+    }
+
+    // Generic ISO/date fallback
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) return null;
+    const year = parsed.getUTCFullYear();
+    if (year < 2010 || year > 2100) return null;
+    return parsed.toISOString().split('T')[0];
+  }
+
+  private inferValueMode(
+    entries: Array<{ date: string; valueRaw: string; notes: string | null }>,
+    measurementType: string
+  ): 'NUMERICAL' | 'YES_NO' {
+    const normalizedMeasurement = (measurementType || '').toLowerCase();
+    if (normalizedMeasurement === 'count' || normalizedMeasurement === 'duration' || normalizedMeasurement === 'numerical') {
+      return 'NUMERICAL';
+    }
+
+    const sample = entries.slice(0, 50);
+    let numericCount = 0;
+    let bigNumericCount = 0;
+    let tokenCount = 0;
+
+    for (const row of sample) {
+      const raw = (row.valueRaw || '').trim();
+      if (!raw) continue;
+      const upper = raw.toUpperCase();
+      if (
+        upper.startsWith('YES') ||
+        upper.startsWith('NO') ||
+        upper.startsWith('SKIP') ||
+        upper.startsWith('UNKNOWN')
+      ) {
+        tokenCount++;
+        continue;
+      }
+
+      const n = Number(raw);
+      if (!isNaN(n)) {
+        numericCount++;
+        if (Math.abs(n) >= 1000) bigNumericCount++;
+      }
+    }
+
+    if (bigNumericCount > 0) return 'NUMERICAL';
+    if (numericCount > tokenCount) return 'NUMERICAL';
+    return 'YES_NO';
   }
   
   /**
