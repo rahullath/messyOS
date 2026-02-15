@@ -631,8 +631,17 @@ export async function generateDailyContext(
   supabaseKey?: string
 ): Promise<DailyContext> {
   // Create Supabase client
-  const url = supabaseUrl || process.env.PUBLIC_SUPABASE_URL || '';
-  const key = supabaseKey || process.env.PUBLIC_SUPABASE_ANON_KEY || '';
+  const runtimeEnv = (import.meta as any).env || {};
+  const url =
+    supabaseUrl ||
+    runtimeEnv.PUBLIC_SUPABASE_URL ||
+    process.env.PUBLIC_SUPABASE_URL ||
+    '';
+  const key =
+    supabaseKey ||
+    runtimeEnv.PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.PUBLIC_SUPABASE_ANON_KEY ||
+    '';
   
   if (!url || !key) {
     throw new Error('Supabase URL and key are required');

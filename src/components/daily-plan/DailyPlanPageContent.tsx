@@ -6,9 +6,9 @@ import DegradePlanButton from './DegradePlanButton';
 import DeletePlanButton from './DeletePlanButton';
 import PlanContextDisplay from './PlanContextDisplay';
 import ChainView from './ChainView';
-import { ExitGateService } from '../../lib/chains/exit-gate';
+import { DEFAULT_GATE_CONDITIONS, ExitGateService } from '../../lib/chains/exit-gate';
 import type { DailyPlan, EnergyState } from '../../types/daily-plan';
-import type { ExitGate } from '../../lib/chains/types';
+import type { ExitGate, GateCondition } from '../../lib/chains/types';
 
 export default function DailyPlanPageContent() {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
@@ -20,17 +20,19 @@ export default function DailyPlanPageContent() {
   const [activeTab, setActiveTab] = useState<'chain' | 'timeline'>('chain');
   const [exitGateService, setExitGateService] = useState<ExitGateService | null>(null);
   const [exitGate, setExitGate] = useState<ExitGate | null>(null);
+  const [gateTemplateConditions, setGateTemplateConditions] = useState<GateCondition[] | null>(null);
 
   // Fetch today's plan on mount
   useEffect(() => {
     fetchTodaysPlan();
+    fetchExitGateTemplate();
   }, []);
 
   // Initialize exit gate when plan changes
   useEffect(() => {
     if (plan?.chains && plan.chains.length > 0) {
-      // Initialize exit gate service for the first chain
-      const service = ExitGateService.createDefault();
+      const conditions = getInitialGateConditions(plan);
+      const service = new ExitGateService(conditions);
       setExitGateService(service);
       setExitGate(service.evaluateGate());
       
@@ -42,7 +44,118 @@ export default function DailyPlanPageContent() {
       setExitGateService(null);
       setExitGate(null);
     }
-  }, [plan]);
+  }, [plan, gateTemplateConditions]);
+
+  const normalizeGateConditions = (rawConditions: unknown): GateCondition[] => {
+    if (!Array.isArray(rawConditions)) {
+      return gateTemplateConditions?.map((condition) => ({ ...condition }))
+        || DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+    }
+
+    const parsedConditions: GateCondition[] = rawConditions
+      .map((value) => {
+        if (!value || typeof value !== 'object') return null;
+        const record = value as Record<string, unknown>;
+        const id = typeof record.id === 'string' ? record.id : null;
+        if (!id) return null;
+
+        const name = typeof record.name === 'string'
+          ? record.name
+          : DEFAULT_GATE_CONDITIONS.find((condition) => condition.id === id)?.name || id;
+
+        return {
+          id,
+          name,
+          satisfied: Boolean(record.satisfied),
+        } as GateCondition;
+      })
+      .filter((condition): condition is GateCondition => Boolean(condition));
+
+    const conditionMap = new Map<string, GateCondition>();
+
+    for (const condition of DEFAULT_GATE_CONDITIONS) {
+      conditionMap.set(condition.id, { ...condition });
+    }
+
+    for (const condition of parsedConditions) {
+      conditionMap.set(condition.id, condition);
+    }
+
+    return Array.from(conditionMap.values());
+  };
+
+  const findExitGateBlock = (targetPlan: DailyPlan) => {
+    if (!targetPlan.timeBlocks || targetPlan.timeBlocks.length === 0) {
+      return null;
+    }
+
+    const firstChainId = targetPlan.chains?.[0]?.chain_id;
+
+    return (
+      targetPlan.timeBlocks.find((block) => {
+        const metadata = (block.metadata || {}) as any;
+        const role = metadata.role;
+        if (!role || role.type !== 'exit-gate') return false;
+        if (!firstChainId) return true;
+        return metadata.chain_id === firstChainId || role.chain_id === firstChainId;
+      }) ||
+      targetPlan.timeBlocks.find((block) => {
+        const role = ((block.metadata || {}) as any).role;
+        return role?.type === 'exit-gate';
+      }) ||
+      null
+    );
+  };
+
+  const getInitialGateConditions = (targetPlan: DailyPlan): GateCondition[] => {
+    const exitGateBlock = findExitGateBlock(targetPlan);
+    if (!exitGateBlock) {
+      return DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+    }
+
+    const metadata = (exitGateBlock.metadata || {}) as any;
+    const roleConditions = metadata.role?.gate_conditions;
+    return normalizeGateConditions(roleConditions);
+  };
+
+  const resolvePersistedStepBlock = (
+    targetPlan: DailyPlan,
+    step: (NonNullable<DailyPlan['chains']>[number]['steps'])[number]
+  ) => {
+    if (!targetPlan.timeBlocks || targetPlan.timeBlocks.length === 0) {
+      return null;
+    }
+
+    const metadataBlockId = (step.metadata as any)?.time_block_id;
+    if (typeof metadataBlockId === 'string') {
+      const directMatch = targetPlan.timeBlocks.find((block) => block.id === metadataBlockId);
+      if (directMatch) return directMatch;
+    }
+
+    const getTimeMs = (value: Date | string | undefined): number | null => {
+      if (!value) return null;
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? null : parsed;
+    };
+
+    const stepStart = getTimeMs(step.start_time as Date | string);
+    const stepEnd = getTimeMs(step.end_time as Date | string);
+
+    return targetPlan.timeBlocks.find((block) => {
+      const metadataStepId = (block.metadata as any)?.step_id || (block.metadata as any)?.stepId;
+      if (metadataStepId === step.step_id) return true;
+
+      if (block.activityName !== step.name) return false;
+      const blockStart = getTimeMs(block.startTime as Date | string);
+      const blockEnd = getTimeMs(block.endTime as Date | string);
+      if (stepStart === null || stepEnd === null || blockStart === null || blockEnd === null) {
+        return false;
+      }
+
+      // Allow small timestamp drift from serialization/timezone conversion.
+      return Math.abs(blockStart - stepStart) <= 60_000 && Math.abs(blockEnd - stepEnd) <= 60_000;
+    }) || null;
+  };
 
   const fetchTodaysPlan = async () => {
     try {
@@ -217,26 +330,198 @@ export default function DailyPlanPageContent() {
   };
 
   const handleStepComplete = async (stepId: string) => {
-    // TODO: Implement step completion API call
-    // For now, just log it
-    console.log('Step completed:', stepId);
-    
-    // In a full implementation, this would:
-    // 1. Call API to mark step as completed
-    // 2. Refresh the plan to get updated chain state
+    if (!plan?.chains || plan.chains.length === 0) return;
+
+    let targetStep:
+      | {
+          chainIndex: number;
+          stepIndex: number;
+          step: (typeof plan.chains)[number]['steps'][number];
+        }
+      | null = null;
+
+    for (let chainIndex = 0; chainIndex < plan.chains.length; chainIndex++) {
+      const stepIndex = plan.chains[chainIndex].steps.findIndex(s => s.step_id === stepId);
+      if (stepIndex >= 0) {
+        targetStep = {
+          chainIndex,
+          stepIndex,
+          step: plan.chains[chainIndex].steps[stepIndex],
+        };
+        break;
+      }
+    }
+
+    if (!targetStep) {
+      setError('Unable to locate the selected chain step.');
+      return;
+    }
+
+    const matchedBlock = resolvePersistedStepBlock(plan, targetStep.step);
+
+    if (!matchedBlock) {
+      setError('This step is not synced to a persisted time block yet, so completion cannot be saved.');
+      return;
+    }
+
+    const nextStatus = targetStep.step.status === 'completed' ? 'pending' : 'completed';
+    const endpointAction = nextStatus === 'completed' ? 'complete' : 'uncomplete';
+    const previousPlan = plan;
+
+    setPlan((currentPlan) => {
+      if (!currentPlan?.chains) return currentPlan;
+
+      const nextChains = currentPlan.chains.map((chain, chainIndex) => {
+        if (chainIndex !== targetStep!.chainIndex) return chain;
+
+        const nextSteps = chain.steps.map((step, stepIndex) => {
+          if (stepIndex !== targetStep!.stepIndex) return step;
+          return {
+            ...step,
+            status: nextStatus as typeof step.status,
+          };
+        });
+
+        return {
+          ...chain,
+          steps: nextSteps,
+        };
+      });
+
+      return {
+        ...currentPlan,
+        chains: nextChains,
+      };
+    });
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+
+      const response = await fetch(`/api/time-blocks/${matchedBlock.id}/${endpointAction}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to toggle completion: ${response.statusText}`);
+      }
+    } catch (err) {
+      setPlan(previousPlan);
+      console.error('Error toggling step completion:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update step completion');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const handleGateConditionToggle = (conditionId: string, satisfied: boolean) => {
-    if (!exitGateService) return;
-    
-    // Toggle the condition
-    exitGateService.toggleCondition(conditionId, satisfied);
-    
-    // Re-evaluate the gate
-    const updatedGate = exitGateService.evaluateGate();
-    setExitGate(updatedGate);
-    
-    // TODO: Persist gate state to backend if needed
+  const fetchExitGateTemplate = async () => {
+    try {
+      const response = await fetch('/api/daily-plan/exit-gate-template');
+      if (!response.ok) return;
+
+      const payload = await response.json();
+      const conditions = normalizeGateConditions(payload?.gate_conditions);
+      setGateTemplateConditions(conditions);
+    } catch (err) {
+      console.error('Failed to load exit gate template:', err);
+    }
+  };
+
+  const handleGateConditionToggle = async (conditionId: string, satisfied: boolean) => {
+    if (!exitGateService || !plan) return;
+
+    const exitGateBlock = findExitGateBlock(plan);
+
+    const previousConditions = exitGateService.getAllConditions();
+    const previousGate = exitGate;
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+
+      // Optimistic update
+      exitGateService.toggleCondition(conditionId, satisfied);
+      const updatedGate = exitGateService.evaluateGate();
+      setExitGate(updatedGate);
+
+      if (exitGateBlock) {
+        const metadata = (exitGateBlock.metadata || {}) as any;
+        const mergedRole = {
+          ...(metadata.role || {}),
+          gate_conditions: updatedGate.conditions,
+        };
+
+        const response = await fetch(`/api/time-blocks/${exitGateBlock.id}/update-meta`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            metadata: {
+              ...metadata,
+              role: mergedRole,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to persist gate conditions: ${response.statusText}`);
+        }
+
+        // Keep local plan metadata in sync without refetch.
+        setPlan((currentPlan) => {
+          if (!currentPlan?.timeBlocks) return currentPlan;
+
+          const nextBlocks = currentPlan.timeBlocks.map((block) => {
+            if (block.id !== exitGateBlock.id) return block;
+
+            const blockMetadata = (block.metadata || {}) as any;
+            return {
+              ...block,
+              metadata: {
+                ...blockMetadata,
+                role: {
+                  ...(blockMetadata.role || {}),
+                  gate_conditions: updatedGate.conditions,
+                },
+              },
+            };
+          });
+
+          return {
+            ...currentPlan,
+            timeBlocks: nextBlocks,
+          };
+        });
+      } else {
+        // If there is no day-level exit gate block yet, keep this as local state only.
+        // Template editing is handled in Settings and should not be mutated from live-day toggles.
+      }
+    } catch (err) {
+      // Rollback optimistic update
+      const rollbackService = new ExitGateService(previousConditions);
+      setExitGateService(rollbackService);
+      setExitGate(previousGate || rollbackService.evaluateGate());
+      console.error('Error updating exit gate condition:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update exit gate condition');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const isChainStepPersistable = (stepId: string): boolean => {
+    if (!plan?.chains || plan.chains.length === 0) return false;
+
+    for (const chain of plan.chains) {
+      const step = chain.steps.find((item) => item.step_id === stepId);
+      if (step) {
+        return Boolean(resolvePersistedStepBlock(plan, step));
+      }
+    }
+
+    return false;
   };
 
   // Loading state
@@ -367,6 +652,7 @@ export default function DailyPlanPageContent() {
               exitGate={exitGate}
               onStepComplete={handleStepComplete}
               onGateConditionToggle={handleGateConditionToggle}
+              isStepPersistable={isChainStepPersistable}
             />
           </div>
 

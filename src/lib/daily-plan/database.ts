@@ -37,6 +37,8 @@ function rowToDailyPlan(row: DailyPlanRow): DailyPlan {
 }
 
 function rowToTimeBlock(row: TimeBlockRow): TimeBlock {
+  const rawMetadata = (row.metadata || {}) as Record<string, any>;
+
   return {
     id: row.id,
     planId: row.plan_id,
@@ -50,9 +52,14 @@ function rowToTimeBlock(row: TimeBlockRow): TimeBlock {
     status: row.status,
     skipReason: row.skip_reason,
     metadata: row.metadata ? {
-      targetTime: row.metadata.target_time ? new Date(row.metadata.target_time) : undefined,
-      placementReason: row.metadata.placement_reason,
-      skipReason: row.metadata.skip_reason,
+      ...rawMetadata,
+      targetTime: rawMetadata.targetTime
+        ? new Date(rawMetadata.targetTime)
+        : rawMetadata.target_time
+          ? new Date(rawMetadata.target_time)
+          : undefined,
+      placementReason: rawMetadata.placementReason ?? rawMetadata.placement_reason,
+      skipReason: rawMetadata.skipReason ?? rawMetadata.skip_reason,
     } : undefined,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),

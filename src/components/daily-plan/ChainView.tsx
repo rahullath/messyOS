@@ -7,6 +7,7 @@ interface ChainViewProps {
   exitGate: ExitGate;
   onStepComplete: (stepId: string) => void;
   onGateConditionToggle: (conditionId: string, satisfied: boolean) => void;
+  isStepPersistable?: (stepId: string) => boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ export default function ChainView({
   exitGate,
   onStepComplete,
   onGateConditionToggle,
+  isStepPersistable,
 }: ChainViewProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [dailyContext, setDailyContext] = useState<DailyContext | null>(null);
@@ -237,6 +239,7 @@ export default function ChainView({
           {chain.steps.map((step, index) => {
             const isCurrentStep = currentStep?.step_id === step.step_id;
             const isExpanded = expandedSteps.has(step.step_id);
+            const isPersistable = isStepPersistable ? isStepPersistable(step.step_id) : true;
 
             return (
               <div
@@ -254,11 +257,16 @@ export default function ChainView({
                     {/* Checkbox/Status Icon */}
                     <button
                       onClick={() => {
-                        if (step.status === 'pending' || step.status === 'in-progress') {
+                        if (!isPersistable) return;
+                        if (
+                          step.status === 'pending' ||
+                          step.status === 'in-progress' ||
+                          step.status === 'completed'
+                        ) {
                           onStepComplete(step.step_id);
                         }
                       }}
-                      disabled={step.status === 'completed' || step.status === 'skipped'}
+                      disabled={step.status === 'skipped' || !isPersistable}
                       className="mr-3 mt-0.5 flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-accent-primary rounded-full"
                     >
                       {getStepIcon(step)}
@@ -279,6 +287,11 @@ export default function ChainView({
                             {step.is_required && (
                               <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-red-500/20 text-red-400 rounded">
                                 Required
+                              </span>
+                            )}
+                            {!isPersistable && (
+                              <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-gray-500/20 text-gray-300 rounded">
+                                Not synced
                               </span>
                             )}
                             {isCurrentStep && (

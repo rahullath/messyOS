@@ -36,6 +36,7 @@ import { AnchorService } from '../anchors/anchor-service';
 import { ChainGenerator } from '../chains/chain-generator';
 import { LocationStateTracker } from '../chains/location-state';
 import { WakeRampGenerator } from '../chains/wake-ramp';
+import { DEFAULT_GATE_CONDITIONS } from '../chains/exit-gate';
 import type { ExecutionChain, HomeInterval, LocationPeriod, WakeRamp } from '../chains/types';
 
 // Internal types for plan building
@@ -1325,7 +1326,55 @@ export class PlanBuilderService {
       } : undefined,
     }));
 
-    const createdBlocks = await createTimeBlocks(this.supabase, timeBlocksData);
+    // Persist chain steps as dedicated time blocks so chain interactions can map 1:1 to DB rows.
+    // Keep these out of timeline UX via metadata.chain_view_only.
+    const maxSequenceOrder = timeBlocksData.reduce((max, block) => (
+      block.sequence_order > max ? block.sequence_order : max
+    ), 0);
+    let chainSequenceOrder = maxSequenceOrder;
+
+    const chainTimeBlocksData: CreateTimeBlock[] = [];
+    for (const chain of chains) {
+      for (const step of chain.steps) {
+        const roleType = step.role;
+        const roleRequired = Boolean(step.is_required);
+        const role: any = {
+          type: roleType,
+          required: roleRequired,
+          chain_id: chain.chain_id,
+        };
+
+        if (roleType === 'exit-gate') {
+          role.gate_conditions = DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+        }
+
+        chainSequenceOrder += 1;
+        chainTimeBlocksData.push({
+          plan_id: plan.id,
+          start_time: new Date(step.start_time).toISOString(),
+          end_time: new Date(step.end_time).toISOString(),
+          activity_type: this.mapChainRoleToActivityType(roleType),
+          activity_name: step.name,
+          activity_id: chain.anchor_id,
+          is_fixed: true,
+          sequence_order: chainSequenceOrder,
+          status: step.status === 'completed' ? 'completed' : step.status === 'skipped' ? 'skipped' : 'pending',
+          metadata: {
+            role,
+            chain_id: chain.chain_id,
+            step_id: step.step_id,
+            anchor_id: chain.anchor_id,
+            chain_view_only: true,
+            ...(step.metadata || {}),
+          },
+        });
+      }
+    }
+
+    const createdBlocks = await createTimeBlocks(
+      this.supabase,
+      [...timeBlocksData, ...chainTimeBlocksData]
+    );
 
     // Create exit times using the commitment-to-travel-block mapping
     const exitTimesData: CreateExitTime[] = [];
@@ -1366,6 +1415,24 @@ export class PlanBuilderService {
       throw new Error('Failed to fetch created plan');
     }
 
+    const stepIdToBlockId = new Map<string, string>();
+    for (const block of createdBlocks) {
+      const metadataStepId = (block.metadata as any)?.step_id || (block.metadata as any)?.stepId;
+      if (typeof metadataStepId === 'string') {
+        stepIdToBlockId.set(metadataStepId, block.id);
+      }
+    }
+    for (const chain of chains) {
+      for (const step of chain.steps) {
+        const matchedBlockId = stepIdToBlockId.get(step.step_id);
+        if (!matchedBlockId) continue;
+        step.metadata = {
+          ...(step.metadata || {}),
+          time_block_id: matchedBlockId,
+        };
+      }
+    }
+
     // V2: Attach chain data to the plan object
     // Note: This data is not persisted to database in V2, but returned in memory
     // Requirements: 12.5, 18.1, 18.2, 18.3, 18.4
@@ -1375,6 +1442,19 @@ export class PlanBuilderService {
     (completePlan as any).homeIntervals = homeIntervals;
 
     return completePlan;
+  }
+
+  private mapChainRoleToActivityType(role: string): ActivityType {
+    switch (role) {
+      case 'anchor':
+        return 'commitment';
+      case 'recovery':
+        return 'buffer';
+      case 'chain-step':
+      case 'exit-gate':
+      default:
+        return 'routine';
+    }
   }
 
   /**

@@ -2,6 +2,40 @@
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
+function getDefaultPreferences() {
+  return {
+    theme: 'dark',
+    accent_color: '#8b5cf6',
+    enabled_modules: ['habits', 'tasks', 'health', 'finance'],
+    module_order: ['habits', 'tasks', 'health', 'finance'],
+    dashboard_layout: {},
+    ai_personality: 'professional',
+    ai_proactivity_level: 3,
+    data_retention_days: 365,
+    share_analytics: false,
+    subscription_status: 'trial',
+    trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+function normalizePreferencePayload(raw: unknown) {
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, any>) : {};
+  const defaults = getDefaultPreferences();
+  const enabledModules = Array.isArray(record.enabled_modules)
+    ? record.enabled_modules.filter((value: unknown) => typeof value === 'string')
+    : defaults.enabled_modules;
+  const moduleOrder = Array.isArray(record.module_order)
+    ? record.module_order.filter((value: unknown) => typeof value === 'string')
+    : enabledModules;
+
+  return {
+    ...defaults,
+    ...record,
+    enabled_modules: enabledModules,
+    module_order: moduleOrder,
+  };
+}
+
 export const GET: APIRoute = async ({ cookies }) => {
   try {
     const serverAuth = createServerAuth(cookies);
@@ -84,13 +118,39 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
         return obj;
       }, {} as any);
 
-    // Add updated timestamp
-    sanitizedUpdates.updated_at = new Date().toISOString();
+    const { data: existing, error: existingError } = await serverAuth.supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('❌ Update preferences fetch error:', existingError);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: 'Failed to load existing preferences' 
+      }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const existingPayload = normalizePreferencePayload(existing?.preferences);
+    const nextPayload = {
+      ...existingPayload,
+      ...sanitizedUpdates,
+    };
 
     const { data, error } = await serverAuth.supabase
       .from('user_preferences')
-      .update(sanitizedUpdates)
-      .eq('user_id', user.id)
+      .upsert(
+        {
+          user_id: user.id,
+          preferences: nextPayload,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
       .select()
       .single();
 
@@ -144,24 +204,16 @@ export const DELETE: APIRoute = async ({ cookies }) => {
 
     console.log('🗑️ Resetting preferences to defaults for user:', user.id);
 
-    // Reset to default preferences
-    const defaultPrefs = {
-      theme: 'dark',
-      accent_color: '#8b5cf6',
-      enabled_modules: ['habits', 'tasks', 'health', 'finance'],
-      module_order: ['habits', 'tasks', 'health', 'finance'],
-      dashboard_layout: {},
-      ai_personality: 'professional',
-      ai_proactivity_level: 3,
-      data_retention_days: 365,
-      share_analytics: false,
-      updated_at: new Date().toISOString()
-    };
-
     const { data, error } = await serverAuth.supabase
       .from('user_preferences')
-      .update(defaultPrefs)
-      .eq('user_id', user.id)
+      .upsert(
+        {
+          user_id: user.id,
+          preferences: getDefaultPreferences(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
       .select()
       .single();
 

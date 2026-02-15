@@ -163,6 +163,32 @@ const daysLeft = trialEndDate ? Math.max(0, Math.ceil((trialEndDate.getTime() - 
         </div>
       </div>
 
+      <!-- Exit Gate Template -->
+      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-6">
+        <h2 class="text-xl font-semibold text-white mb-2">Exit Gate Template</h2>
+        <p class="text-gray-300 text-sm mb-4">
+          Customize your default exit checklist. These conditions seed your day and can still be adjusted in Chain View.
+        </p>
+
+        <div id="exit-gate-list" class="space-y-3"></div>
+
+        <div class="mt-4 flex flex-col sm:flex-row gap-3">
+          <input
+            id="new-exit-gate-label"
+            type="text"
+            maxlength="60"
+            placeholder="New condition label (e.g., Wallet, Laptop charger)"
+            class="flex-1 bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+          />
+          <button
+            id="add-exit-gate-condition"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition-colors"
+          >
+            Add Condition
+          </button>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="flex flex-col sm:flex-row gap-4">
         <button 
@@ -186,6 +212,156 @@ const daysLeft = trialEndDate ? Math.max(0, Math.ceil((trialEndDate.getTime() - 
 
   <script>
     import { preferencesClient } from '../lib/auth/preferences-client';
+
+    type GateCondition = {
+      id: string;
+      name: string;
+      satisfied: boolean;
+    };
+
+    const DEFAULT_EXIT_GATE_CONDITIONS: GateCondition[] = [
+      { id: 'keys', name: 'Keys present', satisfied: false },
+      { id: 'phone', name: 'Phone charged >= 20%', satisfied: false },
+      { id: 'water', name: 'Water bottle filled', satisfied: false },
+      { id: 'meds', name: 'Meds taken', satisfied: false },
+      { id: 'cat-fed', name: 'Cat fed', satisfied: false },
+      { id: 'bag-packed', name: 'Bag packed', satisfied: false },
+      { id: 'eyeglasses', name: 'Eyeglasses', satisfied: false },
+    ];
+
+    let exitGateTemplate: GateCondition[] = [];
+
+    function slugifyConditionId(label: string): string {
+      const base = label
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+      return base || `condition-${Date.now()}`;
+    }
+
+    function normalizeGateConditions(raw: unknown): GateCondition[] {
+      if (!Array.isArray(raw)) {
+        return DEFAULT_EXIT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+      }
+
+      const parsed = raw
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null;
+          const record = item as Record<string, unknown>;
+          const id = typeof record.id === 'string' ? record.id : null;
+          if (!id) return null;
+
+          const fallbackName = DEFAULT_EXIT_GATE_CONDITIONS.find((c) => c.id === id)?.name || id;
+          return {
+            id,
+            name: typeof record.name === 'string' ? record.name : fallbackName,
+            satisfied: Boolean(record.satisfied),
+          } as GateCondition;
+        })
+        .filter((condition): condition is GateCondition => Boolean(condition));
+
+      const conditionMap = new Map<string, GateCondition>();
+      for (const condition of DEFAULT_EXIT_GATE_CONDITIONS) {
+        conditionMap.set(condition.id, { ...condition });
+      }
+      for (const condition of parsed) {
+        conditionMap.set(condition.id, condition);
+      }
+
+      return Array.from(conditionMap.values());
+    }
+
+    function escapeHtml(value: string): string {
+      return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderExitGateTemplate() {
+      const container = document.getElementById('exit-gate-list');
+      if (!container) return;
+
+      if (exitGateTemplate.length === 0) {
+        container.innerHTML = `
+          <div class="text-sm text-gray-400 border border-gray-700 rounded p-3">
+            No conditions configured. Add one below.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = exitGateTemplate
+        .map((condition, index) => `
+          <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border border-gray-700 rounded p-3">
+            <input
+              type="text"
+              value="${escapeHtml(condition.name)}"
+              data-exit-gate-name-index="${index}"
+              class="bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
+              maxlength="60"
+            />
+            <label class="inline-flex items-center space-x-2 text-sm text-gray-200">
+              <input
+                type="checkbox"
+                ${condition.satisfied ? 'checked' : ''}
+                data-exit-gate-checked-index="${index}"
+                class="rounded"
+              />
+              <span>Checked by default</span>
+            </label>
+            <button
+              data-exit-gate-remove-index="${index}"
+              class="bg-red-600/80 hover:bg-red-600 text-white px-3 py-2 rounded transition-colors text-sm"
+            >
+              Remove
+            </button>
+          </div>
+        `)
+        .join('');
+    }
+
+    async function loadExitGateTemplate() {
+      try {
+        const response = await fetch('/api/daily-plan/exit-gate-template');
+        if (!response.ok) {
+          exitGateTemplate = DEFAULT_EXIT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+          renderExitGateTemplate();
+          return;
+        }
+
+        const payload = await response.json();
+        exitGateTemplate = normalizeGateConditions(payload?.gate_conditions);
+        renderExitGateTemplate();
+      } catch (error) {
+        console.error('Failed to load exit gate template:', error);
+        exitGateTemplate = DEFAULT_EXIT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+        renderExitGateTemplate();
+      }
+    }
+
+    async function saveExitGateTemplate(): Promise<boolean> {
+      try {
+        const response = await fetch('/api/daily-plan/exit-gate-template', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            gate_conditions: exitGateTemplate,
+          }),
+        });
+
+        return response.ok;
+      } catch (error) {
+        console.error('Save exit gate template error:', error);
+        return false;
+      }
+    }
     
     // Initialize current values
     document.addEventListener('DOMContentLoaded', () => {
@@ -200,6 +376,70 @@ const daysLeft = trialEndDate ? Math.max(0, Math.ceil((trialEndDate.getTime() - 
       if (aiPersonalitySelect) {
         aiPersonalitySelect.value = aiPersonalitySelect.dataset.current || 'professional';
       }
+
+      loadExitGateTemplate();
+    });
+
+    document.getElementById('exit-gate-list')?.addEventListener('input', (event) => {
+      const target = event.target as HTMLInputElement;
+      const nameIndex = target.dataset.exitGateNameIndex;
+      const checkedIndex = target.dataset.exitGateCheckedIndex;
+
+      if (nameIndex !== undefined) {
+        const index = Number(nameIndex);
+        if (!Number.isNaN(index) && exitGateTemplate[index]) {
+          exitGateTemplate[index] = {
+            ...exitGateTemplate[index],
+            name: target.value.trimStart(),
+          };
+        }
+      }
+
+      if (checkedIndex !== undefined) {
+        const index = Number(checkedIndex);
+        if (!Number.isNaN(index) && exitGateTemplate[index]) {
+          exitGateTemplate[index] = {
+            ...exitGateTemplate[index],
+            satisfied: target.checked,
+          };
+        }
+      }
+    });
+
+    document.getElementById('exit-gate-list')?.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      const removeIndex = target.dataset.exitGateRemoveIndex;
+      if (removeIndex === undefined) return;
+
+      const index = Number(removeIndex);
+      if (Number.isNaN(index) || !exitGateTemplate[index]) return;
+
+      exitGateTemplate.splice(index, 1);
+      renderExitGateTemplate();
+    });
+
+    document.getElementById('add-exit-gate-condition')?.addEventListener('click', () => {
+      const input = document.getElementById('new-exit-gate-label') as HTMLInputElement;
+      if (!input) return;
+
+      const label = input.value.trim();
+      if (!label) return;
+
+      const baseId = slugifyConditionId(label);
+      let id = baseId;
+      let suffix = 2;
+      while (exitGateTemplate.some((condition) => condition.id === id)) {
+        id = `${baseId}-${suffix++}`;
+      }
+
+      exitGateTemplate.push({
+        id,
+        name: label,
+        satisfied: false,
+      });
+
+      input.value = '';
+      renderExitGateTemplate();
     });
 
     // Update proactivity level display
@@ -259,9 +499,13 @@ const daysLeft = trialEndDate ? Math.max(0, Math.ceil((trialEndDate.getTime() - 
           ai_personality: aiPersonality,
           ai_proactivity_level: aiProactivity
         });
+
+        const gateTemplateSaved = await saveExitGateTemplate();
         
-        if (success) {
+        if (success && gateTemplateSaved) {
           showMessage('Settings saved successfully!', 'success');
+        } else if (success && !gateTemplateSaved) {
+          showMessage('General settings saved, but exit gate template failed to save.', 'error');
         } else {
           showMessage('Failed to save settings. Please try again.', 'error');
         }
@@ -278,8 +522,10 @@ const daysLeft = trialEndDate ? Math.max(0, Math.ceil((trialEndDate.getTime() - 
           showMessage('Resetting settings...', 'info');
           
           const success = await preferencesClient.resetToDefaults();
+          exitGateTemplate = DEFAULT_EXIT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+          const gateResetSuccess = await saveExitGateTemplate();
           
-          if (success) {
+          if (success && gateResetSuccess) {
             showMessage('Settings reset to defaults!', 'success');
             setTimeout(() => {
               window.location.reload();

@@ -81,11 +81,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     // Step 4: Generate fresh DailyContext
     let context;
     try {
-      // Get Supabase credentials from environment
-      const supabaseUrl = process.env.PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.PUBLIC_SUPABASE_ANON_KEY;
-      
-      context = await generateDailyContext(user.id, date, supabaseUrl, supabaseKey);
+      context = await generateDailyContext(user.id, date);
     } catch (error) {
       console.error('Failed to generate daily context:', error);
       

@@ -13,24 +13,28 @@ export default function ActivityList({ plan, onComplete, onSkip, isUpdating = fa
   const [showSkipInput, setShowSkipInput] = useState(false);
   const [skipBlockId, setSkipBlockId] = useState<string | null>(null);
 
+  const visibleTimeBlocks = (plan.timeBlocks || []).filter((block) => {
+    return !(block.metadata as any)?.chain_view_only;
+  });
+
   // Get current block (first pending block)
-  const currentBlock = plan.timeBlocks?.find(block => block.status === 'pending') || null;
+  const currentBlock = visibleTimeBlocks.find(block => block.status === 'pending') || null;
   
   // Get next 2 blocks after current
-  const nextBlocks = currentBlock && plan.timeBlocks
-    ? plan.timeBlocks
-        .slice(plan.timeBlocks.indexOf(currentBlock) + 1)
+  const nextBlocks = currentBlock
+    ? visibleTimeBlocks
+        .slice(visibleTimeBlocks.indexOf(currentBlock) + 1)
         .filter(block => block.status === 'pending')
         .slice(0, 2)
     : [];
 
   // Check if plan is truly complete (Requirements 6.1, 6.2, 6.3, 6.4, 6.5)
   const isPlanComplete = () => {
-    if (!plan.timeBlocks || plan.timeBlocks.length === 0) return false;
+    if (visibleTimeBlocks.length === 0) return false;
     
     // Get all blocks after planStart (Requirement 6.1)
     const planStartTime = new Date(plan.planStart);
-    const blocksAfterPlanStart = plan.timeBlocks.filter(block => {
+    const blocksAfterPlanStart = visibleTimeBlocks.filter(block => {
       const blockEndTime = new Date(block.endTime);
       return blockEndTime > planStartTime;
     });
@@ -96,7 +100,7 @@ export default function ActivityList({ plan, onComplete, onSkip, isUpdating = fa
     }
   };
 
-  if (!plan.timeBlocks || plan.timeBlocks.length === 0) {
+  if (visibleTimeBlocks.length === 0) {
     return (
       <div className="bg-surface rounded-xl border border-border p-6 text-center">
         <p className="text-text-muted">No activities scheduled</p>
@@ -109,7 +113,7 @@ export default function ActivityList({ plan, onComplete, onSkip, isUpdating = fa
       <div className="p-6 border-b border-border">
         <h2 className="text-2xl font-semibold text-text-primary">Today's Schedule</h2>
         <p className="text-sm text-text-muted mt-1">
-          {plan.timeBlocks.filter(b => b.status === 'completed').length} of {plan.timeBlocks.length} activities completed
+          {visibleTimeBlocks.filter(b => b.status === 'completed').length} of {visibleTimeBlocks.length} activities completed
         </p>
       </div>
 
@@ -230,10 +234,10 @@ export default function ActivityList({ plan, onComplete, onSkip, isUpdating = fa
         {/* All Activities (Collapsible) */}
         <details className="mt-6">
           <summary className="cursor-pointer text-sm font-semibold text-text-muted uppercase tracking-wide hover:text-text-primary transition-colors">
-            View All Activities ({plan.timeBlocks.length})
+            View All Activities ({visibleTimeBlocks.length})
           </summary>
           <div className="mt-3 space-y-2">
-            {plan.timeBlocks.map((block) => (
+            {visibleTimeBlocks.map((block) => (
               <div
                 key={block.id}
                 className={`border rounded-lg p-3 ${

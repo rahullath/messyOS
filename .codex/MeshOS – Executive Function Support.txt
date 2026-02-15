@@ -1,0 +1,341 @@
+MeshOS – Executive Function Support Framework
+Version: Human-First / Low-Dependency Architecture
+Core Philosophy
+
+MeshOS should:
+
+Externalize executive load temporarily
+
+Reduce chaos, not replace decision-making
+
+Support autonomy, not create reliance
+
+Be progressively reducible over time
+
+The goal is:
+
+Make the user stronger — not more dependent.
+
+Feature Evaluation Matrix
+
+Each feature is evaluated on:
+
+🧠 EF Impact (Executive Function support)
+
+⚙️ Technical Feasibility
+
+🔗 Dependency Risk
+
+✅ Recommendation
+
+CATEGORY 1 — Execution Structure (High Value, Low Dependency)
+1. Chain-Based Execution (Keep)
+
+What it does:
+Externalizes sequencing and dependencies.
+
+🧠 EF Impact: Very High
+⚙️ Feasibility: Already built
+🔗 Dependency Risk: Low
+
+Why dependency risk is low:
+
+It does not decide life.
+
+It only makes sequence visible.
+
+User can ignore it.
+
+✅ Keep as core feature.
+
+2. Exit Readiness Gate (Keep)
+
+Binary prerequisite checklist before leaving.
+
+🧠 EF Impact: High
+⚙️ Feasibility: Built
+🔗 Dependency Risk: Low
+
+This reduces cognitive load.
+It does not remove autonomy.
+
+✅ Keep.
+
+3. Duration Priors (Keep, Invisible)
+
+Uses historical medians for timing realism.
+
+🧠 EF Impact: High
+⚙️ Feasibility: Implemented
+🔗 Dependency Risk: Very Low
+
+User is not relying on app to estimate life —
+It just prevents self-deception.
+
+✅ Keep.
+
+4. Risk Inflators (Keep, Subtle)
+
+Inflates duration if low energy or sleep debt.
+
+🧠 EF Impact: High
+⚙️ Feasibility: Built
+🔗 Dependency Risk: Very Low
+
+No spoon-feeding.
+Just adaptive realism.
+
+✅ Keep.
+
+CATEGORY 2 — Adaptive Intelligence (High Value, Moderate Risk)
+5. Executive Bandwidth Meter
+
+Calculates estimated bandwidth from sleep, habits, substances.
+
+🧠 EF Impact: High
+⚙️ Feasibility: Medium
+🔗 Dependency Risk: Moderate
+
+Risk:
+If user starts believing the app decides whether they can function.
+
+Mitigation:
+Make it:
+
+A suggestion
+
+Not a limiter
+
+Always overrideable
+
+Recommended framing:
+“Estimated cognitive load today: Low / Medium / High”
+
+Not:
+“You cannot do X today.”
+
+✅ Build cautiously.
+
+6. Minimal Survival Mode
+
+When collapse detected, generate 3-step day.
+
+🧠 EF Impact: Extremely High
+⚙️ Feasibility: Medium
+🔗 Dependency Risk: Moderate
+
+Risk:
+User waits for app to tell them how to survive.
+
+Mitigation:
+Make it:
+
+User-triggered
+
+Not auto-triggered
+
+Manual toggle: “Today is rough”
+
+This preserves agency.
+
+✅ Build as manual mode.
+
+7. Activation Energy Sequencing
+
+Reorders chain to start with lowest activation steps.
+
+🧠 EF Impact: Very High
+⚙️ Feasibility: Medium
+🔗 Dependency Risk: Low–Moderate
+
+This doesn’t decide life.
+It just smooths entry.
+
+Dependency risk is acceptable.
+
+✅ Strong candidate.
+
+CATEGORY 3 — Emotional Regulation Layer (Careful Zone)
+8. Micro-Regulation Prompts
+
+2-minute breathing / reset prompts.
+
+🧠 EF Impact: Moderate
+⚙️ Feasibility: Easy
+🔗 Dependency Risk: High if overused
+
+Risk:
+App becomes emotional crutch.
+
+Mitigation:
+
+No push notifications.
+
+Only appears if user taps “I’m stuck.”
+
+No AI chat therapy mode.
+
+✅ Only as user-initiated tool.
+
+9. AI Companion / Conversational Mode
+
+Let’s be clear.
+
+🧠 EF Impact: Mixed
+⚙️ Feasibility: Easy
+🔗 Dependency Risk: Extremely High
+
+This is where dependency explodes.
+
+You already fear:
+
+autistic introverts yapping to AI instead of humans.
+
+Correct instinct.
+
+❌ Do not build AI companion mode.
+
+CATEGORY 4 — Cognitive Load Reduction (Healthy Automation)
+10. Decision Fatigue Reducers
+
+Predefined shower types, meal templates, routine presets.
+
+🧠 EF Impact: High
+⚙️ Feasibility: Easy
+🔗 Dependency Risk: Low
+
+Important distinction:
+Providing templates ≠ making decisions for user.
+
+User still chooses template.
+
+✅ Build.
+
+11. Smart Task Classification (Fix Laundry Anchor Issue)
+
+Distinguish:
+
+Commitment events
+
+At-home tasks
+
+Travel-required events
+
+🧠 EF Impact: High
+⚙️ Feasibility: Medium
+🔗 Dependency Risk: Very Low
+
+This is structural clarity.
+
+✅ Must build.
+
+CATEGORY 5 — Long-Term Strength Building (Anti-Dependency Features)
+
+These are the most important.
+
+12. Gradual Scaffold Reduction Mode
+
+This is powerful.
+
+Over time:
+
+Hide some prompts
+
+Remove exit gates
+
+Reduce chain guidance
+
+User can choose:
+“Reduce assistance level.”
+
+🧠 EF Impact: Long-term High
+⚙️ Feasibility: Medium
+🔗 Dependency Risk: Actively Reduces Risk
+
+This prevents app addiction.
+
+✅ Highly recommended.
+
+13. Weekly Reflection (Not Analytics)
+
+Instead of:
+
+Performance graphs
+
+Streak obsession
+
+Do:
+“What helped this week?”
+“What caused breakdowns?”
+
+Manual reflection.
+
+No AI.
+
+🧠 EF Impact: High
+⚙️ Feasibility: Easy
+🔗 Dependency Risk: Very Low
+
+This builds metacognition.
+
+✅ Strong feature.
+
+CATEGORY 6 — What To Avoid
+
+❌ Full Life Quantification Dashboard
+Becomes surveillance self-obsession.
+
+❌ Social Comparison
+No leaderboards. Ever.
+
+❌ Gamified Streak Shame
+Executive dysfunction already includes guilt.
+
+❌ AI Therapy Mode
+Dangerous territory.
+
+❌ Over-Automation
+If app schedules everything without user input,
+user becomes passive.
+
+Core Vision Clarified
+
+MeshOS should be:
+
+A transparent executive scaffold
+that makes daily traversal survivable
+without replacing the user’s agency.
+
+Not:
+
+A life optimizer
+
+A therapist
+
+A dopamine engine
+
+A digital babysitter
+
+The Dependency Test
+
+For any feature ask:
+
+If this feature disappeared tomorrow,
+would the user function worse than before they installed the app?
+
+If yes → redesign.
+
+Feasibility Summary
+Feature	Build Now	Later	Avoid
+Chain View	✅		
+Exit Gate	✅		
+Duration Priors	✅		
+Risk Inflators	✅		
+Activation Sequencing	✅		
+Minimal Survival Mode	✅ (manual)		
+Bandwidth Meter	⚠️ cautious		
+Decision Templates	✅		
+Scaffold Reduction		✅	
+Weekly Reflection	✅		
+AI Companion			❌
+Gamification			❌

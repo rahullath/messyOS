@@ -62,25 +62,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Create default preferences for new user
-    const { data: newPrefs, error: prefsError } = await serverAuth.supabase
-      .from('user_preferences')
-      .insert({
-        user_id: user.id,
-        theme: 'dark',
-        accent_color: '#8b5cf6',
-        enabled_modules: ['habits', 'tasks', 'health', 'finance'],
-        module_order: ['habits', 'tasks', 'health', 'finance'],
-        ai_personality: 'professional',
-        ai_proactivity_level: 3,
-        subscription_status: 'trial',
-        trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      })
-      .select()
-      .single();
+    // Create default preferences for new user.
+    const newPrefs = await serverAuth.createDefaultPreferences(user.id, userEmail);
 
-    if (prefsError) {
-      console.error('❌ Failed to create user preferences:', prefsError);
+    if (!newPrefs) {
+      console.error('❌ Failed to create user preferences for user:', user.id);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Failed to activate user account' 

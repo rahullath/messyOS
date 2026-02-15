@@ -2,6 +2,43 @@
 import { createServerClient } from '../supabase/server';
 import type { User } from '@supabase/supabase-js';
 
+function getDefaultUserPreferences() {
+  return {
+    theme: 'dark',
+    accent_color: '#8b5cf6',
+    enabled_modules: ['habits', 'tasks', 'health', 'finance'],
+    module_order: ['habits', 'tasks', 'health', 'finance'],
+    dashboard_layout: {},
+    ai_personality: 'professional',
+    ai_proactivity_level: 3,
+    data_retention_days: 365,
+    share_analytics: false,
+    subscription_status: 'trial',
+    trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+function normalizePreferenceRecord(record: any) {
+  const defaults = getDefaultUserPreferences();
+  const payload = record?.preferences && typeof record.preferences === 'object'
+    ? record.preferences
+    : {};
+  const enabledModules = Array.isArray(payload.enabled_modules)
+    ? payload.enabled_modules.filter((value: unknown) => typeof value === 'string')
+    : defaults.enabled_modules;
+  const moduleOrder = Array.isArray(payload.module_order)
+    ? payload.module_order.filter((value: unknown) => typeof value === 'string')
+    : enabledModules;
+
+  return {
+    ...(record || {}),
+    ...defaults,
+    ...(payload || {}),
+    enabled_modules: enabledModules,
+    module_order: moduleOrder,
+  };
+}
+
 export class ServerAuth {
   public supabase: any;
 
@@ -52,7 +89,8 @@ export class ServerAuth {
         return null;
       }
 
-      return data;
+      if (!data) return null;
+      return normalizePreferenceRecord(data);
     } catch (error) {
       console.error('Error fetching preferences:', error);
       return null;
@@ -65,14 +103,7 @@ export class ServerAuth {
 
       const defaultPrefs = {
         user_id: userId,
-        theme: 'dark',
-        accent_color: '#8b5cf6',
-        enabled_modules: ['habits', 'tasks', 'health', 'finance'],
-        module_order: ['habits', 'tasks', 'health', 'finance'],
-        ai_personality: 'professional',
-        ai_proactivity_level: 3,
-        subscription_status: 'trial',
-        trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        preferences: getDefaultUserPreferences(),
       };
 
       const { data, error } = await this.supabase
@@ -93,7 +124,7 @@ export class ServerAuth {
         await this.activateFromWaitlist(userEmail);
       }
 
-      return data;
+      return normalizePreferenceRecord(data);
     } catch (error) {
       console.error('❌ Error creating default preferences:', error);
       return null;

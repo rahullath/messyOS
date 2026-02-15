@@ -97,6 +97,10 @@ export interface TimeBlockMetadata {
   template_fallback?: boolean;
   original_anchor_type?: string;
   fallback_template?: string;
+
+  // Chain execution completion metadata
+  completed_at?: string;
+  completed_by?: string;
 }
 
 export interface ExitTime {

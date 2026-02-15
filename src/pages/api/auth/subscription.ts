@@ -2,6 +2,10 @@
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
+function parsePreferencePayload(raw: unknown) {
+  return raw && typeof raw === 'object' ? (raw as Record<string, any>) : {};
+}
+
 export const GET: APIRoute = async ({ cookies }) => {
   try {
     const serverAuth = createServerAuth(cookies);
@@ -80,7 +84,25 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     const { action, subscriptionData } = await request.json();
     console.log('🔄 Subscription action:', action, 'for user:', user.id);
 
-    let updateData: any = { updated_at: new Date().toISOString() };
+    const { data: existingRow, error: existingError } = await serverAuth.supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingError) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Failed to load subscription preferences',
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    const nextPreferences = {
+      ...parsePreferencePayload(existingRow?.preferences),
+    };
 
     switch (action) {
       case 'extend_trial':
@@ -89,22 +111,22 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
         if (currentPrefs) {
           const currentEndDate = new Date(currentPrefs.trial_end_date || Date.now());
           const newEndDate = new Date(currentEndDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-          updateData.trial_end_date = newEndDate.toISOString();
-          updateData.subscription_status = 'trial';
+          nextPreferences.trial_end_date = newEndDate.toISOString();
+          nextPreferences.subscription_status = 'trial';
         }
         break;
         
       case 'activate_premium':
-        updateData.subscription_status = 'premium';
-        updateData.subscription_id = subscriptionData?.subscriptionId;
+        nextPreferences.subscription_status = 'premium';
+        nextPreferences.subscription_id = subscriptionData?.subscriptionId;
         break;
         
       case 'cancel_subscription':
-        updateData.subscription_status = 'cancelled';
+        nextPreferences.subscription_status = 'cancelled';
         break;
         
       case 'reactivate':
-        updateData.subscription_status = 'premium';
+        nextPreferences.subscription_status = 'premium';
         break;
         
       default:
@@ -119,8 +141,14 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
 
     const { data, error } = await serverAuth.supabase
       .from('user_preferences')
-      .update(updateData)
-      .eq('user_id', user.id)
+      .upsert(
+        {
+          user_id: user.id,
+          preferences: nextPreferences,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
       .select()
       .single();
 

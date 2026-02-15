@@ -13,6 +13,7 @@ export const DEFAULT_GATE_CONDITIONS: GateCondition[] = [
   { id: 'meds', name: 'Meds taken', satisfied: false },
   { id: 'cat-fed', name: 'Cat fed', satisfied: false },
   { id: 'bag-packed', name: 'Bag packed', satisfied: false },
+  { id: 'eyeglasses', name: 'Eyeglasses', satisfied: false },
 ];
 
 /**

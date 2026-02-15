@@ -13,8 +13,9 @@ import type { TimeBlock, TimeBlockMetadata } from '../../types/daily-plan';
 import { getChainTemplate, CHAIN_TEMPLATES } from './templates';
 import { TravelService } from '../uk-student/travel-service';
 import type { Location, TravelConditions, TravelPreferences } from '../../types/uk-student-travel';
-import type { DailyContext } from '../context/daily-context';
+import { generateDailyContext, type DailyContext } from '../context/daily-context';
 import { enhanceChainWithContext, type ChainContextEnhancement } from './context-integration';
+import { DEFAULT_GATE_CONDITIONS } from './exit-gate';
 
 /**
  * Chain Generator Configuration
@@ -88,20 +89,15 @@ export class ChainGenerator {
     // Requirements: 7.1, 7.2, 7.3, 7.4, 8.2, 8.3, 8.4
     let dailyContext: DailyContext | null = null;
     try {
-      const response = await fetch('/api/context/today');
-      if (response.ok) {
-        dailyContext = await response.json();
-        if (dailyContext) {
-          console.log('[Chain Generator] DailyContext fetched successfully:', {
-            date: dailyContext.date,
-            medsReliability: dailyContext.meds.reliability,
-            medsTaken: dailyContext.meds.taken,
-            lowEnergyRisk: dailyContext.day_flags.low_energy_risk,
-            sleepDebtRisk: dailyContext.day_flags.sleep_debt_risk,
-          });
-        }
-      } else {
-        console.warn('[Chain Generator] Failed to fetch DailyContext, using defaults:', response.status);
+      dailyContext = await generateDailyContext(options.userId, options.date);
+      if (dailyContext) {
+        console.log('[Chain Generator] DailyContext fetched successfully:', {
+          date: dailyContext.date,
+          medsReliability: dailyContext.meds.reliability,
+          medsTaken: dailyContext.meds.taken,
+          lowEnergyRisk: dailyContext.day_flags.low_energy_risk,
+          sleepDebtRisk: dailyContext.day_flags.sleep_debt_risk,
+        });
       }
     } catch (error) {
       console.error('[Chain Generator] Error fetching DailyContext, using defaults:', error);
@@ -738,15 +734,9 @@ export class ChainGenerator {
 
       // Add gate conditions for exit-gate steps
       if (step.role === 'exit-gate') {
-        // Default gate conditions (will be populated by Exit Gate service)
-        metadata.role!.gate_conditions = [
-          { id: 'keys', name: 'Keys present', satisfied: false },
-          { id: 'phone', name: 'Phone charged >= 20%', satisfied: false },
-          { id: 'water', name: 'Water bottle filled', satisfied: false },
-          { id: 'meds', name: 'Meds taken', satisfied: false },
-          { id: 'cat-fed', name: 'Cat fed', satisfied: false },
-          { id: 'bag-packed', name: 'Bag packed', satisfied: false },
-        ];
+        metadata.role!.gate_conditions = DEFAULT_GATE_CONDITIONS.map((condition) => ({
+          ...condition,
+        }));
       }
 
       // Add step metadata (fallback info if present)
