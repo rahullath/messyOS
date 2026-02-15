@@ -496,13 +496,25 @@ export class EnhancedLoopHabitsImporterV2 {
     }
     const dedupedEntries = Array.from(dedupedByDate.values());
 
-    // Skip records that already exist for this habit/date, so re-import remains append-only.
+    // Fetch existing rows by day so re-import can enrich existing records (notes/parsed)
+    // instead of creating parallel duplicates.
     const entryDates = dedupedEntries.map((e) => e.date);
-    let existingDateSet = new Set<string>();
+    const existingByDate = new Map<
+      string,
+      {
+        id: string;
+        value: number | null;
+        notes: string | null;
+        parsed: string | null;
+        numeric_value: number | null;
+        source: string | null;
+        logged_at: string | null;
+      }
+    >();
     if (entryDates.length > 0) {
       const { data: existingRows, error: existingError } = await this.supabase
         .from('habit_entries')
-        .select('date')
+        .select('id, date, value, notes, parsed, numeric_value, source, logged_at')
         .eq('user_id', this.userId)
         .eq('habit_id', habitId)
         .in('date', entryDates);
@@ -515,20 +527,28 @@ export class EnhancedLoopHabitsImporterV2 {
           habitName,
         });
       } else {
-        existingDateSet = new Set((existingRows || []).map((r: { date: string }) => r.date));
+        for (const row of existingRows || []) {
+          const date = (row as { date: string }).date;
+          if (!date) continue;
+          existingByDate.set(date, row as {
+            id: string;
+            value: number | null;
+            notes: string | null;
+            parsed: string | null;
+            numeric_value: number | null;
+            source: string | null;
+            logged_at: string | null;
+          });
+        }
       }
     }
 
     const rowsToInsert: Array<Record<string, unknown>> = [];
-    let skippedExisting = 0;
+    const rowsToUpdate: Array<{ id: string; row: Record<string, unknown> }> = [];
+    let mergedExisting = 0;
 
     for (const entry of dedupedEntries) {
       try {
-        if (existingDateSet.has(entry.date)) {
-          skippedExisting++;
-          continue;
-        }
-
         let parsedData: ParsedNoteData | null = null;
         let numericValue: number | null = null;
         
@@ -538,18 +558,35 @@ export class EnhancedLoopHabitsImporterV2 {
         }
         
         const normalizedValue = normalizeLoopValue(entry.valueRaw, valueMode);
-        
-        rowsToInsert.push({
-          habit_id: habitId,
-          user_id: this.userId,
-          date: entry.date,
-          value: normalizedValue,
-          notes: entry.notes,
-          numeric_value: numericValue,
-          parsed: parsedData ? JSON.stringify(parsedData) : null,
-          source: 'loop_per_habit',
-          logged_at: new Date(`${entry.date}T00:00:00.000Z`).toISOString(),
-        });
+        const incomingParsed = parsedData ? JSON.stringify(parsedData) : null;
+        const existing = existingByDate.get(entry.date);
+
+        if (existing) {
+          mergedExisting++;
+          rowsToUpdate.push({
+            id: existing.id,
+            row: {
+              value: existing.value ?? normalizedValue,
+              notes: this.chooseBetterText(existing.notes, entry.notes),
+              numeric_value: existing.numeric_value ?? numericValue,
+              parsed: existing.parsed ?? incomingParsed,
+              source: existing.source || 'loop_per_habit',
+              logged_at: existing.logged_at || new Date(`${entry.date}T00:00:00.000Z`).toISOString(),
+            },
+          });
+        } else {
+          rowsToInsert.push({
+            habit_id: habitId,
+            user_id: this.userId,
+            date: entry.date,
+            value: normalizedValue,
+            notes: entry.notes,
+            numeric_value: numericValue,
+            parsed: incomingParsed,
+            source: 'loop_per_habit',
+            logged_at: new Date(`${entry.date}T00:00:00.000Z`).toISOString(),
+          });
+        }
       } catch (error: any) {
         result.errors.push({
           type: 'parsing',
@@ -557,6 +594,26 @@ export class EnhancedLoopHabitsImporterV2 {
           message: `Failed to process entry for ${habitName} on ${entry.date}: ${error.message}`,
           habitName,
         });
+      }
+    }
+
+    if (rowsToUpdate.length > 0) {
+      for (const updateItem of rowsToUpdate) {
+        const { error: updateError } = await this.supabase
+          .from('habit_entries')
+          .update(updateItem.row)
+          .eq('id', updateItem.id);
+
+        if (updateError) {
+          result.errors.push({
+            type: 'database',
+            severity: 'warning',
+            message: `Failed to update existing entry for ${habitName}: ${updateError.message}`,
+            habitName,
+          });
+        } else {
+          result.importedEntries++;
+        }
       }
     }
 
@@ -577,10 +634,10 @@ export class EnhancedLoopHabitsImporterV2 {
       }
     }
 
-    if (skippedExisting > 0) {
+    if (mergedExisting > 0) {
       result.warnings.push({
         type: 'conflict',
-        message: `Skipped ${skippedExisting} existing entries for "${habitName}"`,
+        message: `Merged ${mergedExisting} existing entries for "${habitName}"`,
         habitName,
       });
     }
@@ -799,6 +856,15 @@ export class EnhancedLoopHabitsImporterV2 {
     if (bigNumericCount > 0) return 'NUMERICAL';
     if (numericCount > tokenCount) return 'NUMERICAL';
     return 'YES_NO';
+  }
+
+  private chooseBetterText(existing: string | null, incoming: string | null): string | null {
+    const existingText = (existing || '').trim();
+    const incomingText = (incoming || '').trim();
+    if (!existingText && !incomingText) return null;
+    if (!existingText) return incomingText;
+    if (!incomingText) return existingText;
+    return incomingText.length > existingText.length ? incomingText : existingText;
   }
   
   /**
