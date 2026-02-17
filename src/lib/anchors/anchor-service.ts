@@ -90,7 +90,7 @@ export class AnchorService {
     const must_attend = this.determineMustAttend(event);
 
     return {
-      id: `anchor-${event.id}`,
+      id: event.id,
       start: new Date(event.start_time),
       end: new Date(event.end_time),
       title: event.title,
