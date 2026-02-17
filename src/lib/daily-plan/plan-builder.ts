@@ -1285,6 +1285,36 @@ export class PlanBuilderService {
     locationPeriods: LocationPeriod[] = [],
     homeIntervals: HomeInterval[] = []
   ): Promise<DailyPlan> {
+    const normalizeTimeRangeForInsert = (
+      start: Date,
+      end: Date,
+      metadata?: Record<string, any>
+    ): { startIso: string; endIso: string; metadata?: Record<string, any> } => {
+      if (end.getTime() > start.getTime()) {
+        return {
+          startIso: start.toISOString(),
+          endIso: end.toISOString(),
+          metadata,
+        };
+      }
+
+      const adjustedEnd = new Date(start.getTime() + 60 * 1000);
+      console.warn('[Plan Builder] Invalid time block range detected; auto-adjusting end_time by +1 minute', {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      });
+
+      return {
+        startIso: start.toISOString(),
+        endIso: adjustedEnd.toISOString(),
+        metadata: {
+          ...(metadata || {}),
+          auto_adjusted_invalid_time_range: true,
+          original_end_time: end.toISOString(),
+        },
+      };
+    };
+
     // Calculate plan start time and generated_after_now flag
     const now = new Date();
     const roundedNow = this.roundUpToNext5Minutes(now);
@@ -1306,25 +1336,35 @@ export class PlanBuilderService {
     const plan = await createDailyPlan(this.supabase, planData);
 
     // Create time blocks
-    const timeBlocksData: CreateTimeBlock[] = timeBlocks.map(block => ({
-      plan_id: plan.id,
-      start_time: block.startTime.toISOString(),
-      end_time: block.endTime.toISOString(),
-      activity_type: block.activityType,
-      activity_name: block.activityName,
-      activity_id: block.activityId,
-      is_fixed: block.isFixed,
-      sequence_order: block.sequenceOrder,
-      status: block.status,
-      skip_reason: block.skipReason,
-      metadata: block.metadata ? {
+    const timeBlocksData: CreateTimeBlock[] = timeBlocks.map(block => {
+      const blockMetadata = block.metadata ? {
         target_time: block.metadata.targetTime?.toISOString(),
         placement_reason: block.metadata.placementReason,
         skip_reason: block.metadata.skipReason,
         // V2: Add chain metadata if present
         ...(block.metadata as any),
-      } : undefined,
-    }));
+      } : undefined;
+
+      const normalized = normalizeTimeRangeForInsert(
+        block.startTime,
+        block.endTime,
+        blockMetadata as Record<string, any> | undefined
+      );
+
+      return {
+        plan_id: plan.id,
+        start_time: normalized.startIso,
+        end_time: normalized.endIso,
+        activity_type: block.activityType,
+        activity_name: block.activityName,
+        activity_id: block.activityId,
+        is_fixed: block.isFixed,
+        sequence_order: block.sequenceOrder,
+        status: block.status,
+        skip_reason: block.skipReason,
+        metadata: normalized.metadata,
+      };
+    });
 
     // Persist chain steps as dedicated time blocks so chain interactions can map 1:1 to DB rows.
     // Keep these out of timeline UX via metadata.chain_view_only.
@@ -1349,24 +1389,32 @@ export class PlanBuilderService {
         }
 
         chainSequenceOrder += 1;
+        const chainMetadata = {
+          role,
+          chain_id: chain.chain_id,
+          step_id: step.step_id,
+          anchor_id: chain.anchor_id,
+          chain_view_only: true,
+          ...(step.metadata || {}),
+        };
+
+        const normalized = normalizeTimeRangeForInsert(
+          new Date(step.start_time),
+          new Date(step.end_time),
+          chainMetadata
+        );
+
         chainTimeBlocksData.push({
           plan_id: plan.id,
-          start_time: new Date(step.start_time).toISOString(),
-          end_time: new Date(step.end_time).toISOString(),
+          start_time: normalized.startIso,
+          end_time: normalized.endIso,
           activity_type: this.mapChainRoleToActivityType(roleType),
           activity_name: step.name,
           activity_id: chain.anchor_id,
           is_fixed: true,
           sequence_order: chainSequenceOrder,
           status: step.status === 'completed' ? 'completed' : step.status === 'skipped' ? 'skipped' : 'pending',
-          metadata: {
-            role,
-            chain_id: chain.chain_id,
-            step_id: step.step_id,
-            anchor_id: chain.anchor_id,
-            chain_view_only: true,
-            ...(step.metadata || {}),
-          },
+          metadata: normalized.metadata,
         });
       }
     }
