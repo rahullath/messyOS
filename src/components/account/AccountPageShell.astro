@@ -1,0 +1,42 @@
+﻿---
+export interface Props {
+  title: string;
+  description: string;
+  activeTab: 'profile' | 'subscription' | 'settings';
+}
+
+const { title, description, activeTab } = Astro.props;
+
+const tabs = [
+  { key: 'profile', label: 'Profile', href: '/profile' },
+  { key: 'subscription', label: 'Subscription', href: '/billing' },
+  { key: 'settings', label: 'Settings', href: '/settings' },
+] as const;
+---
+
+<section class="space-y-6">
+  <div>
+    <h1 class="text-2xl sm:text-3xl font-semibold text-text-primary">{title}</h1>
+    <p class="mt-2 text-sm sm:text-base text-text-secondary">{description}</p>
+  </div>
+
+  <nav class="flex flex-wrap gap-2 border-b border-border pb-3">
+    {tabs.map((tab) => (
+      <a
+        href={tab.href}
+        class:list={[
+          'px-3 py-2 rounded-md text-sm font-medium transition-colors',
+          activeTab === tab.key
+            ? 'bg-accent-primary/15 text-accent-primary'
+            : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover',
+        ]}
+      >
+        {tab.label}
+      </a>
+    ))}
+  </nav>
+
+  <div class="space-y-4">
+    <slot />
+  </div>
+</section>

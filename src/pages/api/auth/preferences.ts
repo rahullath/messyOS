@@ -1,4 +1,4 @@
-// src/pages/api/auth/preferences.ts - User Preferences Management API
+﻿// src/pages/api/auth/preferences.ts - User Preferences Management API
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
 
@@ -75,7 +75,7 @@ export const GET: APIRoute = async ({ cookies }) => {
     });
 
   } catch (error: any) {
-    console.error('❌ Get preferences error:', error);
+    console.error('âŒ Get preferences error:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: error.message || 'Failed to get preferences' 
@@ -102,13 +102,13 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     }
 
     const updates = await request.json();
-    console.log('🔄 Updating preferences for user:', user.id);
+    console.log('ðŸ”„ Updating preferences for user:', user.id);
 
     // Validate and sanitize updates
     const allowedFields = [
       'theme', 'accent_color', 'enabled_modules', 'module_order',
       'dashboard_layout', 'ai_personality', 'ai_proactivity_level',
-      'data_retention_days', 'share_analytics'
+      'data_retention_days', 'share_analytics', 'onboarding_profile'
     ];
 
     const sanitizedUpdates = Object.keys(updates)
@@ -125,7 +125,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       .maybeSingle();
 
     if (existingError) {
-      console.error('❌ Update preferences fetch error:', existingError);
+      console.error('âŒ Update preferences fetch error:', existingError);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Failed to load existing preferences' 
@@ -155,7 +155,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       .single();
 
     if (error) {
-      console.error('❌ Update preferences error:', error);
+      console.error('âŒ Update preferences error:', error);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Failed to update preferences' 
@@ -165,7 +165,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    console.log('✅ Preferences updated successfully');
+    console.log('âœ… Preferences updated successfully');
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -176,7 +176,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
     });
 
   } catch (error: any) {
-    console.error('❌ Update preferences error:', error);
+    console.error('âŒ Update preferences error:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: error.message || 'Failed to update preferences' 
@@ -202,7 +202,7 @@ export const DELETE: APIRoute = async ({ cookies }) => {
       });
     }
 
-    console.log('🗑️ Resetting preferences to defaults for user:', user.id);
+    console.log('ðŸ—‘ï¸ Resetting preferences to defaults for user:', user.id);
 
     const { data, error } = await serverAuth.supabase
       .from('user_preferences')
@@ -218,7 +218,7 @@ export const DELETE: APIRoute = async ({ cookies }) => {
       .single();
 
     if (error) {
-      console.error('❌ Reset preferences error:', error);
+      console.error('âŒ Reset preferences error:', error);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Failed to reset preferences' 
@@ -228,7 +228,7 @@ export const DELETE: APIRoute = async ({ cookies }) => {
       });
     }
 
-    console.log('✅ Preferences reset to defaults');
+    console.log('âœ… Preferences reset to defaults');
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -239,7 +239,7 @@ export const DELETE: APIRoute = async ({ cookies }) => {
     });
 
   } catch (error: any) {
-    console.error('❌ Reset preferences error:', error);
+    console.error('âŒ Reset preferences error:', error);
     return new Response(JSON.stringify({ 
       success: false, 
       error: error.message || 'Failed to reset preferences' 
@@ -249,3 +249,4 @@ export const DELETE: APIRoute = async ({ cookies }) => {
     });
   }
 };
+
