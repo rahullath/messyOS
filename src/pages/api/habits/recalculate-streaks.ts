@@ -96,7 +96,8 @@ export const POST: APIRoute = async ({ cookies }) => {
             isSuccess(e.value, habit.name, habit.type!)
           ).length
         })
-        .eq('id', habit.id);
+        .eq('id', habit.id)
+        .eq('user_id', user.id);
       
       results.push({
         habit: habit.name,

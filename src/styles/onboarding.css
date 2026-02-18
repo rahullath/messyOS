@@ -3,6 +3,7 @@
 /* Tour overlay and spotlight effect */
 .tour-overlay {
   pointer-events: auto;
+  background: rgba(10, 14, 20, 0.58);
 }
 
 .tour-spotlight {
@@ -18,6 +19,11 @@
 /* Tooltip positioning */
 .tour-tooltip {
   pointer-events: auto;
+}
+
+.tour-card {
+  background: var(--color-surface, #111827);
+  color: var(--color-text-primary, #f9fafb);
 }
 
 .tour-tooltip-center {
@@ -242,33 +248,3 @@
   height: 100px;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .tour-tooltip .bg-white {
-    background-color: #1F2937;
-    color: #F9FAFB;
-  }
-  
-  .tour-tooltip .text-gray-900 {
-    color: #F9FAFB;
-  }
-  
-  .tour-tooltip .text-gray-600 {
-    color: #D1D5DB;
-  }
-  
-  .tour-tooltip .text-gray-500 {
-    color: #9CA3AF;
-  }
-  
-  .tour-skip-btn {
-    background: rgba(31, 41, 55, 0.9);
-    color: #D1D5DB;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .tour-skip-btn:hover {
-    background: #1F2937;
-    color: #F9FAFB;
-  }
-}

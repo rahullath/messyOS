@@ -214,7 +214,7 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 tour-overlay">
+      <div className="fixed inset-0 z-50 tour-overlay">
         {/* Spotlight effect for targeted elements */}
         {step.target !== 'body' && (
           <div className="tour-spotlight" />
@@ -222,20 +222,23 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
         
         {/* Tooltip */}
         <div
-          className={`absolute z-60 tour-tooltip animate-modal-fade-in ${
+          className={`absolute tour-tooltip ${
             step.target === 'body' || !document.querySelector(step.target) || 
             (document.querySelector(step.target) && document.querySelector(step.target)!.offsetParent === null)
               ? 'tour-tooltip-center' : ''
           }`}
-          style={step.target !== 'body' && 
-            document.querySelector(step.target) && 
+          style={{
+            zIndex: 70,
+            ...(step.target !== 'body' &&
+            document.querySelector(step.target) &&
             document.querySelector(step.target)!.offsetParent !== null ? {
-            top: tooltipPosition.top,
-            left: tooltipPosition.left,
-            transform: getTooltipTransform(step.position)
-          } : {}}
+              top: tooltipPosition.top,
+              left: tooltipPosition.left,
+              transform: getTooltipTransform(step.position)
+            } : {})
+          }}
         >
-          <div className="bg-white rounded-lg shadow-2xl p-6 max-w-sm mx-4 relative">
+          <div className="tour-card rounded-lg shadow-2xl p-6 max-w-sm mx-4 relative border border-border">
             {/* Arrow */}
             {step.target !== 'body' && (
               <div className={`absolute w-3 h-3 bg-white transform rotate-45 ${getArrowPosition(step.position)}`} />
@@ -244,12 +247,12 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
             {/* Content */}
             <div className="relative">
               <div className="flex items-start justify-between mb-3">
-                <h3 className="text-lg font-semibold text-gray-900 pr-4">
+                <h3 className="text-lg font-semibold text-text-primary pr-4">
                   {step.title}
                 </h3>
                 <button
                   onClick={skipTour}
-                  className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                  className="text-text-muted hover:text-text-primary flex-shrink-0"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -257,7 +260,7 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
                 </button>
               </div>
               
-              <p className="text-gray-600 mb-4 text-sm leading-relaxed">
+              <p className="text-text-secondary mb-4 text-sm leading-relaxed">
                 {step.content}
               </p>
               
@@ -272,12 +275,12 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
                           ? 'bg-blue-500'
                           : index < currentStep
                           ? 'bg-blue-300'
-                          : 'bg-gray-200'
+                          : 'bg-border'
                       }`}
                     />
                   ))}
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-text-muted">
                   {currentStep + 1} of {TOUR_STEPS.length}
                 </span>
               </div>
@@ -287,7 +290,7 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
                 <button
                   onClick={prevStep}
                   disabled={isFirstStep}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
@@ -295,7 +298,7 @@ export const HabitsOnboardingTour: React.FC<HabitsOnboardingTourProps> = ({
                 <div className="flex space-x-2">
                   <button
                     onClick={skipTour}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                    className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
                   >
                     Skip Tour
                   </button>

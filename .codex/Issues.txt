@@ -1,0 +1,9 @@
+Issues:
+
+1) Daily Plan -
+Chain View disappears upon refresh, and only timeline is visible. Every time.
+Or if you go to the Timeline - and click on any task as completed etc.
+
+2) Log out button needed
+
+3) Modules explicitly mentioning - "still  in development" or something

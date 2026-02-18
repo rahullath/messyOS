@@ -24,6 +24,10 @@ export interface OnboardingPreferences {
 class OnboardingService {
   private client = authClient;
 
+  private parsePreferences(raw: unknown): Record<string, any> {
+    return raw && typeof raw === 'object' ? (raw as Record<string, any>) : {};
+  }
+
   /**
    * Create user profile with essential information
    */
@@ -63,8 +67,7 @@ class OnboardingService {
    */
   async initializePreferences(userId: string, preferences?: Partial<OnboardingPreferences>): Promise<UserPreferencesRow | null> {
     try {
-      const defaultPreferences = {
-        user_id: userId,
+      const defaultPreferencesPayload = {
         theme: preferences?.theme || 'dark',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         language: 'en',
@@ -86,6 +89,11 @@ class OnboardingService {
         subscription_status: 'trial',
         trial_started: new Date().toISOString(),
         trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      const defaultPreferences = {
+        user_id: userId,
+        preferences: defaultPreferencesPayload,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -189,6 +197,7 @@ class OnboardingService {
         .single();
 
       const isComplete = !!preferences && profile?.settings?.onboardingCompleted;
+      const normalizedPreferences = this.parsePreferences(preferences?.preferences);
 
       return {
         currentStep: isComplete ? 'complete' : 'profile',
@@ -200,11 +209,11 @@ class OnboardingService {
           settings: profile.settings
         } : undefined,
         preferences: preferences ? {
-          theme: preferences.theme,
-          timezone: preferences.timezone,
-          language: preferences.language,
-          notifications: preferences.notifications,
-          dashboard: preferences.dashboard
+          theme: normalizedPreferences.theme,
+          timezone: normalizedPreferences.timezone,
+          language: normalizedPreferences.language,
+          notifications: normalizedPreferences.notifications,
+          dashboard: normalizedPreferences.dashboard
         } : undefined
       };
     } catch (error) {

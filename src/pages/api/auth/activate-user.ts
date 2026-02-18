@@ -17,8 +17,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const { email } = await request.json();
-    const userEmail = email || user.email;
+    const requestBody = await request.json().catch(() => ({}));
+    void requestBody; // Client payload is ignored for identity decisions.
+    const userEmail = user.email;
+
+    if (!userEmail) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'User email is required to activate account'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     console.log('🔄 Activating new user:', userEmail);
 
@@ -27,7 +38,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .from('waitlist')
       .select('*')
       .eq('email', userEmail.toLowerCase())
-      .single();
+      .maybeSingle();
 
     let waitlistMessage = '';
     

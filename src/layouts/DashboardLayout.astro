@@ -1,4 +1,4 @@
----
+﻿---
 // src/layouts/DashboardLayout.astro
 import Layout from './Layout.astro';
 import TokenBalance from '../components/dashboard/TokenBalance.tsx';
@@ -34,17 +34,17 @@ const { title, user } = Astro.props;
             </svg>
             Dashboard
           </a>
-          
+
           <a href="/daily-plan" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             Daily Plan
           </a>
-          
+
           <a href="/tasks" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
-            <span class="w-5 h-5 mr-3 text-lg">🤖</span>
-            Smart Tasks
+            <span class="w-5 h-5 mr-3 text-lg">T</span>
+            Tasks
           </a>
 
           <a href="/calendar" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
@@ -53,19 +53,12 @@ const { title, user } = Astro.props;
             </svg>
             Calendar
           </a>
-          
+
           <a href="/habits" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             Habits
-          </a>
-
-          <a href="/ai-dashboard" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
-            <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-            </svg>
-            AI Coach
           </a>
 
           <a href="/finance" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
@@ -74,14 +67,14 @@ const { title, user } = Astro.props;
             </svg>
             Finance
           </a>
-          
+
           <a href="/health" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
             </svg>
             Health
           </a>
-          
+
           <a href="/content" class="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">
             <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 011 1v14a3 3 0 01-3 3H5a3 3 0 01-3-3V5a1 1 0 011-1h4z"></path>
@@ -101,13 +94,19 @@ const { title, user } = Astro.props;
               <p class="text-xs text-text-muted truncate">{user?.email || 'user@example.com'}</p>
             </div>
           </div>
+          <button
+            id="logout-button"
+            type="button"
+            class="mt-3 w-full px-3 py-2 text-sm font-medium rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors text-left"
+          >
+            Log out
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Main Content -->
     <div class="ml-64">
-      <!-- Header -->
       <header class="bg-surface border-b border-border">
         <div class="px-6 py-4">
           <div class="flex items-center justify-between">
@@ -125,26 +124,19 @@ const { title, user } = Astro.props;
             </div>
 
             <div class="flex items-center space-x-4">
-              <!-- Token Balance -->
               <TokenBalance client:load />
-
-              <!-- Quick Add Button -->
               <button class="flex items-center px-3 py-2 text-sm font-medium bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
                 Quick Add
               </button>
-
-              <!-- Notifications -->
               <button class="relative p-2 text-text-secondary hover:text-text-primary transition-colors">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5-5 5-5m-6 0H6l5 5-5 5"></path>
                 </svg>
                 <span class="absolute -top-1 -right-1 w-3 h-3 bg-accent-error rounded-full"></span>
               </button>
-
-              <!-- System Status -->
               <div class="flex items-center space-x-2">
                 <div class="w-2 h-2 bg-accent-success rounded-full"></div>
                 <span class="text-xs text-text-muted">All Systems Online</span>
@@ -154,10 +146,20 @@ const { title, user } = Astro.props;
         </div>
       </header>
 
-      <!-- Page Content -->
       <main class="p-6">
         <slot />
       </main>
     </div>
   </div>
 </Layout>
+
+<script>
+  const logoutButton = document.getElementById('logout-button');
+  logoutButton?.addEventListener('click', async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login';
+    }
+  });
+</script>

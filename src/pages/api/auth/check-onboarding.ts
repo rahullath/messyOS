@@ -18,11 +18,7 @@ export const GET: APIRoute = async ({ cookies }) => {
     }
 
     // Check if user has preferences (completed onboarding)
-    const { data: preferences } = await serverAuth.supabase
-      .from('user_preferences')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    const preferences = await serverAuth.getUserPreferences(user.id);
 
     return new Response(JSON.stringify({ 
       completed: !!preferences,

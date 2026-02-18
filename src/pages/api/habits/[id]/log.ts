@@ -15,6 +15,21 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
     const body = await request.json();
     const { value = 1, notes } = body;
 
+    // Ensure the habit belongs to the authenticated user before writing entries.
+    const { data: ownedHabit } = await supabase
+      .from('habits')
+      .select('id')
+      .eq('id', habitId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!ownedHabit) {
+      return new Response(JSON.stringify({ error: 'Habit not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     // Check if already logged today
     const todayIso = new Date().toISOString().split('T')[0];
     const { data: existingEntry } = await supabase
@@ -115,5 +130,6 @@ async function updateHabitStreak(supabase: any, habitId: string, userId: string)
   await supabase
     .from('habits')
     .update({ streak_count: streak })
-    .eq('id', habitId);
+    .eq('id', habitId)
+    .eq('user_id', userId);
 }

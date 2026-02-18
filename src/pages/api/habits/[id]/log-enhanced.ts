@@ -15,7 +15,7 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
     }
     
     const body = await request.json();
-    const { 
+    const {
       value = 1,     // 0=missed, 1=completed, 2=skipped, 3=partial
       date,          // ✅ Allow custom date
       notes,
@@ -28,6 +28,21 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
       weather,
       context = []
     } = body;
+
+    // Ensure the habit belongs to the authenticated user before writing entries.
+    const { data: ownedHabit } = await supabase
+      .from('habits')
+      .select('id')
+      .eq('id', habitId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!ownedHabit) {
+      return new Response(JSON.stringify({ error: 'Habit not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     // Use provided date or default to today
     const targetDate = date || new Date().toISOString().split('T')[0];

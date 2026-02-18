@@ -1,7 +1,3 @@
-// ==================================================
-// 2. Fix Onboarding Preferences Save API
-// ==================================================
-
 // src/pages/api/auth/save-preferences.ts
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
@@ -10,92 +6,85 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const serverAuth = createServerAuth(cookies);
     const user = await serverAuth.getUser();
-    
+
     if (!user) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'Not authenticated' 
-      }), { 
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Not authenticated'
+      }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const body = await request.json();
-    console.log('💾 Saving preferences for user:', user.id);
+    const body = await request.json().catch(() => ({}));
 
-    // First, check if preferences already exist
-    const { data: existingPrefs } = await serverAuth.supabase
-      .from('user_preferences')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-
-    const preferencesData = {
-  user_id: user.id,
-  enabled_modules: body.enabledModules || ['habits', 'tasks', 'health', 'finance'],
-  module_order: body.enabledModules || ['habits', 'tasks', 'health', 'finance'],
-  theme: body.theme || 'dark',
-  accent_color: body.accentColor || '#06b6d4',
-  ai_personality: body.aiPersonality || 'professional',
-  ai_proactivity_level: body.aiProactivity || 3,
-  subscription_status: 'trial',
-  trial_started: new Date().toISOString(),  // Changed from trial_start
-  trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),  // Changed from trial_end_date
-  updated_at: new Date().toISOString()
-};
-
-    let data, error;
-
-    if (existingPrefs) {
-      // Update existing preferences
-      console.log('📝 Updating existing preferences');
-      const result = await serverAuth.supabase
-        .from('user_preferences')
-        .update(preferencesData)
-        .eq('user_id', user.id)
-        .select();
-      
-      data = result.data;
-      error = result.error;
-    } else {
-      // Insert new preferences
-      console.log('📝 Creating new preferences');
-      const result = await serverAuth.supabase
-        .from('user_preferences')
-        .insert(preferencesData)
-        .select();
-      
-      data = result.data;
-      error = result.error;
+    // Ensure user has a preferences row first.
+    const existingPrefs = await serverAuth.getUserPreferences(user.id);
+    if (!existingPrefs) {
+      const created = await serverAuth.createDefaultPreferences(user.id, user.email);
+      if (!created) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Failed to initialize preferences'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
+    const enabledModules = Array.isArray(body.enabledModules)
+      ? body.enabledModules.filter((value: unknown) => typeof value === 'string')
+      : ['habits', 'tasks', 'health', 'finance'];
+
+    const { data: currentRow } = await serverAuth.supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const mergedPreferences = {
+      ...((currentRow?.preferences && typeof currentRow.preferences === 'object') ? currentRow.preferences : {}),
+      enabled_modules: enabledModules,
+      module_order: enabledModules,
+      theme: typeof body.theme === 'string' ? body.theme : 'dark',
+      accent_color: typeof body.accentColor === 'string' ? body.accentColor : '#06b6d4',
+      ai_personality: typeof body.aiPersonality === 'string' ? body.aiPersonality : 'professional',
+      ai_proactivity_level: typeof body.aiProactivity === 'number' ? body.aiProactivity : 3,
+      onboarding_completed_at: new Date().toISOString(),
+    };
+
+    const { error } = await serverAuth.supabase
+      .from('user_preferences')
+      .upsert({
+        user_id: user.id,
+        preferences: mergedPreferences,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+
     if (error) {
-      console.error('❌ Database error:', error);
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: `Database error: ${error.message}` 
-      }), { 
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Database error: ${error.message}`
+      }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    console.log('✅ Preferences saved successfully');
-
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       message: 'Preferences saved successfully'
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error: any) {
-    console.error('❌ API error:', error);
-    return new Response(JSON.stringify({ 
-      success: false, 
+    return new Response(JSON.stringify({
+      success: false,
       error: error.message || 'Unknown error'
-    }), { 
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });

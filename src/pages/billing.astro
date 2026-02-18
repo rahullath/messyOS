@@ -1,0 +1,72 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+import { getBillingSnapshot } from '../lib/billing/subscription';
+
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const preferences = await serverAuth.getUserPreferences(user.id);
+const billing = getBillingSnapshot(preferences);
+---
+
+<Layout title="Billing - MeshOS">
+  <main class="min-h-screen bg-slate-950 text-slate-100 p-6">
+    <div class="max-w-2xl mx-auto space-y-6">
+      <section class="rounded-xl border border-slate-700 bg-slate-900 p-6">
+        <h1 class="text-2xl font-bold mb-2">Subscription</h1>
+        <p class="text-slate-300 mb-4">
+          MeshOS is £1/month after a 30-day trial.
+        </p>
+        <ul class="text-sm text-slate-300 space-y-1 mb-5">
+          <li>Status: <span class="font-semibold text-cyan-300">{billing.status}</span></li>
+          <li>Trial end: <span class="font-semibold">{billing.trialEndDate || 'not set'}</span></li>
+          <li>Access: <span class="font-semibold">{billing.isAccessAllowed ? 'active' : 'locked'}</span></li>
+        </ul>
+
+        <button
+          id="checkout-btn"
+          class="w-full rounded-lg bg-cyan-600 hover:bg-cyan-700 px-4 py-3 font-semibold"
+        >
+          Start £1/month subscription
+        </button>
+        <p id="billing-message" class="mt-3 text-sm text-slate-400"></p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const button = document.getElementById('checkout-btn');
+    const message = document.getElementById('billing-message');
+
+    button?.addEventListener('click', async () => {
+      if (button) {
+        button.setAttribute('disabled', 'true');
+        button.textContent = 'Opening checkout...';
+      }
+      try {
+        const response = await fetch('/api/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        const result = await response.json();
+        if (!response.ok || !result?.url) {
+          throw new Error(result?.error || 'Failed to create checkout session');
+        }
+        window.location.href = result.url;
+      } catch (error) {
+        if (message) {
+          message.textContent = error instanceof Error ? error.message : 'Checkout failed';
+        }
+        if (button) {
+          button.removeAttribute('disabled');
+          button.textContent = 'Start £1/month subscription';
+        }
+      }
+    });
+  </script>
+</Layout>
