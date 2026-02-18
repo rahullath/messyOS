@@ -115,19 +115,19 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
 ---
 
 <DashboardLayout title="Habits - MeshOS">
-  <div class="space-y-8">
+  <div class="app-content-wrap space-y-6 sm:space-y-8">
     <!-- Header with Import -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-semibold text-text-primary mb-2">Habits</h1>
-        <p class="text-text-secondary">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-text-primary mb-2">Habits</h1>
+        <p class="text-sm sm:text-base text-text-secondary">
           Build better routines, one day at a time
         </p>
       </div>
-      <div class="flex space-x-3">
+      <div class="flex flex-wrap gap-2 sm:gap-3">
         <button 
           id="recalc-streaks-btn"
-          class="flex items-center px-4 py-2 bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors"
+          class="flex items-center px-3 sm:px-4 py-2 min-h-[44px] bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors text-sm"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
@@ -136,7 +136,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
         </button>
         <button 
           id="import-btn"
-          class="flex items-center px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
+          class="flex items-center px-3 sm:px-4 py-2 min-h-[44px] bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors text-sm"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -145,7 +145,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
         </button>
         <button 
           id="cleanup-duplicates-btn"
-          class="flex items-center px-3 py-2 bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors"
+          class="flex items-center px-3 py-2 min-h-[44px] bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors text-sm"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -154,7 +154,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
         </button>
         <button 
           id="add-habit-btn"
-          class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+          class="flex items-center px-3 sm:px-4 py-2 min-h-[44px] bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors text-sm"
           onclick="if(window.openHabitCreationModal) window.openHabitCreationModal(); else console.warn('Habit creation modal not ready yet');"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
