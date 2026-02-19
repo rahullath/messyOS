@@ -369,6 +369,14 @@ export class TravelService {
    * Calculate distance between two coordinates (Haversine formula)
    */
   private calculateDistance(coord1: [number, number], coord2: [number, number]): number {
+    if (!this.isCoordinateTuple(coord1) || !this.isCoordinateTuple(coord2)) {
+      console.warn('[TravelService] Invalid coordinates supplied, using conservative distance fallback', {
+        coord1,
+        coord2,
+      });
+      return 3; // 3km conservative fallback to avoid underestimating travel.
+    }
+
     const [lat1, lon1] = coord1;
     const [lat2, lon2] = coord2;
     
@@ -386,6 +394,12 @@ export class TravelService {
 
   private toRadians(degrees: number): number {
     return degrees * (Math.PI / 180);
+  }
+
+  private isCoordinateTuple(value: unknown): value is [number, number] {
+    return Array.isArray(value) &&
+      value.length === 2 &&
+      value.every((part) => typeof part === 'number' && Number.isFinite(part));
   }
 
   /**

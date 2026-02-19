@@ -40,6 +40,9 @@ export interface ChainGeneratorConfig {
 export interface ChainGeneratorOptions {
   userId: string;
   date: Date;
+  wakeTime?: Date;
+  sleepTime?: Date;
+  planStart?: Date;
   config: ChainGeneratorConfig;
 }
 
@@ -101,6 +104,25 @@ export class ChainGenerator {
       }
     } catch (error) {
       console.error('[Chain Generator] Error fetching DailyContext, using defaults:', error);
+    }
+
+    if (anchors.length === 0) {
+      try {
+        const fallbackAnchor = this.createFallbackAnchor(options);
+        const chain = await this.generateChainForAnchor(fallbackAnchor, options, dailyContext);
+        chain.metadata = {
+          ...(chain.metadata || {}),
+          no_calendar_fallback: true,
+        };
+        console.log('[Chain Generator] No anchors found. Generated fallback home chain.', {
+          anchorId: fallbackAnchor.id,
+          anchorStart: fallbackAnchor.start.toLocaleString(),
+        });
+        return [chain];
+      } catch (error) {
+        console.error('[Chain Generator] Failed to generate fallback chain:', error);
+        return [];
+      }
     }
 
     for (const anchor of anchors) {
@@ -687,6 +709,54 @@ export class ChainGenerator {
       precipitation: 0,
       visibility: 10,
       timestamp: new Date(),
+    };
+  }
+
+  private createFallbackAnchor(options: ChainGeneratorOptions): Anchor {
+    const dateStart = new Date(options.date);
+    dateStart.setHours(0, 0, 0, 0);
+
+    const wakeTime = options.wakeTime
+      ? new Date(options.wakeTime)
+      : new Date(dateStart.getTime() + 7 * 60 * 60 * 1000);
+
+    const baselineCandidates = [wakeTime.getTime()];
+    if (options.planStart) baselineCandidates.push(new Date(options.planStart).getTime());
+    baselineCandidates.push(Date.now());
+
+    const baseline = new Date(Math.max(...baselineCandidates));
+
+    let anchorStart = new Date(baseline.getTime() + 120 * 60000);
+    if (options.sleepTime) {
+      const sleepTime = new Date(options.sleepTime);
+      const latestReasonableStart = new Date(sleepTime.getTime() - 90 * 60000);
+      if (anchorStart > latestReasonableStart) {
+        anchorStart = new Date(Math.max(
+          baseline.getTime() + 30 * 60000,
+          latestReasonableStart.getTime()
+        ));
+      }
+    }
+
+    let anchorEnd = new Date(anchorStart.getTime() + 60 * 60000);
+    if (options.sleepTime) {
+      const sleepTime = new Date(options.sleepTime);
+      if (anchorEnd > sleepTime) {
+        anchorEnd = new Date(Math.max(anchorStart.getTime() + 30 * 60000, sleepTime.getTime()));
+      }
+    }
+
+    const dateKey = options.date.toISOString().split('T')[0];
+    const anchorId = `fallback-home-${dateKey}`;
+
+    return {
+      id: anchorId,
+      title: 'Home Focus Session',
+      start: anchorStart,
+      end: anchorEnd,
+      type: 'other',
+      must_attend: false,
+      calendar_event_id: anchorId,
     };
   }
 

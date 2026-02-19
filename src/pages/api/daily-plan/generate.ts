@@ -87,12 +87,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     };
 
     // Get current location (default to Birmingham city center if not provided)
-    const currentLocation: Location = body.currentLocation || {
-      name: 'Home',
-      address: 'Birmingham, UK',
-      latitude: 52.4862,
-      longitude: -1.8904,
-    };
+    const parsedCurrentLocation = body.currentLocation as Partial<Location> | undefined;
+    const hasCoordinates = Array.isArray(parsedCurrentLocation?.coordinates) &&
+      parsedCurrentLocation.coordinates.length === 2 &&
+      parsedCurrentLocation.coordinates.every((value) => typeof value === 'number' && Number.isFinite(value));
+
+    const currentLocation: Location = hasCoordinates
+      ? {
+          name: parsedCurrentLocation?.name || 'Home',
+          coordinates: parsedCurrentLocation!.coordinates as [number, number],
+          type: parsedCurrentLocation?.type || 'home',
+          address: parsedCurrentLocation?.address,
+        }
+      : {
+          name: 'Home',
+          address: 'Birmingham, UK',
+          coordinates: [52.4862, -1.8904],
+          type: 'home',
+        };
 
     // Generate plan
     const planBuilderService = createPlanBuilderService(supabase);

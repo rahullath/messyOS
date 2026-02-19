@@ -504,6 +504,9 @@ export class PlanBuilderService {
       {
         userId: input.userId,
         date: input.date,
+        wakeTime: input.wakeTime,
+        sleepTime: input.sleepTime,
+        planStart: planStartTime,
         config: {
           currentLocation,
         },
