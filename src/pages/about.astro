@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import { createServerClient } from '../lib/supabase/server';
 
-const canonical = 'https://messyos.vercel.app/about';
+const canonical = 'https://messy-os.vercel.app/about';
 const supabase = createServerClient(Astro.cookies);
 const { data: { user } } = await supabase.auth.getUser();
 ---
@@ -104,7 +104,7 @@ const { data: { user } } = await supabase.auth.getUser();
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: 'MeshOS',
-      url: 'https://messyos.vercel.app',
+      url: 'https://messy-os.vercel.app',
       sameAs: ['https://www.linkedin.com/company/messy-os'],
       description: 'Executive-function support app focused on chain-based daily stability for neurodivergent users.',
     })}
