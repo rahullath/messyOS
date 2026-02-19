@@ -688,6 +688,26 @@ export default function DailyPlanPageContent() {
     }
   };
 
+  const handleStepMoveUp = async (stepId: string) => {
+    if (!plan?.chains?.[0]?.steps?.length) return;
+    const steps = plan.chains[0].steps;
+    const currentIndex = steps.findIndex((item) => item.step_id === stepId);
+    if (currentIndex <= 0) return;
+    const target = steps[currentIndex - 1];
+    if (!target) return;
+    await handleStepReorder(stepId, target.step_id);
+  };
+
+  const handleStepMoveDown = async (stepId: string) => {
+    if (!plan?.chains?.[0]?.steps?.length) return;
+    const steps = plan.chains[0].steps;
+    const currentIndex = steps.findIndex((item) => item.step_id === stepId);
+    if (currentIndex < 0 || currentIndex >= steps.length - 1) return;
+    const target = steps[currentIndex + 1];
+    if (!target) return;
+    await handleStepReorder(stepId, target.step_id);
+  };
+
   const handleStepDelete = async (stepId: string) => {
     if (!plan?.chains) return;
 
@@ -994,6 +1014,8 @@ export default function DailyPlanPageContent() {
               onStepAdd={handleStepAdd}
               onStepDelete={handleStepDelete}
               onStepReorder={handleStepReorder}
+              onStepMoveUp={handleStepMoveUp}
+              onStepMoveDown={handleStepMoveDown}
               onGateConditionToggle={handleGateConditionToggle}
               isStepPersistable={isChainStepPersistable}
             />

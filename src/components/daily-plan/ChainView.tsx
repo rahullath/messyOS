@@ -11,6 +11,8 @@ interface ChainViewProps {
   onStepAdd?: () => Promise<void> | void;
   onStepDelete?: (stepId: string) => Promise<void> | void;
   onStepReorder?: (sourceStepId: string, targetStepId: string) => Promise<void> | void;
+  onStepMoveUp?: (stepId: string) => Promise<void> | void;
+  onStepMoveDown?: (stepId: string) => Promise<void> | void;
   isStepPersistable?: (stepId: string) => boolean;
 }
 
@@ -36,6 +38,8 @@ export default function ChainView({
   onStepAdd,
   onStepDelete,
   onStepReorder,
+  onStepMoveUp,
+  onStepMoveDown,
   isStepPersistable,
 }: ChainViewProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
@@ -444,6 +448,28 @@ export default function ChainView({
                             >
                               Delete
                             </button>
+                          )}
+                          {isPersistable && (
+                            <div className="sm:hidden flex items-center gap-1">
+                              {onStepMoveUp && (
+                                <button
+                                  onClick={() => onStepMoveUp(step.step_id)}
+                                  disabled={index === 0}
+                                  className="px-2 py-1 text-xs rounded border border-border-primary text-text-muted disabled:opacity-40"
+                                >
+                                  Up
+                                </button>
+                              )}
+                              {onStepMoveDown && (
+                                <button
+                                  onClick={() => onStepMoveDown(step.step_id)}
+                                  disabled={index === chain.steps.length - 1}
+                                  className="px-2 py-1 text-xs rounded border border-border-primary text-text-muted disabled:opacity-40"
+                                >
+                                  Down
+                                </button>
+                              )}
+                            </div>
                           )}
                           {step.role === 'exit-gate' && (
                             <button
