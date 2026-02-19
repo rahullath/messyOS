@@ -63,11 +63,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Parse dates
     const wakeTime = new Date(body.wakeTime);
-    const sleepTime = new Date(body.sleepTime);
+    const sleepTimeRaw = new Date(body.sleepTime);
     const date = body.date ? new Date(body.date) : new Date();
 
     // Validate dates
-    if (isNaN(wakeTime.getTime()) || isNaN(sleepTime.getTime())) {
+    if (isNaN(wakeTime.getTime()) || isNaN(sleepTimeRaw.getTime())) {
       return new Response(JSON.stringify({ 
         error: 'Invalid date format',
         details: 'wakeTime and sleepTime must be valid ISO date strings'
@@ -77,10 +77,16 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
+    const sleepTime = new Date(sleepTimeRaw);
+    if (sleepTime <= wakeTime) {
+      // Allow overnight sleep windows (sleep after midnight of the next day).
+      sleepTime.setDate(sleepTime.getDate() + 1);
+    }
+
     if (sleepTime <= wakeTime) {
       return new Response(JSON.stringify({ 
         error: 'Invalid time range',
-        details: 'sleepTime must be after wakeTime'
+        details: 'sleepTime must be after wakeTime (same day or next day)'
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }

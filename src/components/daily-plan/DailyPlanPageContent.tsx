@@ -219,6 +219,10 @@ export default function DailyPlanPageContent() {
       
       const sleepTime = new Date(today);
       sleepTime.setHours(parseInt(sleepHour), parseInt(sleepMinute), 0, 0);
+      if (sleepTime <= wakeTime) {
+        // Sleep can be after midnight (next day).
+        sleepTime.setDate(sleepTime.getDate() + 1);
+      }
 
       let manualAnchorPayload: Record<string, unknown> | undefined;
       if (input.manualAnchor) {
