@@ -13,12 +13,21 @@ if (!user) {
 
 const preferences = await serverAuth.getUserPreferences(user.id);
 const billing = getBillingSnapshot(preferences);
+const { data: profileRow } = await serverAuth.supabase
+  .from('profiles')
+  .select('full_name')
+  .eq('id', user.id)
+  .maybeSingle();
 
 const onboardingProfile = (preferences?.onboarding_profile && typeof preferences.onboarding_profile === 'object')
   ? preferences.onboarding_profile
   : {};
 
-const initialDisplayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+const initialDisplayName =
+  profileRow?.full_name ||
+  user.user_metadata?.full_name ||
+  user.email?.split('@')[0] ||
+  'User';
 ---
 
 <DashboardLayout title="Profile - MeshOS" user={user}>

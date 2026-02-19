@@ -13,7 +13,17 @@ export const GET: APIRoute = async ({ cookies }) => {
       });
     }
 
-    const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+    const { data: profileRow } = await serverAuth.supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const displayName =
+      profileRow?.full_name ||
+      user.user_metadata?.full_name ||
+      user.email?.split('@')[0] ||
+      'User';
 
     return new Response(JSON.stringify({
       success: true,
@@ -68,10 +78,19 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
       });
     }
 
+    const { error: profileUpdateError } = await serverAuth.supabase
+      .from('profiles')
+      .update({ full_name: displayName })
+      .eq('id', user.id);
+
+    if (profileUpdateError) {
+      console.warn('Profile table update failed while syncing display name:', profileUpdateError.message);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       data: {
-        display_name: data.user?.user_metadata?.full_name || displayName,
+        display_name: displayName,
       },
       message: 'Display name updated',
     }), {
