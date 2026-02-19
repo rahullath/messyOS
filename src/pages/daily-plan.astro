@@ -10,8 +10,6 @@ const user = await serverAuth.getUser();
 if (!user) {
   return Astro.redirect('/login');
 }
-
-const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'there';
 ---
 
 <DashboardLayout title="Daily Plan - MessyOS" user={user}>
@@ -20,9 +18,7 @@ const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] |
     <div class="flex items-start justify-between gap-3">
       <div>
         <h1 class="text-2xl sm:text-3xl font-semibold text-text-primary mb-2">Daily Plan</h1>
-        <p class="text-sm sm:text-base text-text-secondary">
-          {`Hi ${displayName}. Your structured day from wake to sleep - preventing time collapse.`}
-        </p>
+        <p class="text-sm sm:text-base text-text-secondary">Your structured day from wake to sleep, built for clear next actions.</p>
       </div>
     </div>
 

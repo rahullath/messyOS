@@ -125,6 +125,12 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
         </p>
       </div>
       <div class="flex flex-wrap gap-2 sm:gap-3">
+        <a
+          href="/habits/analytics"
+          class="analytics-link flex items-center px-3 sm:px-4 py-2 min-h-[44px] border border-border text-text-primary rounded-lg hover:bg-surface-hover transition-colors text-sm"
+        >
+          Analytics
+        </a>
         <button 
           id="import-btn"
           class="flex items-center px-3 sm:px-4 py-2 min-h-[44px] bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors text-sm"
@@ -148,7 +154,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
     </div>
 
     <!-- Enhanced Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div class="stats-grid grid grid-cols-1 md:grid-cols-4 gap-6">
       <div class="card">
         <div class="flex items-center justify-between">
           <div>
@@ -209,7 +215,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
     </div>
 
     <!-- Habits Grid with Beautiful UI -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="habits-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {habitsWithStatus.map((habit: any) => (
         <div class="card hover:bg-surface-hover transition-colors">
           <!-- Habit Header -->

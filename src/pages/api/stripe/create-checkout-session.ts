@@ -8,6 +8,8 @@ function normalize(value: string | undefined): string | undefined {
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     const stripeKey = normalize(import.meta.env.STRIPE_SECRET_KEY) || normalize(process.env.STRIPE_SECRET_KEY);
+    const stripePriceId = normalize(import.meta.env.STRIPE_PRICE_ID) || normalize(process.env.STRIPE_PRICE_ID) || 'price_1T2Ydo8XD40e7vZKdr9IAKQm';
+    const stripeProductId = normalize(import.meta.env.STRIPE_PRODUCT_ID) || normalize(process.env.STRIPE_PRODUCT_ID) || 'prod_U00VtAW0BnrgBy';
     if (!stripeKey) {
       return new Response(JSON.stringify({ error: 'Missing STRIPE_SECRET_KEY' }), {
         status: 500,
@@ -31,11 +33,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     params.set('cancel_url', `${appUrl}/billing?status=cancel`);
     params.set('customer_email', user.email || '');
     params.set('metadata[user_id]', user.id);
+    params.set('metadata[product_id]', stripeProductId);
     params.set('line_items[0][quantity]', '1');
-    params.set('line_items[0][price_data][currency]', 'gbp');
-    params.set('line_items[0][price_data][unit_amount]', '100');
-    params.set('line_items[0][price_data][recurring][interval]', 'month');
-    params.set('line_items[0][price_data][product_data][name]', 'MeshOS Monthly');
+    params.set('line_items[0][price]', stripePriceId);
 
     const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',

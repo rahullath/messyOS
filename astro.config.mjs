@@ -25,7 +25,7 @@ export default defineConfig({
     }
   },
   // PWA configuration
-  site: 'https://messos.vercel.app', // Replace with your actual domain
+  site: 'https://messyos.vercel.app', // Replace with your actual domain
   base: '/',
   trailingSlash: 'ignore',
   build: {

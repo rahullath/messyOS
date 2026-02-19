@@ -34,7 +34,7 @@ export class RouteClassifier {
 
   private static readonly PUBLIC_ROUTES: string[] = [
     '/', '/landing', '/login', '/auth/callback', '/auth/exchange', 
-    '/onboarding', '/reset-password', '/auth-status'
+    '/onboarding', '/reset-password', '/auth-status', '/about'
   ];
 
   /**

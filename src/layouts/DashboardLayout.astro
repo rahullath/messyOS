@@ -95,15 +95,18 @@ function isActive(href: string) {
               <div class="hidden sm:block">
                 <TokenBalance client:load />
               </div>
+              <a
+                href="/about"
+                class="px-3 py-2 text-xs font-medium rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+              >
+                About
+              </a>
               <button
                 id="mobile-logout-button"
                 type="button"
                 class="lg:hidden px-3 py-2 text-xs font-medium rounded-lg border border-border text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
               >
                 Log out
-              </button>
-              <button class="px-3 py-2 text-sm font-medium bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
-                Quick Add
               </button>
             </div>
           </div>

@@ -1,9 +1,19 @@
 ﻿---
 export interface Props {
   title: string;
+  description?: string;
+  canonical?: string;
+  ogImage?: string;
+  noindex?: boolean;
 }
 
-const { title } = Astro.props;
+const {
+  title,
+  description = 'Executive-function support with daily planning, habits, and practical routine scaffolding.',
+  canonical,
+  ogImage = '/favicon.svg',
+  noindex = false,
+} = Astro.props;
 ---
 
 <!doctype html>
@@ -15,7 +25,9 @@ const { title } = Astro.props;
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
 
-    <meta name="description" content="Executive-function support with daily planning, habits, and practical routine scaffolding." />
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
     <meta name="theme-color" content="#06b6d4" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a" />
     <meta name="background-color" content="#0f172a" />
@@ -35,13 +47,15 @@ const { title } = Astro.props;
     <meta name="msapplication-TileColor" content="#06b6d4" />
 
     <meta property="og:title" content={title} />
-    <meta property="og:description" content="Executive-function support with daily planning and habits." />
+    <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/favicon.svg" />
+    <meta property="og:image" content={ogImage} />
+    {canonical && <meta property="og:url" content={canonical} />}
 
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content="Executive-function support with daily planning and habits." />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
 
     <link rel="preload" href="/sw.js" as="script" />
   </head>

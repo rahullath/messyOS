@@ -189,14 +189,6 @@ export const DashboardContent: React.FC<DashboardContentProps> = ({ children }) 
                   </span>
                 </div>
 
-                {/* Quick Add Button */}
-                <button className="flex items-center px-3 py-2 text-sm font-medium bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                  </svg>
-                  Quick Add
-                </button>
-
                 {/* Notifications */}
                 <button className="relative p-2 text-text-secondary hover:text-text-primary transition-colors">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -234,9 +234,10 @@ describe('RouteClassifier', () => {
 
     it('should return public routes', () => {
       const routes = RouteClassifier.getPublicRoutes();
-      expect(routes).toHaveLength(8); // Based on our defined public routes
+      expect(routes).toHaveLength(9); // Based on our defined public routes
       expect(routes).toContain('/');
       expect(routes).toContain('/login');
+      expect(routes).toContain('/about');
     });
 
     it('should provide requiresAuth helper method', () => {

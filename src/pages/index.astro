@@ -1,19 +1,25 @@
 ---
 // src/pages/index.astro - Executive function focused landing + waitlist
 import Layout from '../layouts/Layout.astro';
+const canonical = 'https://messyos.vercel.app/';
 ---
 
-<Layout title="MeshOS - Executive Function Support">
+<Layout
+  title="MeshOS - Executive Function Support"
+  description="MeshOS is an executive-function prosthetic for neurodivergent users: chain-based daily planning, habits, and reduced transition friction."
+  canonical={canonical}
+>
   <div class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950">
-    <nav class="relative z-10 px-6 py-5">
-      <div class="max-w-6xl mx-auto flex justify-between items-center">
+    <nav class="relative z-10 px-4 sm:px-6 py-4 sm:py-5">
+      <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div class="text-2xl font-bold text-white">
           <span class="text-cyan-400">Mesh</span>OS
         </div>
-        <div class="space-x-5 text-sm">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-5 text-sm">
           <a href="#how" class="text-gray-300 hover:text-white transition-colors">How It Works</a>
           <a href="#who" class="text-gray-300 hover:text-white transition-colors">Who It Is For</a>
-          <a href="/login" class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors">
+          <a href="/about" class="text-gray-300 hover:text-white transition-colors">About</a>
+          <a href="/login" class="ml-auto sm:ml-0 bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-lg transition-colors">
             Sign In
           </a>
         </div>
@@ -115,6 +121,16 @@ import Layout from '../layouts/Layout.astro';
         </form>
       </div>
     </section>
+
+    <footer class="relative z-10 border-t border-white/10 px-6 py-6">
+      <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
+        <p>MeshOS - Executive Function Support</p>
+        <div class="flex items-center gap-4">
+          <a href="/about" class="hover:text-white transition-colors">About</a>
+          <a href="https://www.linkedin.com/company/messy-os" target="_blank" rel="noopener noreferrer" class="hover:text-white transition-colors">LinkedIn</a>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <script>

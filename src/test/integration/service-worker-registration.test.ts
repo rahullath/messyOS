@@ -103,7 +103,7 @@ describe('Service Worker Registration', () => {
         status: 200,
         text: () => Promise.resolve(`
           // MessyOS Service Worker for PWA functionality
-          const CACHE_NAME = 'messos-v1';
+          const CACHE_NAME = 'messyos-v1';
           
           self.addEventListener('install', (event) => {
             console.log('Service Worker: Installing...');
@@ -246,10 +246,10 @@ describe('Service Worker Registration', () => {
         '/icons/icon-512x512.png'
       ];
 
-      await mockCaches.open('messos-static-v1');
+      await mockCaches.open('messyos-static-v1');
       await mockCache.addAll(criticalAssets);
 
-      expect(mockCaches.open).toHaveBeenCalledWith('messos-static-v1');
+      expect(mockCaches.open).toHaveBeenCalledWith('messyos-static-v1');
       expect(mockCache.addAll).toHaveBeenCalledWith(criticalAssets);
     });
 
@@ -376,7 +376,7 @@ describe('Service Worker Registration', () => {
     it('should respond to version requests', () => {
       const messageHandler = vi.fn((event) => {
         if (event.data?.type === 'GET_VERSION') {
-          event.ports[0]?.postMessage({ version: 'messos-v1' });
+          event.ports[0]?.postMessage({ version: 'messyos-v1' });
         }
       });
       
@@ -390,7 +390,7 @@ describe('Service Worker Registration', () => {
       });
       
       messageHandler(messageEvent);
-      expect(port.postMessage).toHaveBeenCalledWith({ version: 'messos-v1' });
+      expect(port.postMessage).toHaveBeenCalledWith({ version: 'messyos-v1' });
     });
   });
 
