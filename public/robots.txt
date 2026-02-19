@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://messyos.vercel.app/sitemap.xml
+Sitemap: https://messy-os.vercel.app/sitemap.xml
