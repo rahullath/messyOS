@@ -526,24 +526,48 @@ export class PlanBuilderService {
     );
     console.log(`[V2 Chain Generation] Calculated ${homeIntervals.length} home intervals`);
 
-    // Step 6: Gather inputs (V1.2 - kept for backward compatibility)
+    // Step 6: Gather inputs (V1.2 compatibility path)
     const inputs = await this.gatherInputs(input.userId, input.date);
 
-    // Step 7: Build activity list (V1.2 - kept for backward compatibility)
-    const activities = this.buildActivityList(inputs, input.energyState);
+    // Step 7/8: Timeline generation is chain-first in V2.2 stabilization.
+    // - Chain always runs first (including fallback chain when no calendar anchors)
+    // - Timeline then continues after the final chain recovery
+    let timeBlocks: TimeBlock[] = [];
+    let exitTimes: ExitTimeResult[] = [];
+    let commitmentTravelMap: Map<string, number> = new Map();
 
-    // Step 8: Create time blocks with exit times (V1.2 - demoted to timeline generation)
-    // Now includes home intervals for meal placement
-    const { timeBlocks, exitTimes, commitmentTravelMap } = await this.createTimeBlocksWithExitTimes(
-      activities,
-      inputs,
-      input.wakeTime,
-      input.sleepTime,
-      currentLocation,
-      planStartTime,
-      input.energyState,
-      homeIntervals // Pass home intervals for meal placement
-    );
+    if (chains.length > 0) {
+      const latestRecoveryEnd = chains.reduce((latest, chain) => {
+        const recoveryEnd = chain.commitment_envelope.recovery.end_time;
+        return recoveryEnd > latest ? recoveryEnd : latest;
+      }, planStartTime);
+
+      const postChainStart = new Date(Math.max(latestRecoveryEnd.getTime(), planStartTime.getTime()));
+      const tailBlocks = this.generateTailPlan(postChainStart, input.sleepTime, input.energyState, 1);
+      timeBlocks = tailBlocks as TimeBlock[];
+
+      console.log('[V2 Timeline] Chain-first mode enabled:', {
+        chains: chains.length,
+        postChainStart: postChainStart.toLocaleString(),
+        timelineTailBlocks: timeBlocks.length,
+      });
+    } else {
+      const activities = this.buildActivityList(inputs, input.energyState);
+      const timelineResult = await this.createTimeBlocksWithExitTimes(
+        activities,
+        inputs,
+        input.wakeTime,
+        input.sleepTime,
+        currentLocation,
+        planStartTime,
+        input.energyState,
+        homeIntervals
+      );
+
+      timeBlocks = timelineResult.timeBlocks;
+      exitTimes = timelineResult.exitTimes;
+      commitmentTravelMap = timelineResult.commitmentTravelMap;
+    }
 
     // Step 9: Save to database (includes chains, wake_ramp, location_periods, home_intervals)
     const plan = await this.savePlan(
@@ -1338,43 +1362,9 @@ export class PlanBuilderService {
 
     const plan = await createDailyPlan(this.supabase, planData);
 
-    // Create time blocks
-    const timeBlocksData: CreateTimeBlock[] = timeBlocks.map(block => {
-      const blockMetadata = block.metadata ? {
-        target_time: block.metadata.targetTime?.toISOString(),
-        placement_reason: block.metadata.placementReason,
-        skip_reason: block.metadata.skipReason,
-        // V2: Add chain metadata if present
-        ...(block.metadata as any),
-      } : undefined;
-
-      const normalized = normalizeTimeRangeForInsert(
-        block.startTime,
-        block.endTime,
-        blockMetadata as Record<string, any> | undefined
-      );
-
-      return {
-        plan_id: plan.id,
-        start_time: normalized.startIso,
-        end_time: normalized.endIso,
-        activity_type: block.activityType,
-        activity_name: block.activityName,
-        activity_id: block.activityId,
-        is_fixed: block.isFixed,
-        sequence_order: block.sequenceOrder,
-        status: block.status,
-        skip_reason: block.skipReason,
-        metadata: normalized.metadata,
-      };
-    });
-
     // Persist chain steps as dedicated time blocks so chain interactions can map 1:1 to DB rows.
-    // Keep these out of timeline UX via metadata.chain_view_only.
-    const maxSequenceOrder = timeBlocksData.reduce((max, block) => (
-      block.sequence_order > max ? block.sequence_order : max
-    ), 0);
-    let chainSequenceOrder = maxSequenceOrder;
+    // Timeline now includes chain blocks first, followed by post-chain timeline blocks.
+    let chainSequenceOrder = 0;
 
     const chainTimeBlocksData: CreateTimeBlock[] = [];
     for (const chain of chains) {
@@ -1397,7 +1387,6 @@ export class PlanBuilderService {
           chain_id: chain.chain_id,
           step_id: step.step_id,
           anchor_id: chain.anchor_id,
-          chain_view_only: true,
           ...(step.metadata || {}),
         };
 
@@ -1422,6 +1411,39 @@ export class PlanBuilderService {
       }
     }
 
+    const chainSequenceOffset = chainTimeBlocksData.length;
+
+    // Create non-chain timeline blocks after chain blocks.
+    const timeBlocksData: CreateTimeBlock[] = timeBlocks.map(block => {
+      const blockMetadata = block.metadata ? {
+        target_time: block.metadata.targetTime?.toISOString(),
+        placement_reason: block.metadata.placementReason,
+        skip_reason: block.metadata.skipReason,
+        // V2: Add chain metadata if present
+        ...(block.metadata as any),
+      } : undefined;
+
+      const normalized = normalizeTimeRangeForInsert(
+        block.startTime,
+        block.endTime,
+        blockMetadata as Record<string, any> | undefined
+      );
+
+      return {
+        plan_id: plan.id,
+        start_time: normalized.startIso,
+        end_time: normalized.endIso,
+        activity_type: block.activityType,
+        activity_name: block.activityName,
+        activity_id: block.activityId,
+        is_fixed: block.isFixed,
+        sequence_order: block.sequenceOrder + chainSequenceOffset,
+        status: block.status,
+        skip_reason: block.skipReason,
+        metadata: normalized.metadata,
+      };
+    });
+
     const createdBlocks = await createTimeBlocks(
       this.supabase,
       [...timeBlocksData, ...chainTimeBlocksData]
@@ -1434,7 +1456,7 @@ export class PlanBuilderService {
       const travelBlockSequenceOrder = commitmentTravelMap.get(exitTime.commitmentId);
       if (travelBlockSequenceOrder !== undefined) {
         const travelBlock = createdBlocks.find(
-          block => block.sequenceOrder === travelBlockSequenceOrder
+          block => block.sequenceOrder === travelBlockSequenceOrder + chainSequenceOffset
         );
 
         if (travelBlock) {

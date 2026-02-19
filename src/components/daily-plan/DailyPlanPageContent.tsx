@@ -182,6 +182,15 @@ export default function DailyPlanPageContent() {
     wakeTime: string;
     sleepTime: string;
     energyState: EnergyState;
+    manualAnchor?: {
+      title: string;
+      startTime: string;
+      durationMinutes: number;
+      location?: string;
+      anchorType: 'class' | 'seminar' | 'workshop' | 'appointment' | 'other';
+      mustAttend: boolean;
+      notes?: string;
+    };
   }) => {
     try {
       setIsGenerating(true);
@@ -198,6 +207,24 @@ export default function DailyPlanPageContent() {
       const sleepTime = new Date(today);
       sleepTime.setHours(parseInt(sleepHour), parseInt(sleepMinute), 0, 0);
 
+      let manualAnchorPayload: Record<string, unknown> | undefined;
+      if (input.manualAnchor) {
+        const [anchorHour, anchorMinute] = input.manualAnchor.startTime.split(':');
+        const anchorStart = new Date(today);
+        anchorStart.setHours(parseInt(anchorHour), parseInt(anchorMinute), 0, 0);
+        const anchorEnd = new Date(anchorStart.getTime() + Math.max(15, input.manualAnchor.durationMinutes) * 60000);
+
+        manualAnchorPayload = {
+          title: input.manualAnchor.title,
+          start_time: anchorStart.toISOString(),
+          end_time: anchorEnd.toISOString(),
+          location: input.manualAnchor.location,
+          anchor_type: input.manualAnchor.anchorType,
+          must_attend: input.manualAnchor.mustAttend,
+          notes: input.manualAnchor.notes,
+        };
+      }
+
       const response = await fetch('/api/daily-plan/generate', {
         method: 'POST',
         headers: {
@@ -207,6 +234,7 @@ export default function DailyPlanPageContent() {
           wakeTime: wakeTime.toISOString(),
           sleepTime: sleepTime.toISOString(),
           energyState: input.energyState,
+          manualAnchor: manualAnchorPayload,
         }),
       });
 

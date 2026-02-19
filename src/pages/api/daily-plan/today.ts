@@ -121,8 +121,7 @@ function reconstructChainsFromTimeBlocks(plan: DailyPlan): ExecutionChain[] {
     const roleType = metadata.role?.type;
     const chainId = metadata.chain_id || metadata.role?.chain_id;
 
-    return Boolean(metadata.chain_view_only) &&
-      typeof chainId === 'string' &&
+    return typeof chainId === 'string' &&
       (roleType === 'chain-step' || roleType === 'exit-gate');
   });
 

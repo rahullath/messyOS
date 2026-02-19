@@ -13,9 +13,7 @@ export default function ActivityList({ plan, onComplete, onSkip, isUpdating = fa
   const [showSkipInput, setShowSkipInput] = useState(false);
   const [skipBlockId, setSkipBlockId] = useState<string | null>(null);
 
-  const visibleTimeBlocks = (plan.timeBlocks || []).filter((block) => {
-    return !(block.metadata as any)?.chain_view_only;
-  });
+  const visibleTimeBlocks = (plan.timeBlocks || []);
 
   // Get current block (first pending block)
   const currentBlock = visibleTimeBlocks.find(block => block.status === 'pending') || null;

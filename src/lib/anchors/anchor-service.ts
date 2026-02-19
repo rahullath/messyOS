@@ -52,7 +52,35 @@ export class AnchorService {
       );
 
       // Convert calendar events to anchors
-      const anchors = events.map(event => this.convertEventToAnchor(event));
+      const calendarAnchors = events.map(event => this.convertEventToAnchor(event));
+
+      // Fetch manual anchors for the day (if table exists in current environment).
+      let manualAnchors: Anchor[] = [];
+      if (supabaseClient) {
+        const { data: manualRows, error: manualError } = await supabaseClient
+          .from('manual_anchors')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('anchor_date', startOfDay.toISOString().split('T')[0])
+          .order('start_time', { ascending: true });
+
+        if (!manualError && Array.isArray(manualRows)) {
+          manualAnchors = manualRows.map((row: any): Anchor => ({
+            id: row.id,
+            start: new Date(row.start_time),
+            end: new Date(row.end_time),
+            title: row.title,
+            location: row.location || undefined,
+            type: (row.anchor_type || 'other') as AnchorType,
+            must_attend: Boolean(row.must_attend),
+            calendar_event_id: `manual-${row.id}`,
+          }));
+        } else if (manualError && manualError.code !== '42P01') {
+          console.warn('[Anchor Service] Manual anchors query failed, continuing with calendar anchors only:', manualError.message);
+        }
+      }
+
+      const anchors = [...calendarAnchors, ...manualAnchors];
 
       // Sort by start time
       anchors.sort((a, b) => a.start.getTime() - b.start.getTime());
