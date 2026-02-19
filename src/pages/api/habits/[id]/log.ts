@@ -1,6 +1,7 @@
 // src/pages/api/habits/[id]/log.ts
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../../lib/auth/simple-multi-user';
+import { invalidateDailyContextCache } from '../../context/today';
 
 export const POST: APIRoute = async ({ request, params, cookies }) => {
     const serverAuth = createServerAuth(cookies);
@@ -13,6 +14,21 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
   try {
     const body = await request.json();
     const { value = 1, notes } = body;
+
+    // Ensure the habit belongs to the authenticated user before writing entries.
+    const { data: ownedHabit } = await supabase
+      .from('habits')
+      .select('id')
+      .eq('id', habitId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!ownedHabit) {
+      return new Response(JSON.stringify({ error: 'Habit not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     // Check if already logged today
     const todayIso = new Date().toISOString().split('T')[0];
@@ -49,6 +65,9 @@ export const POST: APIRoute = async ({ request, params, cookies }) => {
 
     // Update streak count
     await updateHabitStreak(supabase, habitId, user.id);
+
+    // Invalidate daily context cache
+    invalidateDailyContextCache(user.id);
 
     return new Response(JSON.stringify(entry), {
       headers: { 'Content-Type': 'application/json' }
@@ -111,5 +130,6 @@ async function updateHabitStreak(supabase: any, habitId: string, userId: string)
   await supabase
     .from('habits')
     .update({ streak_count: streak })
-    .eq('id', habitId);
+    .eq('id', habitId)
+    .eq('user_id', userId);
 }

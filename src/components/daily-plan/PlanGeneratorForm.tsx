@@ -6,8 +6,18 @@ interface PlanGeneratorFormProps {
     wakeTime: string;
     sleepTime: string;
     energyState: EnergyState;
+    manualAnchor?: {
+      title: string;
+      startTime: string;
+      durationMinutes: number;
+      location?: string;
+      anchorType: 'class' | 'seminar' | 'workshop' | 'appointment' | 'other';
+      mustAttend: boolean;
+      notes?: string;
+    };
   }) => void;
   isGenerating?: boolean;
+  manualAnchorRequired?: boolean;
 }
 
 /**
@@ -36,11 +46,23 @@ function calculateDefaultWakeTime(): string {
   return `${hours}:${minutes}`;
 }
 
-export default function PlanGeneratorForm({ onGenerate, isGenerating = false }: PlanGeneratorFormProps) {
+export default function PlanGeneratorForm({
+  onGenerate,
+  isGenerating = false,
+  manualAnchorRequired = false,
+}: PlanGeneratorFormProps) {
   // Requirement 8.5: Display the calculated default wake time
   const [wakeTime, setWakeTime] = useState(() => calculateDefaultWakeTime());
   const [sleepTime, setSleepTime] = useState('23:00');
   const [energyState, setEnergyState] = useState<EnergyState>('medium');
+  const [manualAnchorEnabled, setManualAnchorEnabled] = useState(false);
+  const [manualAnchorTitle, setManualAnchorTitle] = useState('');
+  const [manualAnchorStartTime, setManualAnchorStartTime] = useState('10:00');
+  const [manualAnchorDuration, setManualAnchorDuration] = useState(60);
+  const [manualAnchorLocation, setManualAnchorLocation] = useState('');
+  const [manualAnchorType, setManualAnchorType] = useState<'class' | 'seminar' | 'workshop' | 'appointment' | 'other'>('other');
+  const [manualAnchorMustAttend, setManualAnchorMustAttend] = useState(true);
+  const [manualAnchorNotes, setManualAnchorNotes] = useState('');
   
   // Update default wake time when component mounts or time changes significantly
   useEffect(() => {
@@ -48,10 +70,49 @@ export default function PlanGeneratorForm({ onGenerate, isGenerating = false }: 
     setWakeTime(defaultWakeTime);
   }, []);
 
+  useEffect(() => {
+    if (!manualAnchorRequired) return;
+
+    setManualAnchorEnabled(true);
+    const timeout = setTimeout(() => {
+      const titleInput = document.getElementById('manual-anchor-title') as HTMLInputElement | null;
+      titleInput?.focus();
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [manualAnchorRequired]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Requirement 8.3: Allow user to override the default wake time
-    onGenerate({ wakeTime, sleepTime, energyState });
+    const payload: {
+      wakeTime: string;
+      sleepTime: string;
+      energyState: EnergyState;
+      manualAnchor?: {
+        title: string;
+        startTime: string;
+        durationMinutes: number;
+        location?: string;
+        anchorType: 'class' | 'seminar' | 'workshop' | 'appointment' | 'other';
+        mustAttend: boolean;
+        notes?: string;
+      };
+    } = { wakeTime, sleepTime, energyState };
+
+    if (manualAnchorEnabled && manualAnchorTitle.trim()) {
+      payload.manualAnchor = {
+        title: manualAnchorTitle.trim(),
+        startTime: manualAnchorStartTime,
+        durationMinutes: Math.max(15, manualAnchorDuration),
+        location: manualAnchorLocation.trim() || undefined,
+        anchorType: manualAnchorType,
+        mustAttend: manualAnchorMustAttend,
+        notes: manualAnchorNotes.trim() || undefined,
+      };
+    }
+
+    onGenerate(payload);
   };
 
   return (
@@ -148,6 +209,122 @@ export default function PlanGeneratorForm({ onGenerate, isGenerating = false }: 
         </div>
 
         {/* Submit Button */}
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-text-primary">Add manual anchor for today</span>
+            <input
+              type="checkbox"
+              checked={manualAnchorEnabled}
+              onChange={(e) => setManualAnchorEnabled(e.target.checked)}
+              disabled={isGenerating}
+              className="h-5 w-5 text-accent-primary focus:ring-accent-primary"
+            />
+          </label>
+
+          {manualAnchorRequired && (
+            <p className="text-xs text-accent-warning">
+              A manual anchor is required because no calendar anchors were found for this day.
+            </p>
+          )}
+
+          {manualAnchorEnabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="sm:col-span-2">
+                <label htmlFor="manual-anchor-title" className="block text-xs text-text-muted mb-1">Anchor title</label>
+                <input
+                  id="manual-anchor-title"
+                  type="text"
+                  value={manualAnchorTitle}
+                  onChange={(e) => setManualAnchorTitle(e.target.value)}
+                  placeholder="Example: Deep Work Session"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-text-primary"
+                  disabled={isGenerating}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="manual-anchor-start" className="block text-xs text-text-muted mb-1">Start time</label>
+                <input
+                  id="manual-anchor-start"
+                  type="time"
+                  value={manualAnchorStartTime}
+                  onChange={(e) => setManualAnchorStartTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-text-primary"
+                  disabled={isGenerating}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="manual-anchor-duration" className="block text-xs text-text-muted mb-1">Duration (minutes)</label>
+                <input
+                  id="manual-anchor-duration"
+                  type="number"
+                  min={15}
+                  step={5}
+                  value={manualAnchorDuration}
+                  onChange={(e) => setManualAnchorDuration(Number(e.target.value) || 60)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-text-primary"
+                  disabled={isGenerating}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="manual-anchor-type" className="block text-xs text-text-muted mb-1">Anchor type</label>
+                <select
+                  id="manual-anchor-type"
+                  value={manualAnchorType}
+                  onChange={(e) => setManualAnchorType(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-text-primary"
+                  disabled={isGenerating}
+                >
+                  <option value="other">Other</option>
+                  <option value="appointment">Appointment</option>
+                  <option value="class">Class</option>
+                  <option value="seminar">Seminar</option>
+                  <option value="workshop">Workshop</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 mt-5">
+                <input
+                  id="manual-anchor-required"
+                  type="checkbox"
+                  checked={manualAnchorMustAttend}
+                  onChange={(e) => setManualAnchorMustAttend(e.target.checked)}
+                  disabled={isGenerating}
+                  className="h-4 w-4 text-accent-primary focus:ring-accent-primary"
+                />
+                <label htmlFor="manual-anchor-required" className="text-xs text-text-muted">Must attend</label>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label htmlFor="manual-anchor-location" className="block text-xs text-text-muted mb-1">Location (optional)</label>
+                <input
+                  id="manual-anchor-location"
+                  type="text"
+                  value={manualAnchorLocation}
+                  onChange={(e) => setManualAnchorLocation(e.target.value)}
+                  placeholder="Home, Library, Campus Room, etc."
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-text-primary"
+                  disabled={isGenerating}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label htmlFor="manual-anchor-notes" className="block text-xs text-text-muted mb-1">Notes (optional)</label>
+                <textarea
+                  id="manual-anchor-notes"
+                  value={manualAnchorNotes}
+                  onChange={(e) => setManualAnchorNotes(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-text-primary"
+                  disabled={isGenerating}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
         <button
           type="submit"
           disabled={isGenerating}

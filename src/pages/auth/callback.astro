@@ -52,10 +52,16 @@ if (error) {
     
     // Fetch Supabase config from server
     fetch('/api/auth/config')
-      .then(response => response.json())
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Failed to load auth config');
+        }
+        return payload;
+      })
       .then(config => {
         // Import Supabase dynamically to avoid module loading issues
-        return import('https://cdn.skypack.dev/@supabase/supabase-js@2')
+        return import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')
           .then(({ createClient }) => {
             const supabase = createClient(config.url, config.key, {
               auth: {
@@ -83,6 +89,8 @@ if (error) {
       try {
         console.log('🔍 Processing OAuth callback with PKCE...');
         updateStatus('Processing authentication...', 'Verifying OAuth code...');
+        const urlParams = new URLSearchParams(window.location.search);
+        const authCode = urlParams.get('code');
         
         // Let Supabase handle the OAuth callback automatically
         // This will process the code and code_verifier from the URL
@@ -100,7 +108,26 @@ if (error) {
           updateStatus('Authentication successful!', 'Syncing with server...');
           await syncSessionWithServer(data.session);
         } else {
-          console.log('⚠️ No session found, waiting for auth state change...');
+          console.log('⚠️ No session found from getSession, trying manual code exchange...');
+          updateStatus('Finalizing authentication...', 'Exchanging auth code...');
+
+          if (authCode) {
+            try {
+              const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
+
+              if (exchangeError) {
+                console.error('❌ Manual exchange failed:', exchangeError);
+              } else if (exchangeData?.session) {
+                console.log('✅ Manual code exchange successful:', exchangeData.session.user.email);
+                await syncSessionWithServer(exchangeData.session);
+                return;
+              }
+            } catch (exchangeException) {
+              console.error('❌ Manual exchange exception:', exchangeException);
+            }
+          }
+
+          console.log('⚠️ Manual exchange did not produce a session, waiting for auth state change...');
           updateStatus('Finalizing authentication...', 'Please wait...');
           
           // Listen for auth state changes

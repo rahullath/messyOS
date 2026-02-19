@@ -3,7 +3,7 @@ export function getAuthRedirectURL(): string {
   if (typeof window === 'undefined') {
     // Server-side: return localhost for development
     return process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:4322/auth/callback'
+      ? 'http://localhost:4321/auth/callback'
       : 'https://messy-os.vercel.app/auth/callback';
   }
   

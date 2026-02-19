@@ -51,5 +51,6 @@ export async function updateHabitStreak(supabase: SupabaseClient, habitId: strin
       streak_count: currentStreak,
       best_streak: Math.max(bestStreak, currentStreak)
     })
-    .eq('id', habitId);
+    .eq('id', habitId)
+    .eq('user_id', userId);
 }

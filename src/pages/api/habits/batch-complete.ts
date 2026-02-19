@@ -1,6 +1,7 @@
 // src/pages/api/habits/batch-complete.ts
 import type { APIRoute } from 'astro';
 import { createServerAuth } from '../../../lib/auth/simple-multi-user';
+import { invalidateDailyContextCache } from '../context/today';
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
@@ -119,6 +120,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       message: `Successfully completed ${results.length} habits${errors.length > 0 ? `, ${errors.length} failed` : ''}`
     };
 
+    // Invalidate daily context cache if any habits were successfully logged
+    if (results.length > 0) {
+      invalidateDailyContextCache(user.id);
+    }
+
     return new Response(JSON.stringify(response), {
       headers: { 'Content-Type': 'application/json' }
     });
@@ -198,5 +204,6 @@ async function updateHabitStreak(supabase: any, habitId: string, userId: string)
       streak_count: currentStreak,
       best_streak: Math.max(bestStreak, currentStreak)
     })
-    .eq('id', habitId);
+    .eq('id', habitId)
+    .eq('user_id', userId);
 }

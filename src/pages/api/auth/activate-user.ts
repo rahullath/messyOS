@@ -17,8 +17,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    const { email } = await request.json();
-    const userEmail = email || user.email;
+    const requestBody = await request.json().catch(() => ({}));
+    void requestBody; // Client payload is ignored for identity decisions.
+    const userEmail = user.email;
+
+    if (!userEmail) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'User email is required to activate account'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     console.log('🔄 Activating new user:', userEmail);
 
@@ -27,7 +38,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       .from('waitlist')
       .select('*')
       .eq('email', userEmail.toLowerCase())
-      .single();
+      .maybeSingle();
 
     let waitlistMessage = '';
     
@@ -62,25 +73,11 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       });
     }
 
-    // Create default preferences for new user
-    const { data: newPrefs, error: prefsError } = await serverAuth.supabase
-      .from('user_preferences')
-      .insert({
-        user_id: user.id,
-        theme: 'dark',
-        accent_color: '#8b5cf6',
-        enabled_modules: ['habits', 'tasks', 'health', 'finance'],
-        module_order: ['habits', 'tasks', 'health', 'finance'],
-        ai_personality: 'professional',
-        ai_proactivity_level: 3,
-        subscription_status: 'trial',
-        trial_end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      })
-      .select()
-      .single();
+    // Create default preferences for new user.
+    const newPrefs = await serverAuth.createDefaultPreferences(user.id, userEmail);
 
-    if (prefsError) {
-      console.error('❌ Failed to create user preferences:', prefsError);
+    if (!newPrefs) {
+      console.error('❌ Failed to create user preferences for user:', user.id);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Failed to activate user account' 

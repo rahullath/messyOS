@@ -1,0 +1,165 @@
+﻿---
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import AccountPageShell from '../components/account/AccountPageShell.astro';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+import { getBillingSnapshot } from '../lib/billing/subscription';
+
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const preferences = await serverAuth.getUserPreferences(user.id);
+const billing = getBillingSnapshot(preferences);
+const { data: profileRow } = await serverAuth.supabase
+  .from('profiles')
+  .select('full_name')
+  .eq('id', user.id)
+  .maybeSingle();
+
+const onboardingProfile = (preferences?.onboarding_profile && typeof preferences.onboarding_profile === 'object')
+  ? preferences.onboarding_profile
+  : {};
+
+const initialDisplayName =
+  profileRow?.full_name ||
+  user.user_metadata?.full_name ||
+  user.email?.split('@')[0] ||
+  'User';
+---
+
+<DashboardLayout title="Profile - MeshOS" user={user}>
+  <AccountPageShell
+    title="Profile"
+    description="Account identity and onboarding defaults used for your planning behavior."
+    activeTab="profile"
+  >
+    <section class="card">
+      <h2 class="text-lg font-semibold text-text-primary mb-4">Identity</h2>
+      <form id="profile-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label for="display_name" class="block text-sm text-text-muted mb-1">Display name</label>
+          <input id="display_name" type="text" value={initialDisplayName} maxlength="60" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-text-primary" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-sm text-text-muted mb-1">Email</label>
+          <p class="rounded-lg border border-border bg-surface-hover/50 px-3 py-2 text-text-primary break-all">{user.email}</p>
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary/90 transition-colors">Save display name</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 class="text-lg font-semibold text-text-primary mb-4">Onboarding Preferences</h2>
+      <p class="text-sm text-text-secondary mb-4">These are your setup choices. Edit anytime if your needs changed.</p>
+      <form id="onboarding-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="commitments" class="block text-sm text-text-muted mb-1">Commitments</label>
+          <select id="commitments" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-text-primary">
+            <option value="">Select</option>
+            <option value="yes-many" selected={onboardingProfile?.commitments === 'yes-many'}>Several fixed anchors</option>
+            <option value="yes-few" selected={onboardingProfile?.commitments === 'yes-few'}>One or two anchors</option>
+            <option value="none" selected={onboardingProfile?.commitments === 'none'}>Mostly unstructured days</option>
+          </select>
+        </div>
+        <div>
+          <label for="starting_difficulty" class="block text-sm text-text-muted mb-1">Hardest part</label>
+          <select id="starting_difficulty" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-text-primary">
+            <option value="">Select</option>
+            <option value="starting" selected={onboardingProfile?.starting_difficulty === 'starting'}>Starting tasks</option>
+            <option value="switching" selected={onboardingProfile?.starting_difficulty === 'switching'}>Switching tasks</option>
+            <option value="finishing" selected={onboardingProfile?.starting_difficulty === 'finishing'}>Finishing tasks</option>
+          </select>
+        </div>
+        <div>
+          <label for="structure_style" class="block text-sm text-text-muted mb-1">Structure style</label>
+          <select id="structure_style" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-text-primary">
+            <option value="">Select</option>
+            <option value="gentle" selected={onboardingProfile?.structure_style === 'gentle'}>Gentle</option>
+            <option value="balanced" selected={onboardingProfile?.structure_style === 'balanced'}>Balanced</option>
+            <option value="firm" selected={onboardingProfile?.structure_style === 'firm'}>Firm</option>
+          </select>
+        </div>
+        <div>
+          <label for="usual_wake_time" class="block text-sm text-text-muted mb-1">Typical wake time</label>
+          <input id="usual_wake_time" type="time" value={onboardingProfile?.usual_wake_time || '07:00'} class="w-full rounded-lg border border-border bg-background px-3 py-2 text-text-primary" />
+        </div>
+        <div class="sm:col-span-2">
+          <button type="submit" class="px-4 py-2 rounded-lg border border-border text-text-secondary text-sm font-medium hover:text-text-primary hover:bg-surface-hover transition-colors">Save onboarding preferences</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 class="text-lg font-semibold text-text-primary mb-4">Access</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+        <div class="rounded-lg border border-border p-3 bg-surface-hover/50">
+          <p class="text-text-muted">Plan</p>
+          <p class="mt-1 text-text-primary capitalize">{billing.status}</p>
+        </div>
+        <div class="rounded-lg border border-border p-3 bg-surface-hover/50">
+          <p class="text-text-muted">Trial end</p>
+          <p class="mt-1 text-text-primary">{billing.trialEndDate ? new Date(billing.trialEndDate).toLocaleDateString() : 'Not set'}</p>
+        </div>
+        <div class="rounded-lg border border-border p-3 bg-surface-hover/50">
+          <p class="text-text-muted">Access</p>
+          <p class="mt-1 text-text-primary">{billing.isAccessAllowed ? 'Active' : 'Locked'}</p>
+        </div>
+      </div>
+    </section>
+
+    <div id="profile-message" class="hidden rounded-lg border border-border p-3 text-sm"></div>
+  </AccountPageShell>
+</DashboardLayout>
+
+<script>
+  const message = document.getElementById('profile-message');
+
+  function showMessage(text, isError = false) {
+    if (!message) return;
+    message.textContent = text;
+    message.classList.remove('hidden');
+    message.classList.toggle('text-accent-error', isError);
+    message.classList.toggle('text-text-primary', !isError);
+  }
+
+  document.getElementById('profile-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const displayInput = document.getElementById('display_name');
+    const display_name = displayInput?.value?.trim();
+
+    const response = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name }),
+    });
+
+    const payload = await response.json();
+    showMessage(payload?.message || payload?.error || 'Saved', !response.ok);
+  });
+
+  document.getElementById('onboarding-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const onboarding_profile = {
+      commitments: document.getElementById('commitments')?.value || null,
+      starting_difficulty: document.getElementById('starting_difficulty')?.value || null,
+      structure_style: document.getElementById('structure_style')?.value || null,
+      usual_wake_time: document.getElementById('usual_wake_time')?.value || null,
+      collected_at: new Date().toISOString(),
+    };
+
+    const response = await fetch('/api/auth/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ onboarding_profile }),
+    });
+
+    const payload = await response.json();
+    showMessage(response.ok ? 'Onboarding preferences saved' : (payload?.error || 'Save failed'), !response.ok);
+  });
+</script>

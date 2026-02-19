@@ -1,5 +1,5 @@
 ---
-// Create minimal user preferences to bypass onboarding completely
+// Create default preferences to bypass onboarding completely
 import { createServerAuth } from '../lib/auth/simple-multi-user';
 
 const serverAuth = createServerAuth(Astro.cookies);
@@ -13,19 +13,12 @@ if (!user) {
 const existingPrefs = await serverAuth.getUserPreferences(user.id);
 
 if (!existingPrefs) {
-  // Create MINIMAL preferences with only essential column (user_id)
-  const minimalPreferences = {
-    user_id: user.id
-  };
+  const created = await serverAuth.createDefaultPreferences(user.id, user.email);
 
-  const { error } = await serverAuth.supabase
-    .from('user_preferences')
-    .insert(minimalPreferences);
-
-  if (error) {
-    console.error('Error creating preferences:', error);
+  if (!created) {
+    console.error('Error creating default preferences for onboarding bypass');
   } else {
-    console.log('✅ Onboarding bypassed successfully');
+    console.log('Onboarding bypassed successfully');
   }
 }
 

@@ -3,6 +3,8 @@
 /* Tour overlay and spotlight effect */
 .tour-overlay {
   pointer-events: auto;
+  background: rgba(10, 14, 20, 0.58);
+  backdrop-filter: blur(1px);
 }
 
 .tour-spotlight {
@@ -18,6 +20,17 @@
 /* Tooltip positioning */
 .tour-tooltip {
   pointer-events: auto;
+}
+
+.tour-card {
+  background: var(--color-surface-secondary, #111827);
+  color: var(--color-text-primary, #f9fafb);
+  border-color: var(--color-border-primary, rgba(148, 163, 184, 0.35));
+  max-height: min(72vh, 560px);
+}
+
+.tour-arrow {
+  background: var(--color-surface-secondary, #111827);
 }
 
 .tour-tooltip-center {
@@ -55,7 +68,7 @@
 }
 
 /* Tour tooltip animations */
-.tour-tooltip .bg-white {
+.tour-card {
   animation: tour-tooltip-bounce 0.5s ease-out;
 }
 
@@ -81,16 +94,26 @@
 
 /* Responsive adjustments */
 @media (max-width: 640px) {
+  .tour-overlay {
+    background: rgba(10, 14, 20, 0.42);
+    backdrop-filter: none;
+  }
+
   .tour-tooltip {
     position: fixed !important;
     top: auto !important;
-    left: 50% !important;
-    bottom: 20px !important;
-    transform: translateX(-50%) !important;
+    right: 0.75rem !important;
+    left: 0.75rem !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+    transform: none !important;
+    width: auto !important;
   }
   
-  .tour-tooltip .max-w-sm {
-    max-width: calc(100vw - 2rem);
+  .tour-card {
+    max-width: none !important;
+    margin: 0 !important;
+    border-radius: 0.875rem;
+    max-height: min(62vh, 440px);
   }
   
   .tour-spotlight {
@@ -104,7 +127,7 @@
     animation: none;
   }
   
-  .tour-tooltip .bg-white {
+  .tour-card {
     animation: none;
   }
 }
@@ -242,33 +265,3 @@
   height: 100px;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .tour-tooltip .bg-white {
-    background-color: #1F2937;
-    color: #F9FAFB;
-  }
-  
-  .tour-tooltip .text-gray-900 {
-    color: #F9FAFB;
-  }
-  
-  .tour-tooltip .text-gray-600 {
-    color: #D1D5DB;
-  }
-  
-  .tour-tooltip .text-gray-500 {
-    color: #9CA3AF;
-  }
-  
-  .tour-skip-btn {
-    background: rgba(31, 41, 55, 0.9);
-    color: #D1D5DB;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  .tour-skip-btn:hover {
-    background: #1F2937;
-    color: #F9FAFB;
-  }
-}

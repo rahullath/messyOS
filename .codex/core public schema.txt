@@ -1,0 +1,6266 @@
+[
+  {
+    "table_name": "achievements",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 2,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 3,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 4,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 5,
+    "column_name": "type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 6,
+    "column_name": "criteria",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 7,
+    "column_name": "reward_tokens",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 8,
+    "column_name": "icon",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 9,
+    "column_name": "color",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'#3B82F6'::text"
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 10,
+    "column_name": "rarity",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'common'::text"
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 11,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "achievements",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 3,
+    "column_name": "feature_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 4,
+    "column_name": "tokens_consumed",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 5,
+    "column_name": "success",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 6,
+    "column_name": "error_message",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 7,
+    "column_name": "execution_time_ms",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "ai_usage_tracking",
+    "ordinal_position": 8,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 3,
+    "column_name": "preferred_wake_time",
+    "data_type": "time without time zone",
+    "is_nullable": "YES",
+    "column_default": "'06:00:00'::time without time zone"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 4,
+    "column_name": "preferred_bedtime",
+    "data_type": "time without time zone",
+    "is_nullable": "YES",
+    "column_default": "'22:00:00'::time without time zone"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 5,
+    "column_name": "minimum_sleep_duration",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "480"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 6,
+    "column_name": "gym_frequency",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "4"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 7,
+    "column_name": "preferred_gym_times",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": "ARRAY['morning'::text, 'evening'::text]"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 8,
+    "column_name": "workout_duration_preference",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "60"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 9,
+    "column_name": "travel_method_preference",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'cycling'::text"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 10,
+    "column_name": "cooking_time_limit",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "45"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 11,
+    "column_name": "daily_calorie_target",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "2200"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 12,
+    "column_name": "daily_protein_target",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "120"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 13,
+    "column_name": "dietary_restrictions",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 14,
+    "column_name": "meal_budget_limit",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "15.00"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 15,
+    "column_name": "max_tasks_per_day",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "8"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 16,
+    "column_name": "complex_task_time_preference",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'morning'::text"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 17,
+    "column_name": "break_duration_between_tasks",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "15"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 18,
+    "column_name": "deadline_buffer_days",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 19,
+    "column_name": "weather_sensitivity",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'medium'::text"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 20,
+    "column_name": "budget_consciousness",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'medium'::text"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 21,
+    "column_name": "schedule_flexibility",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'moderate'::text"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 22,
+    "column_name": "optimization_priority",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'balanced'::text"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 23,
+    "column_name": "suggestion_frequency",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'moderate'::text"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 24,
+    "column_name": "backup_plan_generation",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 25,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "auto_scheduler_preferences",
+    "ordinal_position": 26,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 3,
+    "column_name": "account_name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 4,
+    "column_name": "bank_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 5,
+    "column_name": "account_number_masked",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 6,
+    "column_name": "account_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'checking'::text"
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 7,
+    "column_name": "currency",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'USD'::text"
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 8,
+    "column_name": "sort_code",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 9,
+    "column_name": "bank_format",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 10,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 11,
+    "column_name": "last_sync_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "bank_accounts",
+    "ordinal_position": 13,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "bank_transaction_insights",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "bank_transaction_insights",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_transaction_insights",
+    "ordinal_position": 3,
+    "column_name": "transaction_data",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "bank_transaction_insights",
+    "ordinal_position": 4,
+    "column_name": "insights",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "bank_transaction_insights",
+    "ordinal_position": 5,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 3,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 4,
+    "column_name": "address",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 5,
+    "column_name": "location_type",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 6,
+    "column_name": "coordinates",
+    "data_type": "point",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 7,
+    "column_name": "cycling_distance_from_home",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 8,
+    "column_name": "cycling_time_estimate",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 9,
+    "column_name": "train_time_estimate",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 10,
+    "column_name": "walking_time_estimate",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 11,
+    "column_name": "cost_considerations",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 12,
+    "column_name": "opening_hours",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 13,
+    "column_name": "specialties",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 14,
+    "column_name": "user_rating",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 15,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 16,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 17,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "birmingham_locations",
+    "ordinal_position": 18,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 3,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 4,
+    "column_name": "category_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 5,
+    "column_name": "amount",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 6,
+    "column_name": "currency",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 7,
+    "column_name": "period_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'monthly'::text"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 8,
+    "column_name": "start_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 9,
+    "column_name": "end_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 10,
+    "column_name": "spent_amount",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 11,
+    "column_name": "remaining_amount",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 12,
+    "column_name": "percentage_used",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 13,
+    "column_name": "alert_thresholds",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": "'{50,80,100}'::numeric[]"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 14,
+    "column_name": "last_alert_sent",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 15,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 16,
+    "column_name": "is_exceeded",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 17,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "budgets",
+    "ordinal_position": 18,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 3,
+    "column_name": "source_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 4,
+    "column_name": "external_id",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 5,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 6,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 7,
+    "column_name": "start_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 8,
+    "column_name": "end_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 9,
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 10,
+    "column_name": "event_type",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'personal'::event_type"
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 11,
+    "column_name": "flexibility",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'fixed'::flexibility_type"
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 12,
+    "column_name": "importance",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'medium'::importance_level"
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 13,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "calendar_events",
+    "ordinal_position": 14,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 3,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 4,
+    "column_name": "type",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 5,
+    "column_name": "url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 6,
+    "column_name": "credentials",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 7,
+    "column_name": "sync_frequency",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "60"
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 8,
+    "column_name": "color",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'#3B82F6'::text"
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 9,
+    "column_name": "priority",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 10,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 11,
+    "column_name": "last_sync",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "calendar_sources",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 3,
+    "column_name": "module1",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 4,
+    "column_name": "module1_metric",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 5,
+    "column_name": "module2",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 6,
+    "column_name": "module2_metric",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 7,
+    "column_name": "correlation_score",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 8,
+    "column_name": "confidence",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 9,
+    "column_name": "sample_size",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 10,
+    "column_name": "insight",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "cross_module_correlations",
+    "ordinal_position": 11,
+    "column_name": "last_calculated",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "currencies",
+    "ordinal_position": 1,
+    "column_name": "code",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "currencies",
+    "ordinal_position": 2,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "currencies",
+    "ordinal_position": 3,
+    "column_name": "symbol",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "currencies",
+    "ordinal_position": 4,
+    "column_name": "decimal_places",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "2"
+  },
+  {
+    "table_name": "currencies",
+    "ordinal_position": 5,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "currencies",
+    "ordinal_position": 6,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 3,
+    "column_name": "plan_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 4,
+    "column_name": "wake_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 5,
+    "column_name": "sleep_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 6,
+    "column_name": "energy_state",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 7,
+    "column_name": "status",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'active'::text"
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 8,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 9,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 10,
+    "column_name": "generated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 11,
+    "column_name": "generated_after_now",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "daily_plans",
+    "ordinal_position": 12,
+    "column_name": "plan_start",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 3,
+    "column_name": "time_of_day",
+    "data_type": "time without time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 4,
+    "column_name": "day_of_week",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 5,
+    "column_name": "average_energy",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 6,
+    "column_name": "confidence",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 7,
+    "column_name": "sample_size",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "energy_patterns",
+    "ordinal_position": 8,
+    "column_name": "last_updated",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "exchange_rates",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "exchange_rates",
+    "ordinal_position": 2,
+    "column_name": "from_currency",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "exchange_rates",
+    "ordinal_position": 3,
+    "column_name": "to_currency",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "exchange_rates",
+    "ordinal_position": 4,
+    "column_name": "rate",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exchange_rates",
+    "ordinal_position": 5,
+    "column_name": "date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exchange_rates",
+    "ordinal_position": 6,
+    "column_name": "source",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'api'::text"
+  },
+  {
+    "table_name": "exchange_rates",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 2,
+    "column_name": "plan_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 3,
+    "column_name": "time_block_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 4,
+    "column_name": "commitment_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 5,
+    "column_name": "exit_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 6,
+    "column_name": "travel_duration",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 7,
+    "column_name": "preparation_time",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 8,
+    "column_name": "travel_method",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "exit_times",
+    "ordinal_position": 9,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 2,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 3,
+    "column_name": "icon",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 4,
+    "column_name": "color",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 5,
+    "column_name": "parent_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 6,
+    "column_name": "is_system",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 7,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 8,
+    "column_name": "country_code",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 9,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "expense_categories",
+    "ordinal_position": 10,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 3,
+    "column_name": "account_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 4,
+    "column_name": "transaction_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 5,
+    "column_name": "amount",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 6,
+    "column_name": "currency",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 7,
+    "column_name": "transaction_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'debit'::text"
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 8,
+    "column_name": "merchant_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 9,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 10,
+    "column_name": "original_description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 11,
+    "column_name": "category_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 12,
+    "column_name": "subcategory",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 13,
+    "column_name": "auto_categorized",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 14,
+    "column_name": "confidence_score",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 15,
+    "column_name": "location_data",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 16,
+    "column_name": "amount_primary_currency",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 17,
+    "column_name": "amount_secondary_currency",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 18,
+    "column_name": "exchange_rate_used",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 19,
+    "column_name": "is_above_average",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 20,
+    "column_name": "price_difference_percentage",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 21,
+    "column_name": "average_for_category",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 22,
+    "column_name": "import_source",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 23,
+    "column_name": "import_batch_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 24,
+    "column_name": "original_file_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 25,
+    "column_name": "tags",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 26,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 27,
+    "column_name": "receipt_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 28,
+    "column_name": "uk_merchant_postcode",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 29,
+    "column_name": "uk_price_comparison",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 30,
+    "column_name": "linked_nutrition_log_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 31,
+    "column_name": "estimated_nutrition_value",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 32,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "expenses",
+    "ordinal_position": 33,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "fitness_metrics",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "fitness_metrics",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "fitness_metrics",
+    "ordinal_position": 3,
+    "column_name": "metric_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "fitness_metrics",
+    "ordinal_position": 4,
+    "column_name": "value",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "fitness_metrics",
+    "ordinal_position": 5,
+    "column_name": "unit",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "fitness_metrics",
+    "ordinal_position": 6,
+    "column_name": "recorded_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "fitness_metrics",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 3,
+    "column_name": "food_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 4,
+    "column_name": "recipe_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 5,
+    "column_name": "quantity_grams",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 6,
+    "column_name": "meal_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 7,
+    "column_name": "logged_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 8,
+    "column_name": "recipe_portion",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "1.0"
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 9,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "food_logs",
+    "ordinal_position": 10,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 2,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 3,
+    "column_name": "brand",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 4,
+    "column_name": "barcode",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 5,
+    "column_name": "calories",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 6,
+    "column_name": "protein",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 7,
+    "column_name": "carbs",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 8,
+    "column_name": "fat",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 9,
+    "column_name": "fiber",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 10,
+    "column_name": "sugar",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 11,
+    "column_name": "sodium",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 12,
+    "column_name": "vitamin_c",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 13,
+    "column_name": "iron",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 14,
+    "column_name": "calcium",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 15,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 16,
+    "column_name": "subcategory",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 17,
+    "column_name": "common_portions",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'[]'::jsonb"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 18,
+    "column_name": "is_verified",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 19,
+    "column_name": "is_brand_specific",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 20,
+    "column_name": "cuisine_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 21,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "foods",
+    "ordinal_position": 22,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "github_profiles",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "github_profiles",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "github_profiles",
+    "ordinal_position": 3,
+    "column_name": "github_username",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "github_profiles",
+    "ordinal_position": 4,
+    "column_name": "access_token",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "github_profiles",
+    "ordinal_position": 5,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 3,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 4,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 5,
+    "column_name": "category",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 6,
+    "column_name": "timeframe",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 7,
+    "column_name": "measurable_outcomes",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 8,
+    "column_name": "success_metrics",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 9,
+    "column_name": "status",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'active'::goal_status"
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 10,
+    "column_name": "created_from",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'manual'::text"
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 11,
+    "column_name": "target_date",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "goals",
+    "ordinal_position": 13,
+    "column_name": "completed_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 3,
+    "column_name": "habit1_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 4,
+    "column_name": "habit2_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 5,
+    "column_name": "correlation_score",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 6,
+    "column_name": "insight",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 7,
+    "column_name": "recommendation",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 8,
+    "column_name": "last_calculated",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habit_correlations",
+    "ordinal_position": 9,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 2,
+    "column_name": "habit_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 3,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 4,
+    "column_name": "value",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 5,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 6,
+    "column_name": "logged_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 8,
+    "column_name": "date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": "CURRENT_DATE"
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 9,
+    "column_name": "effort",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 10,
+    "column_name": "energy_level",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 11,
+    "column_name": "mood",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 12,
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 13,
+    "column_name": "weather",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 14,
+    "column_name": "context_tags",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 15,
+    "column_name": "duration_minutes",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 16,
+    "column_name": "completion_time",
+    "data_type": "time without time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 17,
+    "column_name": "numeric_value",
+    "data_type": "double precision",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 18,
+    "column_name": "parsed",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_entries",
+    "ordinal_position": 19,
+    "column_name": "source",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 3,
+    "column_name": "habit_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 4,
+    "column_name": "insight_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 5,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 6,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 7,
+    "column_name": "data",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 8,
+    "column_name": "confidence",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 9,
+    "column_name": "is_actionable",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 10,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 11,
+    "column_name": "expires_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_insights",
+    "ordinal_position": 12,
+    "column_name": "viewed_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_nlp_logs",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "habit_nlp_logs",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_nlp_logs",
+    "ordinal_position": 3,
+    "column_name": "original_input",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_nlp_logs",
+    "ordinal_position": 4,
+    "column_name": "parsed_results",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_nlp_logs",
+    "ordinal_position": 5,
+    "column_name": "confidence_score",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_nlp_logs",
+    "ordinal_position": 6,
+    "column_name": "tokens_used",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "habit_nlp_logs",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habit_query_performance",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "habit_query_performance",
+    "ordinal_position": 2,
+    "column_name": "query_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_query_performance",
+    "ordinal_position": 3,
+    "column_name": "execution_time_ms",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_query_performance",
+    "ordinal_position": 4,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_query_performance",
+    "ordinal_position": 5,
+    "column_name": "parameters",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_query_performance",
+    "ordinal_position": 6,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 2,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 3,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 4,
+    "column_name": "type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 5,
+    "column_name": "measurement_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 6,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 7,
+    "column_name": "suggested_target",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 8,
+    "column_name": "target_unit",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 9,
+    "column_name": "color",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'#3B82F6'::text"
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 10,
+    "column_name": "is_popular",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "habit_templates",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 3,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 4,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 5,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'Health'::text"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 6,
+    "column_name": "type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'build'::text"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 7,
+    "column_name": "target_value",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 8,
+    "column_name": "target_unit",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 9,
+    "column_name": "color",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'#3B82F6'::text"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 10,
+    "column_name": "streak_count",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 11,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 13,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 14,
+    "column_name": "measurement_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'boolean'::text"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 15,
+    "column_name": "allows_skips",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 16,
+    "column_name": "reminder_time",
+    "data_type": "time without time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 17,
+    "column_name": "position",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "habits",
+    "ordinal_position": 18,
+    "column_name": "best_streak",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 3,
+    "column_name": "overall_score",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": "0"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 4,
+    "column_name": "habits_score",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": "0"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 5,
+    "column_name": "tasks_score",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": "0"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 6,
+    "column_name": "health_score",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": "0"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 7,
+    "column_name": "productivity_score",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": "0"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 8,
+    "column_name": "content_score",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": "0"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 9,
+    "column_name": "score_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": "CURRENT_DATE"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 10,
+    "column_name": "metadata",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "life_optimization_scores",
+    "ordinal_position": 12,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 3,
+    "column_name": "optimization_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 4,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 5,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 6,
+    "column_name": "impact_area",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 7,
+    "column_name": "confidence",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 8,
+    "column_name": "implementation_difficulty",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 9,
+    "column_name": "expected_benefit",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 10,
+    "column_name": "is_implemented",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "life_optimizations",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 2,
+    "column_name": "merchant_name_cleaned",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 3,
+    "column_name": "predicted_category_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 4,
+    "column_name": "category_confidence",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 5,
+    "column_name": "merchant_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 6,
+    "column_name": "chain_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 7,
+    "column_name": "common_locations",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 8,
+    "column_name": "is_uk_specific",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 9,
+    "column_name": "name_patterns",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 10,
+    "column_name": "description_keywords",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 11,
+    "column_name": "transaction_count",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 12,
+    "column_name": "average_amount",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 13,
+    "column_name": "last_seen",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 14,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "merchant_intelligence",
+    "ordinal_position": 15,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 2,
+    "column_name": "goal_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 3,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 4,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 5,
+    "column_name": "target_date",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 6,
+    "column_name": "completion_criteria",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 7,
+    "column_name": "is_achieved",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 8,
+    "column_name": "achieved_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "milestones",
+    "ordinal_position": 9,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 3,
+    "column_name": "daily_calories",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 4,
+    "column_name": "daily_protein",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 5,
+    "column_name": "daily_carbs",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 6,
+    "column_name": "daily_fat",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 7,
+    "column_name": "daily_fiber",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "25"
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 8,
+    "column_name": "goal_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'maintain'::text"
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 9,
+    "column_name": "activity_level",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'moderate'::text"
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 10,
+    "column_name": "height_cm",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 11,
+    "column_name": "weight_kg",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 12,
+    "column_name": "age",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 13,
+    "column_name": "gender",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 14,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 15,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "nutrition_goals",
+    "ordinal_position": 16,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 3,
+    "column_name": "plan_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 4,
+    "column_name": "wake_up_time",
+    "data_type": "time without time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 5,
+    "column_name": "sleep_duration",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 6,
+    "column_name": "gym_session",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 7,
+    "column_name": "meal_plan",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 8,
+    "column_name": "travel_optimization",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 9,
+    "column_name": "task_scheduling",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 10,
+    "column_name": "optimization_score",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 11,
+    "column_name": "birmingham_context",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 12,
+    "column_name": "weather_consideration",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 13,
+    "column_name": "ai_reasoning",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 14,
+    "column_name": "potential_conflicts",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 15,
+    "column_name": "backup_plans",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 16,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "optimized_daily_plans",
+    "ordinal_position": 17,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "outlook_profiles",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "outlook_profiles",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "outlook_profiles",
+    "ordinal_position": 3,
+    "column_name": "outlook_email",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "outlook_profiles",
+    "ordinal_position": 4,
+    "column_name": "access_token",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "outlook_profiles",
+    "ordinal_position": 5,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 2,
+    "column_name": "email",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 3,
+    "column_name": "full_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 4,
+    "column_name": "avatar_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 5,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 6,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 7,
+    "column_name": "simulated_wallet_address",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 8,
+    "column_name": "wallet_created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "profiles",
+    "ordinal_position": 9,
+    "column_name": "preferred_theme",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'dark'::text"
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 3,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 4,
+    "column_name": "summary_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 5,
+    "column_name": "period_start",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 6,
+    "column_name": "period_end",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 7,
+    "column_name": "data",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 8,
+    "column_name": "visual_data",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 9,
+    "column_name": "is_public",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 10,
+    "column_name": "share_token",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "progress_summaries",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "recipe_ingredients",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "recipe_ingredients",
+    "ordinal_position": 2,
+    "column_name": "recipe_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipe_ingredients",
+    "ordinal_position": 3,
+    "column_name": "food_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipe_ingredients",
+    "ordinal_position": 4,
+    "column_name": "quantity",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "recipe_ingredients",
+    "ordinal_position": 5,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipe_ingredients",
+    "ordinal_position": 6,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 3,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 4,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 5,
+    "column_name": "cuisine_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 6,
+    "column_name": "meal_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 7,
+    "column_name": "servings",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 8,
+    "column_name": "prep_time_minutes",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 9,
+    "column_name": "cook_time_minutes",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 10,
+    "column_name": "is_public",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 11,
+    "column_name": "difficulty_level",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 12,
+    "column_name": "tags",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 13,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "recipes",
+    "ordinal_position": 14,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 3,
+    "column_name": "pattern_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 4,
+    "column_name": "category_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 5,
+    "column_name": "pattern_data",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 6,
+    "column_name": "confidence_score",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 7,
+    "column_name": "analysis_start_date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 8,
+    "column_name": "analysis_end_date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 9,
+    "column_name": "insights",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 10,
+    "column_name": "recommendations",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "spending_patterns",
+    "ordinal_position": 12,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 3,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 4,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 5,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 6,
+    "column_name": "priority",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'medium'::task_priority"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 7,
+    "column_name": "status",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'pending'::task_status"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 8,
+    "column_name": "complexity",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'moderate'::task_complexity"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 9,
+    "column_name": "energy_required",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'medium'::energy_level"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 10,
+    "column_name": "estimated_duration",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 11,
+    "column_name": "actual_duration",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 12,
+    "column_name": "deadline",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 13,
+    "column_name": "created_from",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'manual'::text"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 14,
+    "column_name": "parent_task_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 15,
+    "column_name": "position",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 16,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 17,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "tasks",
+    "ordinal_position": 18,
+    "column_name": "completed_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 2,
+    "column_name": "plan_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 3,
+    "column_name": "start_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 4,
+    "column_name": "end_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 5,
+    "column_name": "activity_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 6,
+    "column_name": "activity_name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 7,
+    "column_name": "activity_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 8,
+    "column_name": "is_fixed",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 9,
+    "column_name": "sequence_order",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 10,
+    "column_name": "status",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'pending'::text"
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 11,
+    "column_name": "skip_reason",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 13,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "time_blocks",
+    "ordinal_position": 14,
+    "column_name": "metadata",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 3,
+    "column_name": "task_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 4,
+    "column_name": "start_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 5,
+    "column_name": "end_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 6,
+    "column_name": "estimated_duration",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 7,
+    "column_name": "actual_duration",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 8,
+    "column_name": "productivity_rating",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 9,
+    "column_name": "difficulty_rating",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 10,
+    "column_name": "energy_level",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 11,
+    "column_name": "distractions",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 12,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 13,
+    "column_name": "completion_status",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": "'active'::session_status"
+  },
+  {
+    "table_name": "time_sessions",
+    "ordinal_position": 14,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 3,
+    "column_name": "transaction_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 4,
+    "column_name": "amount",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 5,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 6,
+    "column_name": "balance_before",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 7,
+    "column_name": "balance_after",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 8,
+    "column_name": "metadata",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "token_transactions",
+    "ordinal_position": 9,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 3,
+    "column_name": "title",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 4,
+    "column_name": "type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 5,
+    "column_name": "start_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 6,
+    "column_name": "end_time",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 7,
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 8,
+    "column_name": "building",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 9,
+    "column_name": "importance",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "3"
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 10,
+    "column_name": "preparation_time",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 11,
+    "column_name": "travel_time",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 12,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 13,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_academic_events",
+    "ordinal_position": 14,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 3,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 4,
+    "column_name": "weekly_limit",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 5,
+    "column_name": "monthly_limit",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 6,
+    "column_name": "current_weekly_spent",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 7,
+    "column_name": "current_monthly_spent",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 8,
+    "column_name": "week_start_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 9,
+    "column_name": "month_start_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 10,
+    "column_name": "alert_threshold",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "0.8"
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 11,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_budgets",
+    "ordinal_position": 13,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 3,
+    "column_name": "amount",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 4,
+    "column_name": "currency",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'GBP'::text"
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 5,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 6,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'other'::text"
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 7,
+    "column_name": "store",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 8,
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 9,
+    "column_name": "payment_method",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 10,
+    "column_name": "receipt_data",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 11,
+    "column_name": "transaction_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_expenses",
+    "ordinal_position": 13,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 3,
+    "column_name": "item_name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 4,
+    "column_name": "quantity",
+    "data_type": "numeric",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 5,
+    "column_name": "unit",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 6,
+    "column_name": "expiry_date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 7,
+    "column_name": "purchase_date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 8,
+    "column_name": "store",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 9,
+    "column_name": "cost",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 10,
+    "column_name": "category",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'other'::text"
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 11,
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'fridge'::text"
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_inventory",
+    "ordinal_position": 13,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 2,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 3,
+    "column_name": "type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 4,
+    "column_name": "address",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 5,
+    "column_name": "coordinates",
+    "data_type": "point",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 6,
+    "column_name": "opening_hours",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 7,
+    "column_name": "price_level",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 8,
+    "column_name": "user_rating",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 9,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 10,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_locations",
+    "ordinal_position": 12,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 3,
+    "column_name": "week_start_date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 4,
+    "column_name": "meals",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 5,
+    "column_name": "shopping_list",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": "'[]'::jsonb"
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 6,
+    "column_name": "total_cost",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 7,
+    "column_name": "nutrition_summary",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 8,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_meal_plans",
+    "ordinal_position": 9,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 3,
+    "column_name": "home_location",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'five-ways'::text"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 4,
+    "column_name": "transport_preference",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'mixed'::text"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 5,
+    "column_name": "cooking_time_limits",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{\"lunch\": 20, \"dinner\": 30, \"breakfast\": 10}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 6,
+    "column_name": "dietary_restrictions",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": "'{}'::text[]"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 7,
+    "column_name": "bulk_cooking_frequency",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "2"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 8,
+    "column_name": "budget_alert_enabled",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 9,
+    "column_name": "weather_notifications",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 10,
+    "column_name": "laundry_reminder_enabled",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 11,
+    "column_name": "skincare_tracking_enabled",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 12,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_preferences",
+    "ordinal_position": 13,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 2,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 3,
+    "column_name": "description",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 4,
+    "column_name": "ingredients",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": "'[]'::jsonb"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 5,
+    "column_name": "instructions",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": "'[]'::jsonb"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 6,
+    "column_name": "cooking_time",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 7,
+    "column_name": "prep_time",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 8,
+    "column_name": "difficulty",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "3"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 9,
+    "column_name": "servings",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 10,
+    "column_name": "nutrition",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 11,
+    "column_name": "storage_info",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 12,
+    "column_name": "bulk_cooking_multiplier",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 13,
+    "column_name": "tags",
+    "data_type": "ARRAY",
+    "is_nullable": "YES",
+    "column_default": "'{}'::text[]"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 14,
+    "column_name": "is_public",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 15,
+    "column_name": "created_by",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 16,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_recipes",
+    "ordinal_position": 17,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 3,
+    "column_name": "routine_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 4,
+    "column_name": "completed_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 5,
+    "column_name": "steps_completed",
+    "data_type": "ARRAY",
+    "is_nullable": "NO",
+    "column_default": "'{}'::text[]"
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 6,
+    "column_name": "total_duration",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": "0"
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 7,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routine_completions",
+    "ordinal_position": 8,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_routine_misses",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_routine_misses",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routine_misses",
+    "ordinal_position": 3,
+    "column_name": "routine_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routine_misses",
+    "ordinal_position": 4,
+    "column_name": "reason",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routine_misses",
+    "ordinal_position": 5,
+    "column_name": "recorded_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_routine_misses",
+    "ordinal_position": 6,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 3,
+    "column_name": "routine_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 4,
+    "column_name": "name",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 5,
+    "column_name": "steps",
+    "data_type": "jsonb",
+    "is_nullable": "NO",
+    "column_default": "'[]'::jsonb"
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 6,
+    "column_name": "estimated_duration",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 7,
+    "column_name": "frequency",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": "'daily'::text"
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 8,
+    "column_name": "last_completed",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 9,
+    "column_name": "completion_streak",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 10,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_routines",
+    "ordinal_position": 12,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 3,
+    "column_name": "substance_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 4,
+    "column_name": "target_reduction",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": "50"
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 5,
+    "column_name": "timeframe_days",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": "30"
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 6,
+    "column_name": "is_active",
+    "data_type": "boolean",
+    "is_nullable": "NO",
+    "column_default": "true"
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_substance_goals",
+    "ordinal_position": 8,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_substance_tracking",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_substance_tracking",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_substance_tracking",
+    "ordinal_position": 3,
+    "column_name": "substance_type",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_substance_tracking",
+    "ordinal_position": 4,
+    "column_name": "count",
+    "data_type": "integer",
+    "is_nullable": "NO",
+    "column_default": "1"
+  },
+  {
+    "table_name": "uk_student_substance_tracking",
+    "ordinal_position": 5,
+    "column_name": "notes",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_substance_tracking",
+    "ordinal_position": 6,
+    "column_name": "tracked_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_substance_tracking",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 3,
+    "column_name": "from_location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 4,
+    "column_name": "to_location",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 5,
+    "column_name": "preferred_method",
+    "data_type": "text",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 6,
+    "column_name": "duration_minutes",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 7,
+    "column_name": "cost_pence",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 8,
+    "column_name": "weather_conditions",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 9,
+    "column_name": "frequency_used",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 10,
+    "column_name": "last_used",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "uk_student_travel_routes",
+    "ordinal_position": 12,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "user_achievements",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "user_achievements",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_achievements",
+    "ordinal_position": 3,
+    "column_name": "achievement_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_achievements",
+    "ordinal_position": 4,
+    "column_name": "earned_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "user_achievements",
+    "ordinal_position": 5,
+    "column_name": "progress_data",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "user_achievements",
+    "ordinal_position": 6,
+    "column_name": "is_celebrated",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "user_achievements",
+    "ordinal_position": 7,
+    "column_name": "celebrated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 2,
+    "column_name": "email",
+    "data_type": "character varying",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 3,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 4,
+    "column_name": "full_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 5,
+    "column_name": "avatar_url",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 6,
+    "column_name": "simulated_wallet_address",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 7,
+    "column_name": "wallet_created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 8,
+    "column_name": "preferred_theme",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 9,
+    "column_name": "token_balance",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 10,
+    "column_name": "total_earned",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 11,
+    "column_name": "total_spent",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 12,
+    "column_name": "github_connected",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 13,
+    "column_name": "outlook_connected",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 14,
+    "column_name": "fitness_connected",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_dashboard_view",
+    "ordinal_position": 15,
+    "column_name": "banking_connected",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 3,
+    "column_name": "primary_currency",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'USD'::text"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 4,
+    "column_name": "secondary_currency",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 5,
+    "column_name": "country_code",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 6,
+    "column_name": "timezone",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'UTC'::text"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 7,
+    "column_name": "monthly_budget",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 8,
+    "column_name": "budget_start_day",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "1"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 9,
+    "column_name": "is_uk_user",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 10,
+    "column_name": "uk_postcode",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 11,
+    "column_name": "uk_bank_name",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 12,
+    "column_name": "enable_price_alerts",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 13,
+    "column_name": "price_alert_threshold",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "20.0"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 14,
+    "column_name": "enable_budget_alerts",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "true"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 15,
+    "column_name": "budget_alert_threshold",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": "80.0"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 16,
+    "column_name": "is_first_month_tracking",
+    "data_type": "boolean",
+    "is_nullable": "YES",
+    "column_default": "false"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 17,
+    "column_name": "first_month_start_date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 18,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "user_expense_settings",
+    "ordinal_position": 19,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "user_preferences",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "user_preferences",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_preferences",
+    "ordinal_position": 3,
+    "column_name": "preferences",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": "'{}'::jsonb"
+  },
+  {
+    "table_name": "user_preferences",
+    "ordinal_position": 4,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "user_preferences",
+    "ordinal_position": 5,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 3,
+    "column_name": "balance",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 4,
+    "column_name": "total_earned",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 5,
+    "column_name": "total_spent",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": "0"
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 6,
+    "column_name": "wallet_type",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'simulated'::text"
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "user_tokens",
+    "ordinal_position": 8,
+    "column_name": "updated_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 2,
+    "column_name": "user_id",
+    "data_type": "uuid",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 3,
+    "column_name": "wake_timestamp",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 4,
+    "column_name": "wake_date",
+    "data_type": "date",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 5,
+    "column_name": "source",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 6,
+    "column_name": "payload",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 7,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  },
+  {
+    "table_name": "wake_events",
+    "ordinal_position": 8,
+    "column_name": "battery_percentage",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 1,
+    "column_name": "id",
+    "data_type": "uuid",
+    "is_nullable": "NO",
+    "column_default": "gen_random_uuid()"
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 2,
+    "column_name": "date",
+    "data_type": "date",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 3,
+    "column_name": "location",
+    "data_type": "text",
+    "is_nullable": "YES",
+    "column_default": "'Birmingham, UK'::text"
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 4,
+    "column_name": "condition",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 5,
+    "column_name": "temperature",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 6,
+    "column_name": "precipitation_chance",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 7,
+    "column_name": "wind_speed",
+    "data_type": "numeric",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 8,
+    "column_name": "humidity",
+    "data_type": "integer",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 9,
+    "column_name": "cycling_recommendation",
+    "data_type": "USER-DEFINED",
+    "is_nullable": "NO",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 10,
+    "column_name": "impact_on_schedule",
+    "data_type": "jsonb",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  {
+    "table_name": "weather_data",
+    "ordinal_position": 11,
+    "column_name": "created_at",
+    "data_type": "timestamp with time zone",
+    "is_nullable": "YES",
+    "column_default": "now()"
+  }
+]

@@ -414,32 +414,37 @@ class AuthenticationService {
    * Initialize user preferences (used for existing users or fallback)
    */
   private async initializeUserPreferences(userId: string): Promise<void> {
+    const defaultPreferences = {
+      theme: 'dark',
+      accent_color: '#06b6d4',
+      enabled_modules: ['tasks', 'habits', 'finance', 'health'],
+      module_order: ['tasks', 'habits', 'finance', 'health'],
+      dashboard_layout: {},
+      ai_personality: 'professional',
+      ai_proactivity_level: 3,
+      subscription_status: 'trial',
+      trial_started: new Date().toISOString(),
+      trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      language: 'en',
+      notifications: {
+        email: true,
+        push: true,
+        marketing: false
+      },
+      dashboard: {
+        layout: 'default',
+        modules: ['tasks', 'habits', 'finance', 'health']
+      }
+    };
+
     const { error } = await this.client
       .from('user_preferences')
-      .insert({
+      .upsert({
         user_id: userId,
-        theme: 'dark',
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        language: 'en',
-        notifications: {
-          email: true,
-          push: true,
-          marketing: false
-        },
-        dashboard: {
-          layout: 'default',
-          modules: ['tasks', 'habits', 'finance', 'health']
-        },
-        enabled_modules: ['tasks', 'habits', 'finance', 'health'],
-        module_order: ['tasks', 'habits', 'finance', 'health'],
-        accent_color: '#06b6d4',
-        ai_personality: 'professional',
-        ai_proactivity_level: 3,
-        subscription_status: 'trial',
-        trial_started: new Date().toISOString(),
-        trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        preferences: defaultPreferences,
         created_at: new Date().toISOString()
-      });
+      }, { onConflict: 'user_id' });
 
     if (error && error.code !== '23505') { // Ignore duplicate key error
       console.error('Error initializing user preferences:', error);

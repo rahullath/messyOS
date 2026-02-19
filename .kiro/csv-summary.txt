@@ -1,0 +1,304 @@
+pasting preview of how csvs look for context
+
+1) habits module import feature uses - habits.csv, checkmarks.csv and scores.csv which are available in the root folder of the loop habits export.
+
+habits.csv (not preview - complete file)
+Position	Name	Type	Question	Description	FrequencyNumerator	FrequencyDenominator	Color	Unit	Target Type	Target Value	Archived?
+1	Quit Valorant	YES_NO	Did you game		1	1	#F9A825				FALSE
+2	Vaping	NUMERICAL	How many puffs today		1	1	#5D4037	puffs	AT_MOST	11	FALSE
+3	Step Out	YES_NO	Did you leave the building		1	1	#00897B				FALSE
+4	Nicotine Pouches	NUMERICAL	How many		1	1	#D32F2F	pouch	AT_MOST	1	FALSE
+5	Shower	YES_NO	filthy		1	1	#FF8F00				FALSE
+6	Quit Porn	YES_NO	Did you skip primal activity	"Goal - First Month
+Reduce to atleast 14/30 days"	1	1	#E64A19				FALSE
+7	Wake Up Early	YES_NO	Did you wake up early		1	1	#7CB342				FALSE
+8	No Energy Drink	YES_NO			1	1	#AFB42B				FALSE
+9	Socialize	YES_NO	Did you talk to a human		1	1	#1976D2				FALSE
+10	University	YES_NO	docs, applications, research		5	7	#5D4037				FALSE
+11	Coding	YES_NO	build		1	1	#D81B60				FALSE
+12	Gym	YES_NO	Did you go to the gym?		1	1	#8E24AA				FALSE
+13	Skincare	YES_NO	Did you do skincare		1	1	#388E3C				FALSE
+14	Meds	YES_NO	Take medis		1	1	#aaaaaa				FALSE
+15	No Pot	YES_NO	Did you not smoke up?		1	1	#8E24AA				FALSE
+16	Meals	NUMERICAL	How many cooked meals		1	1	#1976D2	mealy	AT_LEAST	3	FALSE
+17	Oral Hygiene	NUMERICAL	Did you floss+brush		1	1	#F9A825	session	AT_LEAST	2	FALSE
+18	Laundry	YES_NO	Do your laundry		1	7	#1976D2				FALSE
+19	Litter	YES_NO	Clean cat litter		4	7	#5D4037				FALSE
+
+
+
+You already know which ones are new. My app doesn't understand mealy, session, pouches yet at all - only vaping logic was introduced to make it clear 0 puffs is good. And I haven't changed the frequency numerator and denominator for any until these new habits I thought some are relevant for us for better data. I can change frequency to xyz times per week, month etc if needed - but basically all Numerical type habits need special coding as they're not as simple as a binary habit
+
+Next, checkmarks.csv (preview)
+Date	Quit Valorant	Vaping	Step Out	Nicotine Pouches	Shower	Quit Porn	Wake Up Early	No Energy Drink	Socialize	University	Coding	Gym	Skincare	Meds	No Pot	Meals	Oral Hygiene	Laundry	Litter
+08-02-2026	YES_MANUAL	NO	YES_MANUAL	3000	YES_MANUAL	YES_MANUAL	YES_MANUAL	NO	YES_MANUAL	UNKNOWN	YES_MANUAL	UNKNOWN	YES_MANUAL	YES_MANUAL	NO	2000	1000	YES_AUTO	UNKNOWN
+07-02-2026	YES_MANUAL	NO	YES_MANUAL	UNKNOWN	YES_MANUAL	YES_MANUAL	NO	NO	NO	UNKNOWN	YES_MANUAL	UNKNOWN	YES_MANUAL	UNKNOWN	NO	UNKNOWN	UNKNOWN	YES_MANUAL	UNKNOWN
+06-02-2026	YES_MANUAL	NO	YES_MANUAL	UNKNOWN	YES_MANUAL	YES_MANUAL	NO	NO	YES_MANUAL	NO	YES_MANUAL	UNKNOWN	UNKNOWN	UNKNOWN	NO	UNKNOWN	UNKNOWN	UNKNOWN	YES_MANUAL
+
+
+*note- the numerical data is multipled by 1000 for some reason, it actual is 1,2,3 etc not in thousands.
+
+This is what is used for processing all habits right now I think - and as evident it has combined data of all habits - so no notes column.
+
+3rd, scores.csv
+
+Date	Quit Valorant	Vaping	Step Out	Nicotine Pouches	Shower	Quit Porn	Wake Up Early	No Energy Drink	Socialize	University	Coding	Gym	Skincare	Meds	No Pot	Meals	Oral Hygiene	Laundry	Litter
+08-02-2026	1	0.9996	0.9727	0.9481	0.8895	0.8165	0.6128	0.576	0.5694	0.5671	0.5354	0.1159	0.1011	0.0519	0.0457	0.0346	0.026	0.0198	0.0142
+07-02-2026	1	0.9996	0.9712	0	0.8834	0.8064	0.5916	0.6075	0.5458	0.5702	0.51	0.1222	0.0519	0	0.0482	0	0	0.01	0.0097
+06-02-2026	1	0.9996	0.9697	0	0.877	0.7958	0.624	0.6408	0.5757	0.5734	0.4831	0.1289	0	0	0.0509	0	0	0	0.0049
+05-02-2026	1	0.9996	0.968	0	0.8703	0.7846	0.6582	0.6759	0.5525	0.5768	0.4548	0.136	0	0	0.0537	0	0	0	0
+04-02-2026	1	0.9995	0.9662	0	0.8632	0.7728	0.6942	0.6582	0.5828	0.5804	0.4797	0.1434	0	0	0.0566	0	0	0	0
+03-02-2026	1	0.9995	0.9644	0	0.8557	0.7604	0.6775	0.6942	0.5599	0.5794	0.506	0.1513	0	0	0.0597	0	0	0	0
+
+Loop Habits internal scoring math logic - it's pretty complicated honestly - it uses some way to not penalize you too much for skipping or missing habits etc and understands your patterns I guess. Will have to give you the GitHub docs if you want clarity on this.
+
+2) habits module - new files, i.e the individual checkmarks, scores of each habit. maybe we can skip individual scores cause it is already in the compiled sheet and focus only on individual checkmarks with notes.
+
+a) energy drink checkmarks.csv (preview)
+Date	Value	Notes
+08-02-2026	NO	monster zero sugar
+07-02-2026	NO	monster nitro :(
+06-02-2026	NO	lucozade energy
+05-02-2026	YES_MANUAL	
+04-02-2026	NO	"mango loco monster
+(birthday exception)"
+03-02-2026	YES_MANUAL	
+02-02-2026	YES_MANUAL	
+01-02-2026	YES_MANUAL	
+31-01-2026	YES_MANUAL	
+30-01-2026	YES_MANUAL	
+29-01-2026	YES_MANUAL	"sneak blizzard lemonade, it is so bad I bought it yesterday and can't even finish
+
+ended up finishing it, going for a social event , coming back and buying a monster ultra paradise"
+28-01-2026	YES_MANUAL	
+27-01-2026	NO	monster mango loco to wake the fuck up after the edibles last night
+26-01-2026	YES_MANUAL	bought monster mango loco for tomorrow, nothing for today
+25-01-2026	NO	monster ultra white
+
+b) shower - checkmarks.csv (preview)
+Date	Value	Notes
+08-02-2026	YES_MANUAL	only water
+07-02-2026	YES_MANUAL	
+06-02-2026	YES_MANUAL	reg shower + skincare
+05-02-2026	YES_MANUAL	proper cleanse
+04-02-2026	YES_MANUAL	
+03-02-2026	YES_MANUAL	
+02-02-2026	YES_MANUAL	
+01-02-2026	YES_MANUAL	reg shower+ oral hygiene+ skincare
+31-01-2026	YES_MANUAL	shaving + complete head shower cleanse mode
+30-01-2026	YES_MANUAL	reg shower
+29-01-2026	YES_MANUAL	
+28-01-2026	YES_MANUAL	reg shower
+27-01-2026	YES_MANUAL	complete head shower with new conditioner
+26-01-2026	SKIP	only skincare + oral
+25-01-2026	YES_MANUAL	reg shower
+24-01-2026	SKIP	no shower but facewash+skincare+oral hygiene twice in the day, with dry shampoo
+23-01-2026	YES_MANUAL	"head shower again
++ I did oral hygiene and skincare at night also after weeks.. I was just doing it once a day after giving up and now I did it twice finally after so long despite getting high"
+22-01-2026	YES_MANUAL	complete cleanse
+21-01-2026	NO	only morning - facewash+oral hygiene+skin care
+
+
+c) vaping checkmarks.csv (preview)
+Date	Value	Notes
+08-02-2026	NO	
+07-02-2026	NO	2-3 nic pouches 
+06-02-2026	NO	2-3 nic pouches
+05-02-2026	NO	
+04-02-2026	NO	1 nic pouch during dump
+03-02-2026	NO	a couple nic pouches I guess
+02-02-2026	NO	1 pouch
+01-02-2026	NO	1 pouch at 1pm
+31-01-2026	NO	3 nic 13.5mg pouch
+30-01-2026	NO	1 13.5mg pouch after breakfast, during dump 14:17pm
+29-01-2026	NO	1 13.5mg pouch during dump
+28-01-2026	NO	"1 13.5mg nic pouch 7am
+Lots of pouches of different strengths 3mg,13.5, and 50, lost count."
+27-01-2026	NO	1 nic pouch for dump early morning
+26-01-2026	NO	"1 nic pouch
+1 more"
+25-01-2026	NO	1 nic pouch
+24-01-2026	NO	"1 50mg nic pouch
+1 3mg pouch "
+23-01-2026	NO	"1 nic pouch while shower 
+1 nic pouch after getting high at 9pm
+1 more contemplating right now at 10:46 after finishing all tasks like cleaning, dishes, oral+skincare, feed cat etc"
+22-01-2026	NO	"1 dump nic pouch 
+1 more nic pouch"
+21-01-2026	NO	2 nic pouches 50mg
+20-01-2026	NO	1 nic pouch during shower for some absurd reason
+19-01-2026	NO	2 nic pouch
+18-01-2026	NO	nic pouch multiple
+17-01-2026	NO	2 nic pouch
+16-01-2026	NO	2 nic pouch
+15-01-2026	NO	nic
+14-01-2026	NO	nic
+13-01-2026	NO	
+12-01-2026	NO	
+11-01-2026	NO	
+10-01-2026	NO	
+09-01-2026	NO	nic pouch
+
+*note - this is before the creation of the new nicotine pouch habit I made
+
+d) socialize - checkmarks.csv - more vague/longer notes - harder for pattern recognition I guess
+
+Date	Value	Notes
+08-02-2026	YES_MANUAL	waterstones staff, tesco staff, and a phone call with a cop
+07-02-2026	NO	on text?
+06-02-2026	YES_MANUAL	"Dave's with friend , and then heytea
+
+3 hours"
+05-02-2026	NO	
+04-02-2026	YES_MANUAL	building guy said hi, hairstylist 45m
+03-02-2026	YES_MANUAL	with my professor about capitalism, and with a Chinese classmate about tech
+02-02-2026	YES_MANUAL	
+01-02-2026	NO	
+31-01-2026	YES_MANUAL	Morrison's staff, iQ staff
+29-01-2026	YES_MANUAL	socialized with a bunch of people from 6:30-9:30 at a communist event. by lot of people I mean proper long conversations with a lil vodka with 4-5 people, and a couple short ones with 2-3
+28-01-2026	NO	:(
+27-01-2026	YES_MANUAL	socialized with people who are in my class and my building as well, after class
+26-01-2026	YES_MANUAL	said hi back to someone from my building
+24-01-2026	YES_MANUAL	with a chinese salesman lol
+23-01-2026	YES_MANUAL	"my gf came over with her friend, socialized like a normal being with her friend and ofcourse her
+
+and on text with a RCP member"
+22-01-2026	YES_MANUAL	yep, with classmates for once
+18-01-2026	YES_MANUAL	talked to the police about my bike being stolen
+17-01-2026	YES_MANUAL	londis cashier again I guess , this is so sad
+15-01-2026	YES_MANUAL	talked to someone at uni for less than a minute after exam
+14-01-2026	YES_MANUAL	talked to the cashier about monster energy
+13-01-2026	YES_MANUAL	talked to people from my building
+09-01-2026	YES_MANUAL	cashier asked how I'm doing, I guess
+08-01-2026	YES_MANUAL	"helped a girl at the gym
+a person from my building said hi"
+07-01-2026	NO	
+06-01-2026	NO	
+
+e) step out - checkmarks.csv (preview) (previously called walk)
+Date	Value	Notes
+08-02-2026	YES_MANUAL	waterstones, tesco
+07-02-2026	YES_MANUAL	premier shopping
+06-02-2026	YES_MANUAL	Dave's, Heytea, Train Station
+05-02-2026	YES_MANUAL	
+04-02-2026	YES_MANUAL	
+03-02-2026	YES_MANUAL	university
+02-02-2026	YES_MANUAL	
+01-02-2026	YES_MANUAL	
+31-01-2026	YES_MANUAL	to collect parcel in rot mode, to shop at morrisons in freshy
+30-01-2026	YES_MANUAL	laundry, university, etc
+29-01-2026	YES_MANUAL	to socialise at a marxsoc
+28-01-2026	YES_MANUAL	dropped my gf at the train station, going to university for classes
+27-01-2026	YES_MANUAL	University
+26-01-2026	YES_MANUAL	londis shopping
+25-01-2026	YES_MANUAL	Tesco + Trash
+24-01-2026	YES_MANUAL	spar shopping
+23-01-2026	YES_MANUAL	londis, throw trash
+22-01-2026	YES_MANUAL	university, classes
+21-01-2026	YES_MANUAL	premier shopping
+20-01-2026	YES_MANUAL	university baby
+19-01-2026	YES_MANUAL	Morrisons shopping
+18-01-2026	YES_MANUAL	went to Morrisons, and it was closed, then Tesco. Then my bike got stolen :(
+
+not sure if this is helpful, or uniquely different from socialize habit.
+
+f) No Pot - Checkmarks.csv (preview)
+No Value is negative here, compared to No in Vaping where it's positive (Cause double negative) 
+
+Date	Value	Notes
+08-02-2026	NO	1-1.5 sesh
+07-02-2026	NO	1 sesh
+06-02-2026	NO	1.5 mini sesh
+05-02-2026	NO	1/2 sesh
+04-02-2026	NO	2 fat sesh
+03-02-2026	NO	1 proper sesh
+01-02-2026	NO	edibles
+31-01-2026	NO	1.5 sesh
+29-01-2026	NO	1 sesh
+28-01-2026	NO	1 sesh alone
+27-01-2026	NO	1 shared sesh
+26-01-2026	NO	edibles using avb, brownie
+25-01-2026	NO	2 shared sesh
+24-01-2026	NO	1 shared sesh
+23-01-2026	NO	1 shared sesh with gf
+22-01-2026	NO	1 mini sesh
+21-01-2026	NO	1 fat sesh
+19-01-2026	NO	2 sesh
+18-01-2026	NO	1 fat sesh
+17-01-2026	NO	2 sesh
+16-01-2026	NO	2 sesh + edible attempt
+15-01-2026	NO	smoked up
+14-01-2026	YES_MANUAL	
+13-01-2026	NO	smoked up
+12-01-2026	NO	yep
+11-01-2026	NO	yep
+10-01-2026	NO	yep
+09-01-2026	NO	1 sesh
+08-01-2026	NO	sesh
+07-01-2026	NO	smoked up even though I hadn't even slept at all. at 2 times.
+06-01-2026	NO	smoked up twice
+05-01-2026	NO	1 good sesh
+04-01-2026	NO	smoked up 1 good sesh
+03-01-2026	YES_MANUAL	
+02-01-2026	YES_MANUAL	
+01-01-2026	NO	lots of pot and bong shot also of leftover avb
+31-12-2025	NO	lots of pot to celebrate new years eve
+30-12-2025	NO	1.5 sesh
+29-12-2025	NO	2 sesh + an attempt at mini edible
+28-12-2025	NO	1 sesh
+27-12-2025	NO	Â½ sesh vaporizer - then my cat broke the glass mouthpiece so 2 bong shots
+26-12-2025	NO	3 sesh
+25-12-2025	NO	2 sesh
+24-12-2025	NO	1 shared sesh
+23-12-2025	NO	2 sesh with gf
+
+
+Thinking of creating a new habit - Vaporizer or some shit - since I have stopped bongs, joints etc and only doing light dry herb vaporizer sesh - this habit isn't truly helping in understanding pattern - maybe the notes are good and relevant? 
+
+g) Wake up early - checkmarks.csv (preview)
+
+Date	Value	Notes
+08-02-2026	YES_MANUAL	
+07-02-2026	NO	
+06-02-2026	NO	12-1pm
+05-02-2026	NO	:( missed classes
+04-02-2026	YES_MANUAL	
+03-02-2026	YES_MANUAL	
+02-02-2026	NO	
+01-02-2026	YES_MANUAL	
+31-01-2026	NO	2:40am-2pm sleep
+30-01-2026	YES_MANUAL	12:45pm but after a late night of 6:40am so it's good
+29-01-2026	NO	Slept 9:48, woke up 6:30, but then went back to sleep and woke up at 2pm
+28-01-2026	YES_MANUAL	1:16-5:15am
+27-01-2026	YES_MANUAL	
+26-01-2026	NO	"3:40am sleep
+Woke up at 2pm"
+25-01-2026	YES_MANUAL	
+24-01-2026	YES_MANUAL	
+23-01-2026	YES_MANUAL	
+22-01-2026	YES_MANUAL	5:30am
+21-01-2026	NO	"missed class (9am)
+1am-1pm sleep"
+20-01-2026	YES_MANUAL	"brand new day
+winter break is over
+any mess up from now is treated as a pure failure on my part, since there are no excuses (beyond having my cycle stolen)"
+19-01-2026	NO	2pm
+18-01-2026	YES_MANUAL	"5:47am-11:10am
+Trying to fix routine from today since the winter break gets over"
+17-01-2026	NO	4:15am-15:47
+16-01-2026	YES_MANUAL	
+15-01-2026	YES_MANUAL	
+14-01-2026	NO	
+13-01-2026	YES_MANUAL	
+12-01-2026	YES_MANUAL	
+11-01-2026	YES_MANUAL	
+10-01-2026	YES_MANUAL	
+09-01-2026	SKIP	
+08-01-2026	YES_MANUAL	6:40am I woke up after whatever the fuck the last 2 days were
+07-01-2026	NO	LITERALLY NEVER SLEPT. Was awake from yesterday morning till  4pm of Wednesday
+
+
+This I am not very consistent with the notes, recently started since the health watch data export was getting impossible - maybe if I am able to convert the health jsons into something meaningful - I won't need notes here. (It's 90% heart rate data - makes it harder to figure out what's going on- it'll be the next task after habits module is done)
+
+----
+That's it , you know all the other habits already - I don't think I have a lot of notes in any other habit, and if you think notes will help any new habit etc lmk I will start noting things - basically we can keep a parser in advance if you think it's useful.

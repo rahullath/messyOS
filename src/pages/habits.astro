@@ -115,28 +115,25 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
 ---
 
 <DashboardLayout title="Habits - MeshOS">
-  <div class="space-y-8">
+  <div class="app-content-wrap space-y-6 sm:space-y-8">
     <!-- Header with Import -->
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-semibold text-text-primary mb-2">Habits</h1>
-        <p class="text-text-secondary">
+        <h1 class="text-2xl sm:text-3xl font-semibold text-text-primary mb-2">Habits</h1>
+        <p class="text-sm sm:text-base text-text-secondary">
           Build better routines, one day at a time
         </p>
       </div>
-      <div class="flex space-x-3">
-        <button 
-          id="recalc-streaks-btn"
-          class="flex items-center px-4 py-2 bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors"
+      <div class="flex flex-wrap gap-2 sm:gap-3">
+        <a
+          href="/habits/analytics"
+          class="analytics-link flex items-center px-3 sm:px-4 py-2 min-h-[44px] border border-border text-text-primary rounded-lg hover:bg-surface-hover transition-colors text-sm"
         >
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-          </svg>
-          Fix Streaks
-        </button>
+          Analytics
+        </a>
         <button 
           id="import-btn"
-          class="flex items-center px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors"
+          class="flex items-center px-3 sm:px-4 py-2 min-h-[44px] bg-accent-success text-white rounded-lg hover:bg-accent-success/90 transition-colors text-sm"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -144,17 +141,8 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
           Import Data
         </button>
         <button 
-          id="cleanup-duplicates-btn"
-          class="flex items-center px-3 py-2 bg-accent-warning text-white rounded-lg hover:bg-accent-warning/90 transition-colors"
-        >
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-          </svg>
-          Clean Up
-        </button>
-        <button 
           id="add-habit-btn"
-          class="flex items-center px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors"
+          class="flex items-center px-3 sm:px-4 py-2 min-h-[44px] bg-accent-primary text-white rounded-lg hover:bg-accent-primary/90 transition-colors text-sm"
           onclick="if(window.openHabitCreationModal) window.openHabitCreationModal(); else console.warn('Habit creation modal not ready yet');"
         >
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,7 +154,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
     </div>
 
     <!-- Enhanced Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div class="stats-grid grid grid-cols-1 md:grid-cols-4 gap-6">
       <div class="card">
         <div class="flex items-center justify-between">
           <div>
@@ -227,7 +215,7 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
     </div>
 
     <!-- Habits Grid with Beautiful UI -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="habits-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {habitsWithStatus.map((habit: any) => (
         <div class="card hover:bg-surface-hover transition-colors">
           <!-- Habit Header -->
@@ -379,49 +367,6 @@ const longestStreak = Math.max(...habitsWithStatus.map(h => h.realCurrentStreak)
       completedToday: h.completedToday
     })) })}
 
-  // Cleanup duplicates functionality
-  document.getElementById('cleanup-duplicates-btn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('cleanup-duplicates-btn');
-    if (!btn) return;
-    
-    if (!confirm('This will remove duplicate habits and keep the most recent version of each. Are you sure?')) {
-      return;
-    }
-    
-    btn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Cleaning...';
-    btn.disabled = true;
-    
-    try {
-      const response = await fetch('/api/habits/cleanup-duplicates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        const duplicatesCount = result.summary?.duplicates_found || 0;
-        const message = duplicatesCount > 0 
-          ? `✅ Successfully cleaned up ${duplicatesCount} duplicate habits!` 
-          : '✅ No duplicates found - your habits are clean!';
-        
-        alert(message);
-        
-        if (duplicatesCount > 0) {
-          // Refresh the page to show updated habits list
-          window.location.reload();
-        }
-      } else {
-        alert(`❌ Cleanup failed: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Cleanup error:', error);
-      alert(`❌ Cleanup failed: ${error.message}`);
-    } finally {
-      btn.innerHTML = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Clean Up';
-      btn.disabled = false;
-    }
-  });
   </script>
 
   <!-- Habit Creation Modal and UX Enhancements -->

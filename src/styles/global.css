@@ -46,6 +46,10 @@
 }
 
 @layer components {
+  .app-content-wrap {
+    @apply w-full max-w-7xl mx-auto overflow-x-hidden;
+  }
+
   .card {
     @apply bg-surface border border-border rounded-lg p-6;
   }

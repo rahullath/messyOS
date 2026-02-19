@@ -1,6 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createServerAuth } from './lib/auth/simple-multi-user';
 import { RouteClassifier } from './lib/utils/route-classifier';
+import { getBillingSnapshot } from './lib/billing/subscription';
 
 export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, next) => {
   const { pathname } = url;
@@ -61,24 +62,23 @@ export const onRequest = defineMiddleware(async ({ url, cookies, redirect }, nex
       const hasCompletedOnboarding = !!preferences;
 
       console.log(`📋 Onboarding status: ${hasCompletedOnboarding ? 'complete' : 'pending'}`);
-
-      // NUCLEAR BYPASS: Skip onboarding check for your specific email
-      const isYourEmail = user.email === 'ketaminedevs@gmail.com';
-      
-      // Force onboarding if not completed, but allow bypass routes and your email
-      if (!hasCompletedOnboarding && !isYourEmail && pathname !== '/onboarding' && pathname !== '/skip-onboarding' && pathname !== '/bypass-onboarding') {
+      // Force onboarding if not completed, while allowing explicit bypass routes.
+      if (!hasCompletedOnboarding && pathname !== '/onboarding' && pathname !== '/skip-onboarding' && pathname !== '/bypass-onboarding') {
         console.log(`📝 Redirecting to onboarding from ${pathname}`);
         return redirect('/onboarding');
-      }
-      
-      if (isYourEmail) {
-        console.log(`🚀 NUCLEAR BYPASS: Allowing access for ${user.email}`);
       }
 
       // If onboarding is complete and user is on onboarding page, redirect to dashboard
       if (hasCompletedOnboarding && pathname === '/onboarding') {
         console.log(`🏠 Redirecting to dashboard from onboarding`);
         return redirect('/dashboard');
+      }
+
+      const billing = getBillingSnapshot(preferences);
+      const billingExemptRoutes = new Set(['/billing', '/settings', '/logout']);
+      if (!billing.isAccessAllowed && !billingExemptRoutes.has(pathname)) {
+        console.log(`💳 Trial/subscription gate redirect from ${pathname} to /billing`);
+        return redirect('/billing');
       }
 
     } catch (error) {

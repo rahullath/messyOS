@@ -768,22 +768,55 @@ export class EnhancedLoopHabitsImporter {
         // Use safe insertion to prevent duplicates and auto-update streaks
         console.log(`📦 Inserting ${entries.length} entries using safe insertion (prevents duplicates)`);
         let insertedCount = 0;
+        let useSafeInsertRpc = true;
         
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i];
           
           try {
-            // Use the safe insertion function that prevents duplicates
-            const { data, error } = await this.supabase
-              .rpc('insert_habit_entry_safe', {
-                p_habit_id: entry.habit_id,
-                p_user_id: entry.user_id,
-                p_date: entry.date,
-                p_value: entry.value,
-                p_notes: entry.notes
-              });
+            let error: any = null;
+            
+            if (useSafeInsertRpc) {
+              const rpcResult = await this.supabase
+                .rpc('insert_habit_entry_safe', {
+                  p_habit_id: entry.habit_id,
+                  p_user_id: entry.user_id,
+                  p_date: entry.date,
+                  p_value: entry.value,
+                  p_notes: entry.notes
+                });
+              error = rpcResult.error;
+
+              if (error?.code === 'PGRST202') {
+                useSafeInsertRpc = false;
+                console.warn('Safe insert RPC not found, falling back to direct inserts');
+                errors.push({
+                  type: 'database',
+                  severity: 'warning',
+                  message: 'Safe insert RPC not found; using direct inserts for this import.',
+                  details: error
+                });
+                error = null;
+              }
+            }
+
+            if (!useSafeInsertRpc) {
+              const insertResult = await this.supabase
+                .from('habit_entries')
+                .insert({
+                  habit_id: entry.habit_id,
+                  user_id: entry.user_id,
+                  value: entry.value,
+                  logged_at: entry.logged_at,
+                  date: entry.date
+                });
+              error = insertResult.error;
+            }
 
             if (error) {
+              if (error.code === '23505') {
+                continue;
+              }
               console.error(`❌ Failed to insert entry ${i + 1}:`, error);
               errors.push({
                 type: 'database',

@@ -52,7 +52,7 @@ describe('PWA Functionality and Static Asset Loading', () => {
           }),
           text: () => Promise.resolve(`
             // MessyOS Service Worker for PWA functionality
-            const CACHE_NAME = 'messos-v1';
+            const CACHE_NAME = 'messyos-v1';
             const STATIC_ASSETS = [
               '/',
               '/manifest.json',

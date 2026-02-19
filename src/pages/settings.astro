@@ -1,9 +1,8 @@
 ---
-// src/pages/settings.astro - User Settings and Preferences Page
-import Layout from '../layouts/Layout.astro';
+import DashboardLayout from '../layouts/DashboardLayout.astro';
+import AccountPageShell from '../components/account/AccountPageShell.astro';
 import { createServerAuth } from '../lib/auth/simple-multi-user';
 
-// Require authentication
 const serverAuth = createServerAuth(Astro.cookies);
 const user = await serverAuth.getUser();
 
@@ -11,308 +10,343 @@ if (!user) {
   return Astro.redirect('/login');
 }
 
-// Get user preferences
 const preferences = await serverAuth.getUserPreferences(user.id);
 
-if (!preferences) {
-  // Create default preferences if they don't exist
-  console.log('⚠️ No preferences found, creating defaults...');
-  await serverAuth.createDefaultPreferences(user.id, user.email);
-  return Astro.redirect('/settings');
-}
-
-// Calculate trial status
-const trialEndDate = preferences.trial_end_date ? new Date(preferences.trial_end_date) : null;
-const now = new Date();
-const daysLeft = trialEndDate ? Math.max(0, Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+const enabledModules = Array.isArray(preferences?.enabled_modules) ? preferences.enabled_modules : ['habits', 'tasks', 'calendar'];
+const theme = typeof preferences?.theme === 'string' ? preferences.theme : 'dark';
 ---
 
-<Layout title="Settings - meshOS">
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-    <div class="container mx-auto px-6 py-8 max-w-4xl">
-      
-      <!-- Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-white mb-2">Settings</h1>
-        <p class="text-gray-300">Customize your meshOS experience</p>
-      </div>
-
-      <!-- User Info -->
-      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold text-white mb-4">Account Information</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Email</label>
-            <p class="text-white bg-gray-800 px-3 py-2 rounded">{user.email}</p>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">User ID</label>
-            <p class="text-gray-400 text-sm font-mono bg-gray-800 px-3 py-2 rounded truncate">{user.id}</p>
-          </div>
+<DashboardLayout title="Settings - MeshOS" user={user}>
+  <AccountPageShell
+    title="Settings"
+    description="Useful controls only. Changes here are saved to your backend preferences."
+    activeTab="settings"
+  >
+    <section class="card">
+      <h2 class="text-lg font-semibold text-text-primary mb-4">Appearance</h2>
+      <form id="appearance-form" class="grid grid-cols-1 gap-4 max-w-md">
+        <div>
+          <label for="theme" class="block text-sm text-text-muted mb-1">Theme</label>
+          <select id="theme" class="w-full rounded-lg border border-border bg-background px-3 py-2 text-text-primary">
+            <option value="dark" selected={theme === 'dark'}>Dark</option>
+            <option value="light" selected={theme === 'light'}>Light</option>
+            <option value="midnight" selected={theme === 'midnight'}>Midnight</option>
+            <option value="ocean" selected={theme === 'ocean'}>Ocean</option>
+          </select>
         </div>
-      </div>
-
-      <!-- Subscription Status -->
-      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold text-white mb-4">Subscription</h2>
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-white mb-1">
-              Status: <span class="capitalize font-semibold text-cyan-400">{preferences.subscription_status}</span>
-            </p>
-            {preferences.subscription_status === 'trial' && (
-              <p class="text-gray-300 text-sm">
-                Trial ends: {trialEndDate?.toLocaleDateString()} ({daysLeft} days left)
-              </p>
-            )}
-          </div>
-          {preferences.subscription_status === 'trial' && (
-            <button 
-              id="extend-trial"
-              class="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded transition-colors"
-            >
-              Extend Trial (+7 days)
-            </button>
-          )}
+        <div>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary/90 transition-colors">Save appearance</button>
         </div>
-      </div>
+      </form>
+    </section>
 
-      <!-- Theme Settings -->
-      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold text-white mb-4">Theme & Appearance</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Theme</label>
-            <select 
-              id="theme-select" 
-              class="w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
-              data-current={preferences.theme}
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="midnight">Midnight</option>
-              <option value="forest">Forest</option>
-              <option value="sunset">Sunset</option>
-              <option value="ocean">Ocean</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Accent Color</label>
-            <input 
-              type="color" 
-              id="accent-color" 
-              value={preferences.accent_color}
-              class="w-full h-10 bg-gray-800 border border-gray-600 rounded"
-            />
-          </div>
-        </div>
-      </div>
-
-      <!-- Enabled Modules -->
-      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold text-white mb-4">Active Modules</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="modules-grid">
-          {['habits', 'tasks', 'health', 'finance', 'content', 'social', 'travel', 'home'].map((module) => (
-            <label class="cursor-pointer flex items-center space-x-2">
-              <input 
-                type="checkbox" 
-                value={module}
-                checked={preferences.enabled_modules?.includes(module)}
-                class="rounded"
-              />
-              <span class="text-white capitalize">{module}</span>
+    <section class="card">
+      <h2 class="text-lg font-semibold text-text-primary mb-2">Modules</h2>
+      <p class="text-sm text-text-secondary mb-4">
+        Module selection is saved now, but module-level hiding is still partial in some screens.
+      </p>
+      <form id="modules-form" class="space-y-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          {['habits', 'tasks', 'calendar', 'daily-plan', 'finance', 'health', 'content'].map((module) => (
+            <label class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface-hover/50 px-3 py-2">
+              <input type="checkbox" name="enabled_modules" value={module} checked={enabledModules.includes(module)} />
+              <span class="text-text-primary capitalize">{module}</span>
             </label>
           ))}
         </div>
-      </div>
+        <button type="submit" class="px-4 py-2 rounded-lg border border-border text-text-secondary text-sm font-medium hover:text-text-primary hover:bg-surface-hover transition-colors">Save modules</button>
+      </form>
+    </section>
 
-      <!-- AI Settings -->
-      <div class="bg-black/20 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-6">
-        <h2 class="text-xl font-semibold text-white mb-4">AI Assistant</h2>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">Personality</label>
-            <select 
-              id="ai-personality" 
-              class="w-full bg-gray-800 text-white border border-gray-600 rounded px-3 py-2"
-              data-current={preferences.ai_personality}
-            >
-              <option value="professional">Professional Coach</option>
-              <option value="friendly">Friendly Mentor</option>
-              <option value="analytical">Data Scientist</option>
-              <option value="motivational">Life Coach</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-2">
-              Proactivity Level: <span id="proactivity-value">{preferences.ai_proactivity_level}</span>
-            </label>
-            <input 
-              type="range" 
-              id="ai-proactivity" 
-              min="1" 
-              max="5" 
-              value={preferences.ai_proactivity_level}
-              class="w-full accent-cyan-500"
-            />
-            <div class="flex justify-between text-sm text-gray-400 mt-1">
-              <span>Passive</span>
-              <span>Very Proactive</span>
-            </div>
-          </div>
+    <section class="card">
+      <h2 class="text-lg font-semibold text-text-primary mb-2">Exit Gate Template</h2>
+      <p class="text-sm text-text-secondary mb-4">
+        Manage your default leave-home checklist. This seeds each day and can still be changed in Chain View.
+      </p>
+
+      <div id="exit-gate-list" class="space-y-3"></div>
+
+      <div class="mt-4 flex flex-col sm:flex-row gap-3">
+        <input
+          id="new-exit-gate-label"
+          type="text"
+          maxlength="60"
+          placeholder="New condition label (e.g., Wallet, Laptop charger)"
+          class="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-text-primary"
+        />
+        <button
+          id="add-exit-gate-condition"
+          class="px-4 py-2 rounded-lg border border-border text-text-secondary text-sm font-medium hover:text-text-primary hover:bg-surface-hover transition-colors"
+        >
+          Add Condition
+        </button>
+      </div>
+    </section>
+
+    <div id="settings-message" class="hidden rounded-lg border border-border p-3 text-sm"></div>
+  </AccountPageShell>
+</DashboardLayout>
+
+<script>
+  const message = document.getElementById('settings-message');
+
+  function showMessage(text, isError = false) {
+    if (!message) return;
+    message.textContent = text;
+    message.classList.remove('hidden');
+    message.classList.toggle('text-accent-error', isError);
+    message.classList.toggle('text-text-primary', !isError);
+  }
+
+  document.getElementById('appearance-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const payload = {
+      theme: document.getElementById('theme')?.value || 'dark',
+    };
+
+    const response = await fetch('/api/auth/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+    showMessage(response.ok ? 'Appearance saved' : (result?.error || 'Save failed'), !response.ok);
+  });
+
+  document.getElementById('modules-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const enabled_modules = Array.from(document.querySelectorAll('input[name="enabled_modules"]:checked')).map((node) => node.value);
+
+    const response = await fetch('/api/auth/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled_modules, module_order: enabled_modules }),
+    });
+
+    const result = await response.json();
+    showMessage(response.ok ? 'Modules saved' : (result?.error || 'Save failed'), !response.ok);
+  });
+
+  const DEFAULT_EXIT_GATE_CONDITIONS = [
+    { id: 'keys', name: 'Keys present', satisfied: false },
+    { id: 'phone', name: 'Phone charged >= 20%', satisfied: false },
+    { id: 'water', name: 'Water bottle filled', satisfied: false },
+    { id: 'meds', name: 'Meds taken', satisfied: false },
+    { id: 'cat-fed', name: 'Cat fed', satisfied: false },
+    { id: 'bag-packed', name: 'Bag packed', satisfied: false },
+    { id: 'eyeglasses', name: 'Eyeglasses', satisfied: false },
+  ];
+
+  let exitGateTemplate = [];
+
+  function slugifyConditionId(label) {
+    const base = label
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+    return base || `condition-${Date.now()}`;
+  }
+
+  function normalizeGateConditions(raw) {
+    if (!Array.isArray(raw)) {
+      return DEFAULT_EXIT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+    }
+
+    const parsed = raw
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null;
+        const id = typeof item.id === 'string' ? item.id : null;
+        if (!id) return null;
+
+        const fallbackName = DEFAULT_EXIT_GATE_CONDITIONS.find((c) => c.id === id)?.name || id;
+        return {
+          id,
+          name: typeof item.name === 'string' ? item.name : fallbackName,
+          satisfied: Boolean(item.satisfied),
+        };
+      })
+      .filter(Boolean);
+
+    const conditionMap = new Map();
+    for (const condition of DEFAULT_EXIT_GATE_CONDITIONS) {
+      conditionMap.set(condition.id, { ...condition });
+    }
+    for (const condition of parsed) {
+      conditionMap.set(condition.id, condition);
+    }
+
+    return Array.from(conditionMap.values());
+  }
+
+  function escapeHtml(value) {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderExitGateTemplate() {
+    const container = document.getElementById('exit-gate-list');
+    if (!container) return;
+
+    if (exitGateTemplate.length === 0) {
+      container.innerHTML = `
+        <div class="text-sm text-text-secondary border border-border rounded-lg p-3">
+          No conditions configured. Add one below.
         </div>
-      </div>
+      `;
+      return;
+    }
 
-      <!-- Actions -->
-      <div class="flex flex-col sm:flex-row gap-4">
-        <button 
-          id="save-settings"
-          class="bg-cyan-600 hover:bg-cyan-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex-1"
-        >
-          Save Settings
-        </button>
-        <button 
-          id="reset-settings"
-          class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-        >
-          Reset to Defaults
-        </button>
-      </div>
+    container.innerHTML = exitGateTemplate
+      .map((condition, index) => `
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border border-border rounded-lg p-3">
+          <input
+            type="text"
+            value="${escapeHtml(condition.name)}"
+            data-exit-gate-name-index="${index}"
+            class="rounded-lg border border-border bg-background px-3 py-2 text-text-primary"
+            maxlength="60"
+          />
+          <label class="inline-flex items-center space-x-2 text-sm text-text-secondary">
+            <input
+              type="checkbox"
+              ${condition.satisfied ? 'checked' : ''}
+              data-exit-gate-checked-index="${index}"
+              class="rounded"
+            />
+            <span>Checked by default</span>
+          </label>
+          <button
+            data-exit-gate-remove-index="${index}"
+            class="px-3 py-2 rounded-lg border border-border text-sm text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors"
+          >
+            Remove
+          </button>
+        </div>
+      `)
+      .join('');
+  }
 
-      <!-- Status Message -->
-      <div id="message" class="hidden mt-4 p-4 rounded-lg text-center"></div>
-    </div>
-  </div>
-
-  <script>
-    import { preferencesClient } from '../lib/auth/preferences-client';
-    
-    // Initialize current values
-    document.addEventListener('DOMContentLoaded', () => {
-      // Set current theme
-      const themeSelect = document.getElementById('theme-select') as HTMLSelectElement;
-      if (themeSelect) {
-        themeSelect.value = themeSelect.dataset.current || 'dark';
+  async function loadExitGateTemplate() {
+    try {
+      const response = await fetch('/api/daily-plan/exit-gate-template');
+      if (!response.ok) {
+        exitGateTemplate = DEFAULT_EXIT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+        renderExitGateTemplate();
+        return;
       }
-      
-      // Set current AI personality
-      const aiPersonalitySelect = document.getElementById('ai-personality') as HTMLSelectElement;
-      if (aiPersonalitySelect) {
-        aiPersonalitySelect.value = aiPersonalitySelect.dataset.current || 'professional';
-      }
-    });
 
-    // Update proactivity level display
-    const proactivitySlider = document.getElementById('ai-proactivity') as HTMLInputElement;
-    const proactivityValue = document.getElementById('proactivity-value');
-    
-    if (proactivitySlider && proactivityValue) {
-      proactivitySlider.addEventListener('input', () => {
-        proactivityValue.textContent = proactivitySlider.value;
+      const payload = await response.json();
+      exitGateTemplate = normalizeGateConditions(payload?.gate_conditions);
+      renderExitGateTemplate();
+    } catch (error) {
+      console.error('Failed to load exit gate template:', error);
+      exitGateTemplate = DEFAULT_EXIT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+      renderExitGateTemplate();
+    }
+  }
+
+  async function saveExitGateTemplate() {
+    try {
+      const response = await fetch('/api/daily-plan/exit-gate-template', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          gate_conditions: exitGateTemplate,
+        }),
       });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Save exit gate template error:', error);
+      return false;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadExitGateTemplate();
+  });
+
+  document.getElementById('exit-gate-list')?.addEventListener('input', (event) => {
+    const target = event.target;
+    const nameIndex = target.dataset.exitGateNameIndex;
+    const checkedIndex = target.dataset.exitGateCheckedIndex;
+
+    if (nameIndex !== undefined) {
+      const index = Number(nameIndex);
+      if (!Number.isNaN(index) && exitGateTemplate[index]) {
+        exitGateTemplate[index] = {
+          ...exitGateTemplate[index],
+          name: target.value.trimStart(),
+        };
+      }
     }
 
-    // Show message function
-    function showMessage(text: string, type: 'success' | 'error' | 'info' = 'info') {
-      const messageEl = document.getElementById('message');
-      if (messageEl) {
-        messageEl.textContent = text;
-        messageEl.className = `mt-4 p-4 rounded-lg text-center ${
-          type === 'error' ? 'bg-red-900/50 text-red-200 border border-red-800' : 
-          type === 'success' ? 'bg-green-900/50 text-green-200 border border-green-800' :
-          'bg-blue-900/50 text-blue-200 border border-blue-800'
-        }`;
-        messageEl.classList.remove('hidden');
-        
-        setTimeout(() => {
-          messageEl.classList.add('hidden');
-        }, 3000);
+    if (checkedIndex !== undefined) {
+      const index = Number(checkedIndex);
+      if (!Number.isNaN(index) && exitGateTemplate[index]) {
+        exitGateTemplate[index] = {
+          ...exitGateTemplate[index],
+          satisfied: target.checked,
+        };
       }
     }
+  });
 
-    // Save settings
-    document.getElementById('save-settings')?.addEventListener('click', async () => {
-      try {
-        showMessage('Saving settings...', 'info');
-        
-        // Collect all form data
-        const theme = (document.getElementById('theme-select') as HTMLSelectElement).value;
-        const accentColor = (document.getElementById('accent-color') as HTMLInputElement).value;
-        const aiPersonality = (document.getElementById('ai-personality') as HTMLSelectElement).value;
-        const aiProactivity = parseInt((document.getElementById('ai-proactivity') as HTMLInputElement).value);
-        
-        // Get enabled modules
-        const moduleCheckboxes = document.querySelectorAll('#modules-grid input[type="checkbox"]');
-        const enabledModules: string[] = [];
-        moduleCheckboxes.forEach((checkbox) => {
-          if ((checkbox as HTMLInputElement).checked) {
-            enabledModules.push((checkbox as HTMLInputElement).value);
-          }
-        });
-        
-        // Update preferences
-        const success = await preferencesClient.updatePreferences({
-          theme,
-          accent_color: accentColor,
-          enabled_modules: enabledModules,
-          module_order: enabledModules,
-          ai_personality: aiPersonality,
-          ai_proactivity_level: aiProactivity
-        });
-        
-        if (success) {
-          showMessage('Settings saved successfully!', 'success');
-        } else {
-          showMessage('Failed to save settings. Please try again.', 'error');
-        }
-      } catch (error) {
-        console.error('Save settings error:', error);
-        showMessage('An error occurred while saving settings.', 'error');
-      }
-    });
+  document.getElementById('exit-gate-list')?.addEventListener('click', (event) => {
+    const target = event.target;
+    const removeIndex = target.dataset.exitGateRemoveIndex;
+    if (removeIndex === undefined) return;
 
-    // Reset settings
-    document.getElementById('reset-settings')?.addEventListener('click', async () => {
-      if (confirm('Are you sure you want to reset all settings to defaults?')) {
-        try {
-          showMessage('Resetting settings...', 'info');
-          
-          const success = await preferencesClient.resetToDefaults();
-          
-          if (success) {
-            showMessage('Settings reset to defaults!', 'success');
-            setTimeout(() => {
-              window.location.reload();
-            }, 1500);
-          } else {
-            showMessage('Failed to reset settings. Please try again.', 'error');
-          }
-        } catch (error) {
-          console.error('Reset settings error:', error);
-          showMessage('An error occurred while resetting settings.', 'error');
-        }
-      }
-    });
+    const index = Number(removeIndex);
+    if (Number.isNaN(index) || !exitGateTemplate[index]) return;
 
-    // Extend trial
-    document.getElementById('extend-trial')?.addEventListener('click', async () => {
-      try {
-        showMessage('Extending trial...', 'info');
-        
-        const success = await preferencesClient.extendTrial();
-        
-        if (success) {
-          showMessage('Trial extended by 7 days!', 'success');
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        } else {
-          showMessage('Failed to extend trial. Please try again.', 'error');
-        }
-      } catch (error) {
-        console.error('Extend trial error:', error);
-        showMessage('An error occurred while extending trial.', 'error');
-      }
-    });
-  </script>
-</Layout>
+    exitGateTemplate.splice(index, 1);
+    renderExitGateTemplate();
+  });
+
+  document.getElementById('add-exit-gate-condition')?.addEventListener('click', (event) => {
+    event.preventDefault();
+
+    const input = document.getElementById('new-exit-gate-label');
+    const label = input?.value?.trim();
+
+    if (!label) {
+      showMessage('Enter a label before adding a condition.', true);
+      return;
+    }
+
+    const id = slugifyConditionId(label);
+    const duplicateId = exitGateTemplate.some((condition) => condition.id === id);
+    if (duplicateId) {
+      showMessage('That condition already exists. Try a different label.', true);
+      return;
+    }
+
+    exitGateTemplate.push({ id, name: label, satisfied: false });
+    input.value = '';
+    renderExitGateTemplate();
+  });
+
+  let exitGateSaveTimer = null;
+  document.getElementById('exit-gate-list')?.addEventListener('change', () => {
+    if (exitGateSaveTimer) {
+      window.clearTimeout(exitGateSaveTimer);
+    }
+
+    exitGateSaveTimer = window.setTimeout(async () => {
+      const saved = await saveExitGateTemplate();
+      showMessage(saved ? 'Exit gate template saved' : 'Failed to save exit gate template', !saved);
+    }, 250);
+  });
+</script>

@@ -1,9 +1,8 @@
----
+﻿---
 import DashboardLayout from '../layouts/DashboardLayout.astro';
 import { createServerAuth } from '../lib/auth/simple-multi-user';
 import DailyPlanCard from '../components/dashboard/cards/DailyPlanCard.tsx';
 
-// Require authentication
 const serverAuth = createServerAuth(Astro.cookies);
 const user = await serverAuth.getUser();
 
@@ -12,100 +11,66 @@ if (!user) {
 }
 ---
 
-<DashboardLayout title="Dashboard - MessyOS" user={user}>
+<DashboardLayout title="Dashboard - MeshOS" user={user}>
   <div class="space-y-8">
-    <!-- Header -->
     <div>
-      <h1 class="text-3xl font-semibold text-text-primary mb-2">Welcome to MessyOS</h1>
-      <p class="text-text-secondary">Your personal life optimization dashboard</p>
+      <h1 class="text-3xl font-semibold text-text-primary mb-2">Executive Function Dashboard</h1>
+      <p class="text-text-secondary">Build a realistic day plan, reduce friction, and keep momentum.</p>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <DailyPlanCard client:load />
 
-      <a href="/tasks" class="card hover:bg-surface-hover transition-colors">
+      <a href="/habits" class="card hover:bg-surface-hover transition-colors">
         <div class="flex items-center">
-          <div class="text-3xl mr-4">🤖</div>
+          <div class="text-3xl mr-4">H</div>
           <div>
-            <h3 class="text-lg font-semibold text-text-primary">Smart Tasks</h3>
-            <p class="text-text-secondary text-sm">AI-powered task management</p>
+            <h3 class="text-lg font-semibold text-text-primary">Habits</h3>
+            <p class="text-text-secondary text-sm">Log today, keep streak context</p>
           </div>
         </div>
       </a>
 
       <a href="/calendar" class="card hover:bg-surface-hover transition-colors">
         <div class="flex items-center">
-          <div class="text-3xl mr-4">📅</div>
+          <div class="text-3xl mr-4">C</div>
           <div>
             <h3 class="text-lg font-semibold text-text-primary">Calendar</h3>
-            <p class="text-text-secondary text-sm">Unified schedule view</p>
+            <p class="text-text-secondary text-sm">See anchors and time blocks</p>
           </div>
         </div>
       </a>
 
-      <a href="/habits" class="card hover:bg-surface-hover transition-colors">
+      <a href="/settings" class="card hover:bg-surface-hover transition-colors">
         <div class="flex items-center">
-          <div class="text-3xl mr-4">🎯</div>
+          <div class="text-3xl mr-4">S</div>
           <div>
-            <h3 class="text-lg font-semibold text-text-primary">Habits</h3>
-            <p class="text-text-secondary text-sm">Track daily progress</p>
-          </div>
-        </div>
-      </a>
-
-      <a href="/ai-dashboard" class="card hover:bg-surface-hover transition-colors">
-        <div class="flex items-center">
-          <div class="text-3xl mr-4">🧠</div>
-          <div>
-            <h3 class="text-lg font-semibold text-text-primary">AI Coach</h3>
-            <p class="text-text-secondary text-sm">Personal optimization</p>
-          </div>
-        </div>
-      </a>
-
-      <a href="/finance" class="card hover:bg-surface-hover transition-colors">
-        <div class="flex items-center">
-          <div class="text-3xl mr-4">💰</div>
-          <div>
-            <h3 class="text-lg font-semibold text-text-primary">Finance</h3>
-            <p class="text-text-secondary text-sm">Track expenses</p>
+            <h3 class="text-lg font-semibold text-text-primary">Settings</h3>
+            <p class="text-text-secondary text-sm">Tune preferences and defaults</p>
           </div>
         </div>
       </a>
     </div>
 
-    <!-- Welcome Message -->
     <div class="card">
-      <h2 class="text-xl font-semibold text-text-primary mb-4">🎉 Welcome to MessyOS!</h2>
+      <h2 class="text-xl font-semibold text-text-primary mb-4">Start Here</h2>
       <p class="text-text-secondary mb-4">
-        Your account is set up and ready to go. Here are some things you can do to get started:
+        This app is for executive-function support first. Focus on the next actionable step, not perfect optimization.
       </p>
-      
+
       <div class="space-y-3">
         <div class="flex items-center">
           <div class="w-2 h-2 bg-accent-primary rounded-full mr-3"></div>
-          <span class="text-text-primary">Try natural language task creation: "I need to buy groceries by tomorrow"</span>
+          <span class="text-text-primary">Generate today's plan and follow chain steps one at a time.</span>
         </div>
         <div class="flex items-center">
           <div class="w-2 h-2 bg-accent-success rounded-full mr-3"></div>
-          <span class="text-text-primary">Import your calendar from iCal feeds or CSV files</span>
+          <span class="text-text-primary">Log 1-3 key habits only. Keep it lightweight.</span>
         </div>
         <div class="flex items-center">
           <div class="w-2 h-2 bg-accent-purple rounded-full mr-3"></div>
-          <span class="text-text-primary">Set up daily habits to track your progress</span>
+          <span class="text-text-primary">Use gate checks before leaving so essentials are not forgotten.</span>
         </div>
-        <div class="flex items-center">
-          <div class="w-2 h-2 bg-accent-error rounded-full mr-3"></div>
-          <span class="text-text-primary">Get AI-powered insights on your life patterns</span>
-        </div>
-      </div>
-
-      <div class="mt-6 pt-4 border-t border-border">
-        <p class="text-sm text-text-muted">
-          🤖 <strong>New:</strong> AI-powered task creation and title cleaning is now live! 
-          Your personal AI coach can help optimize your schedule and suggest improvements.
-        </p>
       </div>
     </div>
   </div>
