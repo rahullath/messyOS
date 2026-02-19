@@ -162,13 +162,33 @@ function reconstructChainsFromTimeBlocks(plan: DailyPlan): ExecutionChain[] {
     const fallbackAnchorStart = new Date(sortedBlocks[sortedBlocks.length - 1].endTime.getTime() + 75 * 60000);
     const fallbackAnchorEnd = new Date(fallbackAnchorStart.getTime() + 60 * 60000);
 
+    const metadataAnchorStart = typeof firstMetadata.anchor_start === 'string'
+      ? new Date(firstMetadata.anchor_start)
+      : null;
+    const metadataAnchorEnd = typeof firstMetadata.anchor_end === 'string'
+      ? new Date(firstMetadata.anchor_end)
+      : null;
+    const metadataAnchorTitle = typeof firstMetadata.anchor_title === 'string'
+      ? firstMetadata.anchor_title
+      : null;
+    const metadataAnchorLocation = typeof firstMetadata.anchor_location === 'string'
+      ? firstMetadata.anchor_location
+      : undefined;
+    const metadataAnchorType = typeof firstMetadata.anchor_type === 'string'
+      ? firstMetadata.anchor_type
+      : 'other';
+
     const anchor: Anchor = {
       id: anchorId,
-      title: anchorTimeBlock?.activityName || 'Planned commitment',
-      start: anchorTimeBlock?.startTime || fallbackAnchorStart,
-      end: anchorTimeBlock?.endTime || fallbackAnchorEnd,
-      location: undefined,
-      type: 'other',
+      title: metadataAnchorTitle || anchorTimeBlock?.activityName || 'Planned commitment',
+      start: (metadataAnchorStart && !Number.isNaN(metadataAnchorStart.getTime()))
+        ? metadataAnchorStart
+        : (anchorTimeBlock?.startTime || fallbackAnchorStart),
+      end: (metadataAnchorEnd && !Number.isNaN(metadataAnchorEnd.getTime()))
+        ? metadataAnchorEnd
+        : (anchorTimeBlock?.endTime || fallbackAnchorEnd),
+      location: metadataAnchorLocation,
+      type: metadataAnchorType as Anchor['type'],
       must_attend: true,
       calendar_event_id: anchorId,
     };

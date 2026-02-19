@@ -11,6 +11,21 @@ import type { DailyPlan, EnergyState } from '../../types/daily-plan';
 import type { ExitGate, GateCondition } from '../../lib/chains/types';
 
 export default function DailyPlanPageContent() {
+  type GenerateInput = {
+    wakeTime: string;
+    sleepTime: string;
+    energyState: EnergyState;
+    manualAnchor?: {
+      title: string;
+      startTime: string;
+      durationMinutes: number;
+      location?: string;
+      anchorType: 'class' | 'seminar' | 'workshop' | 'appointment' | 'other';
+      mustAttend: boolean;
+      notes?: string;
+    };
+  };
+
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +36,8 @@ export default function DailyPlanPageContent() {
   const [exitGateService, setExitGateService] = useState<ExitGateService | null>(null);
   const [exitGate, setExitGate] = useState<ExitGate | null>(null);
   const [gateTemplateConditions, setGateTemplateConditions] = useState<GateCondition[] | null>(null);
+  const [manualAnchorRequired, setManualAnchorRequired] = useState(false);
+  const [lastGenerateInput, setLastGenerateInput] = useState<GenerateInput | null>(null);
 
   // Fetch today's plan on mount
   useEffect(() => {
@@ -169,7 +186,15 @@ export default function DailyPlanPageContent() {
       }
       
       const data = await response.json();
-      setPlan(data.plan);
+      const fetchedPlan = data.plan as DailyPlan | null;
+
+      if (fetchedPlan && (!fetchedPlan.timeBlocks || fetchedPlan.timeBlocks.length === 0)) {
+        setPlan(null);
+        setManualAnchorRequired(true);
+        setError('Plan was generated without activities. Add a manual anchor and generate again.');
+      } else {
+        setPlan(fetchedPlan);
+      }
     } catch (err) {
       console.error('Error fetching plan:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch plan');
@@ -178,23 +203,11 @@ export default function DailyPlanPageContent() {
     }
   };
 
-  const handleGenerate = async (input: {
-    wakeTime: string;
-    sleepTime: string;
-    energyState: EnergyState;
-    manualAnchor?: {
-      title: string;
-      startTime: string;
-      durationMinutes: number;
-      location?: string;
-      anchorType: 'class' | 'seminar' | 'workshop' | 'appointment' | 'other';
-      mustAttend: boolean;
-      notes?: string;
-    };
-  }) => {
+  const handleGenerate = async (input: GenerateInput) => {
     try {
       setIsGenerating(true);
       setError(null);
+      setLastGenerateInput(input);
 
       // Convert time strings to full ISO timestamps for today
       const today = new Date();
@@ -240,11 +253,25 @@ export default function DailyPlanPageContent() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        if (response.status === 422 && errorData.error_code === 'MANUAL_ANCHOR_REQUIRED') {
+          setManualAnchorRequired(true);
+          setPlan(null);
+          setError(errorData.details || 'Add a manual anchor to generate your plan.');
+          return;
+        }
         throw new Error(errorData.error || `Failed to generate plan: ${response.statusText}`);
       }
 
       const data = await response.json();
-      setPlan(data.plan);
+      const generatedPlan = data.plan as DailyPlan | null;
+      if (generatedPlan && (!generatedPlan.timeBlocks || generatedPlan.timeBlocks.length === 0)) {
+        setPlan(null);
+        setManualAnchorRequired(true);
+        setError('Plan was generated without activities. Add a manual anchor and generate again.');
+      } else {
+        setPlan(generatedPlan);
+        setManualAnchorRequired(false);
+      }
     } catch (err) {
       console.error('Error generating plan:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate plan');
@@ -346,6 +373,10 @@ export default function DailyPlanPageContent() {
 
   const handleRetry = () => {
     setError(null);
+    if (lastGenerateInput) {
+      handleGenerate(lastGenerateInput);
+      return;
+    }
     if (!plan) {
       fetchTodaysPlan();
     }
@@ -355,6 +386,7 @@ export default function DailyPlanPageContent() {
     // Reset state and show generation form
     setPlan(null);
     setError(null);
+    setManualAnchorRequired(false);
   };
 
   const handleStepComplete = async (stepId: string) => {
@@ -438,6 +470,105 @@ export default function DailyPlanPageContent() {
       setPlan(previousPlan);
       console.error('Error toggling step completion:', err);
       setError(err instanceof Error ? err.message : 'Failed to update step completion');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleStepEdit = async (
+    stepId: string,
+    payload: { name: string; durationMinutes: number; saveAsTemplate: boolean }
+  ) => {
+    if (!plan?.chains || plan.chains.length === 0) return;
+
+    let targetStep:
+      | (NonNullable<DailyPlan['chains']>[number]['steps'][number])
+      | null = null;
+
+    for (const chain of plan.chains) {
+      const step = chain.steps.find((item) => item.step_id === stepId);
+      if (step) {
+        targetStep = step;
+        break;
+      }
+    }
+
+    if (!targetStep) {
+      setError('Unable to locate the selected chain step.');
+      return;
+    }
+
+    const matchedBlock = resolvePersistedStepBlock(plan, targetStep);
+    if (!matchedBlock) {
+      setError('Unable to map chain step to a persisted time block.');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+
+      const response = await fetch(`/api/time-blocks/${matchedBlock.id}/edit-step`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...payload,
+          stepId,
+          planId: plan.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 404 && errorData.error_code === 'STALE_TIME_BLOCK_REFERENCE') {
+          await fetchTodaysPlan();
+
+          const retryPlanResponse = await fetch('/api/daily-plan/today');
+          const retryPlanPayload = await retryPlanResponse.json().catch(() => ({}));
+          const retryPlan = retryPlanPayload?.plan as DailyPlan | null;
+
+          if (retryPlan?.chains && retryPlan.timeBlocks) {
+            let retryStep: (NonNullable<DailyPlan['chains']>[number]['steps'][number]) | null = null;
+            for (const chain of retryPlan.chains) {
+              const found = chain.steps.find((item) => item.step_id === stepId);
+              if (found) {
+                retryStep = found;
+                break;
+              }
+            }
+
+            if (retryStep) {
+              const retryMatched = resolvePersistedStepBlock(retryPlan, retryStep);
+              if (retryMatched) {
+                const retryResponse = await fetch(`/api/time-blocks/${retryMatched.id}/edit-step`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    ...payload,
+                    stepId,
+                    planId: retryPlan.id,
+                  }),
+                });
+
+                if (retryResponse.ok) {
+                  await fetchTodaysPlan();
+                  return;
+                }
+              }
+            }
+          }
+        }
+        throw new Error(errorData.error || `Failed to edit step: ${response.statusText}`);
+      }
+
+      await fetchTodaysPlan();
+    } catch (err) {
+      console.error('Error editing chain step:', err);
+      setError(err instanceof Error ? err.message : 'Failed to edit chain step');
     } finally {
       setIsUpdating(false);
     }
@@ -568,7 +699,7 @@ export default function DailyPlanPageContent() {
   }
 
   // Error state with retry
-  if (error) {
+  if (error && plan) {
     return (
       <div className="bg-accent-error/10 border border-accent-error/30 rounded-xl p-6">
         <div className="flex items-start">
@@ -601,6 +732,17 @@ export default function DailyPlanPageContent() {
   if (!plan) {
     return (
       <div className="max-w-2xl mx-auto">
+        {error && (
+          <div className="mb-4 bg-accent-error/10 border border-accent-error/30 rounded-lg p-4">
+            <p className="text-sm text-accent-error mb-3">{error}</p>
+            <button
+              onClick={handleRetry}
+              className="px-3 py-2 text-xs font-medium rounded-lg bg-accent-primary text-white"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         <div className="mb-6 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
           <div className="flex items-start">
             <svg className="w-5 h-5 mr-2 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -611,7 +753,11 @@ export default function DailyPlanPageContent() {
             </p>
           </div>
         </div>
-        <PlanGeneratorForm onGenerate={handleGenerate} isGenerating={isGenerating} />
+        <PlanGeneratorForm
+          onGenerate={handleGenerate}
+          isGenerating={isGenerating}
+          manualAnchorRequired={manualAnchorRequired}
+        />
       </div>
     );
   }
@@ -679,6 +825,7 @@ export default function DailyPlanPageContent() {
               chain={plan.chains[0]}
               exitGate={exitGate}
               onStepComplete={handleStepComplete}
+              onStepEdit={handleStepEdit}
               onGateConditionToggle={handleGateConditionToggle}
               isStepPersistable={isChainStepPersistable}
             />

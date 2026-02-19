@@ -38,6 +38,7 @@ import { LocationStateTracker } from '../chains/location-state';
 import { WakeRampGenerator } from '../chains/wake-ramp';
 import { DEFAULT_GATE_CONDITIONS } from '../chains/exit-gate';
 import type { ExecutionChain, HomeInterval, LocationPeriod, WakeRamp } from '../chains/types';
+import type { ChainStepOverrides } from '../chains/step-customization';
 
 // Internal types for plan building
 interface Activity {
@@ -449,6 +450,82 @@ export class PlanBuilderService {
     this.wakeRampGenerator = new WakeRampGenerator();
   }
 
+  private async getUserChainStepOverrides(userId: string): Promise<ChainStepOverrides | undefined> {
+    const { data, error } = await this.supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[Plan Builder] Failed to load chain step overrides, using defaults:', error.message);
+      return undefined;
+    }
+
+    const preferences = data?.preferences && typeof data.preferences === 'object'
+      ? (data.preferences as Record<string, unknown>)
+      : {};
+
+    const rawOverrides = preferences.chain_step_overrides;
+    if (!rawOverrides || typeof rawOverrides !== 'object' || Array.isArray(rawOverrides)) {
+      return undefined;
+    }
+
+    const overrides: ChainStepOverrides = {};
+    for (const [stepId, raw] of Object.entries(rawOverrides as Record<string, unknown>)) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+      const entry = raw as Record<string, unknown>;
+      overrides[stepId] = {
+        name: typeof entry.name === 'string' ? entry.name : undefined,
+        duration_estimate: typeof entry.duration_estimate === 'number' ? entry.duration_estimate : undefined,
+      };
+    }
+
+    return Object.keys(overrides).length > 0 ? overrides : undefined;
+  }
+
+  private async getUserExitGateTemplate(userId: string) {
+    const { data, error } = await this.supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[Plan Builder] Failed to load exit gate template, using defaults:', error.message);
+      return DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+    }
+
+    const preferences = data?.preferences && typeof data.preferences === 'object'
+      ? (data.preferences as Record<string, unknown>)
+      : {};
+    const template = preferences.exit_gate_template && typeof preferences.exit_gate_template === 'object'
+      ? (preferences.exit_gate_template as Record<string, unknown>)
+      : {};
+    const gateConditions = Array.isArray(template.gate_conditions) ? template.gate_conditions : null;
+
+    if (!gateConditions) {
+      return DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+    }
+
+    const merged = new Map(DEFAULT_GATE_CONDITIONS.map((condition) => [condition.id, { ...condition }]));
+    for (const raw of gateConditions) {
+      if (!raw || typeof raw !== 'object') continue;
+      const record = raw as Record<string, unknown>;
+      const id = typeof record.id === 'string' ? record.id : null;
+      if (!id) continue;
+
+      const fallbackName = merged.get(id)?.name || id;
+      merged.set(id, {
+        id,
+        name: typeof record.name === 'string' ? record.name : fallbackName,
+        satisfied: Boolean(record.satisfied),
+      });
+    }
+
+    return Array.from(merged.values());
+  }
+
   /**
    * Round up to next 5-minute interval
    */
@@ -499,6 +576,8 @@ export class PlanBuilderService {
 
     // Step 4: Generate execution chains (V2)
     // Requirements: 12.1, 12.2, 12.3, 12.4
+    const chainStepOverrides = await this.getUserChainStepOverrides(input.userId);
+
     const chains = await this.chainGenerator.generateChainsForDate(
       anchors,
       {
@@ -507,6 +586,8 @@ export class PlanBuilderService {
         wakeTime: input.wakeTime,
         sleepTime: input.sleepTime,
         planStart: planStartTime,
+        allowNoAnchorFallback: false,
+        chainStepOverrides,
         config: {
           currentLocation,
         },
@@ -1312,6 +1393,8 @@ export class PlanBuilderService {
     locationPeriods: LocationPeriod[] = [],
     homeIntervals: HomeInterval[] = []
   ): Promise<DailyPlan> {
+    const userExitGateTemplate = await this.getUserExitGateTemplate(input.userId);
+
     const normalizeTimeRangeForInsert = (
       start: Date,
       end: Date,
@@ -1378,7 +1461,7 @@ export class PlanBuilderService {
         };
 
         if (roleType === 'exit-gate') {
-          role.gate_conditions = DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
+          role.gate_conditions = userExitGateTemplate.map((condition) => ({ ...condition }));
         }
 
         chainSequenceOrder += 1;
@@ -1387,6 +1470,11 @@ export class PlanBuilderService {
           chain_id: chain.chain_id,
           step_id: step.step_id,
           anchor_id: chain.anchor_id,
+          anchor_title: chain.anchor.title,
+          anchor_start: chain.anchor.start.toISOString(),
+          anchor_end: chain.anchor.end.toISOString(),
+          anchor_location: chain.anchor.location || null,
+          anchor_type: chain.anchor.type,
           ...(step.metadata || {}),
         };
 

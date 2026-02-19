@@ -17,6 +17,7 @@ interface PlanGeneratorFormProps {
     };
   }) => void;
   isGenerating?: boolean;
+  manualAnchorRequired?: boolean;
 }
 
 /**
@@ -45,7 +46,11 @@ function calculateDefaultWakeTime(): string {
   return `${hours}:${minutes}`;
 }
 
-export default function PlanGeneratorForm({ onGenerate, isGenerating = false }: PlanGeneratorFormProps) {
+export default function PlanGeneratorForm({
+  onGenerate,
+  isGenerating = false,
+  manualAnchorRequired = false,
+}: PlanGeneratorFormProps) {
   // Requirement 8.5: Display the calculated default wake time
   const [wakeTime, setWakeTime] = useState(() => calculateDefaultWakeTime());
   const [sleepTime, setSleepTime] = useState('23:00');
@@ -64,6 +69,18 @@ export default function PlanGeneratorForm({ onGenerate, isGenerating = false }: 
     const defaultWakeTime = calculateDefaultWakeTime();
     setWakeTime(defaultWakeTime);
   }, []);
+
+  useEffect(() => {
+    if (!manualAnchorRequired) return;
+
+    setManualAnchorEnabled(true);
+    const timeout = setTimeout(() => {
+      const titleInput = document.getElementById('manual-anchor-title') as HTMLInputElement | null;
+      titleInput?.focus();
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, [manualAnchorRequired]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,6 +220,12 @@ export default function PlanGeneratorForm({ onGenerate, isGenerating = false }: 
               className="h-5 w-5 text-accent-primary focus:ring-accent-primary"
             />
           </label>
+
+          {manualAnchorRequired && (
+            <p className="text-xs text-accent-warning">
+              A manual anchor is required because no calendar anchors were found for this day.
+            </p>
+          )}
 
           {manualAnchorEnabled && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

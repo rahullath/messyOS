@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createServerClient } from '../../../lib/supabase/server';
 import { createPlanBuilderService } from '../../../lib/daily-plan/plan-builder';
+import { AnchorService } from '../../../lib/anchors/anchor-service';
 import {
   deleteDailyPlan,
   deleteExitTimesByPlan,
@@ -21,6 +22,9 @@ import type { Location } from '../../../types/uk-student-travel';
  * The plan builder handles the planStart calculation internally.
  */
 export const POST: APIRoute = async ({ request, cookies }) => {
+  let requestPlanDate = new Date();
+  requestPlanDate.setHours(0, 0, 0, 0);
+
   try {
     const supabase = createServerClient(cookies);
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -85,6 +89,49 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
     // Normalize date to day boundary for stable per-day uniqueness handling.
     date.setHours(0, 0, 0, 0);
+    requestPlanDate = new Date(date);
+
+    const parseManualAnchor = (rawValue: unknown) => {
+      if (!rawValue || typeof rawValue !== 'object') return null;
+      const manualAnchor = rawValue as Record<string, unknown>;
+      const title = typeof manualAnchor.title === 'string' ? manualAnchor.title.trim() : '';
+      const startTime = typeof manualAnchor.start_time === 'string' ? new Date(manualAnchor.start_time) : null;
+      const endTime = typeof manualAnchor.end_time === 'string' ? new Date(manualAnchor.end_time) : null;
+
+      if (!title || !startTime || !endTime || Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime()) || endTime <= startTime) {
+        return null;
+      }
+
+      const anchorTypeRaw = typeof manualAnchor.anchor_type === 'string' ? manualAnchor.anchor_type : 'other';
+      const allowedAnchorTypes = ['class', 'seminar', 'workshop', 'appointment', 'other'];
+      const anchorType = allowedAnchorTypes.includes(anchorTypeRaw) ? anchorTypeRaw : 'other';
+
+      return {
+        title,
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        location: typeof manualAnchor.location === 'string' ? manualAnchor.location : null,
+        anchor_type: anchorType,
+        must_attend: manualAnchor.must_attend !== false,
+        notes: typeof manualAnchor.notes === 'string' ? manualAnchor.notes : null,
+      };
+    };
+
+    const parsedManualAnchor = parseManualAnchor(body.manualAnchor);
+
+    // Force manual anchor when no calendar/manual anchors are available.
+    const anchorService = new AnchorService();
+    const existingAnchors = await anchorService.getAnchorsForDate(date, user.id, supabase);
+    if (existingAnchors.length === 0 && !parsedManualAnchor) {
+      return new Response(JSON.stringify({
+        error: 'Manual anchor required',
+        error_code: 'MANUAL_ANCHOR_REQUIRED',
+        details: 'No anchors found for this day. Add a manual anchor to generate your plan.'
+      }), {
+        status: 422,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     // Replace existing plan for the same user/day (idempotent regenerate behavior).
     const existingPlan = await getDailyPlanByDateWithBlocks(supabase, user.id, date);
@@ -95,29 +142,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     }
 
     // Optional manual anchor insertion (for no-calendar users and custom anchors).
-    if (body.manualAnchor && typeof body.manualAnchor === 'object') {
-      const manualAnchor = body.manualAnchor as Record<string, unknown>;
-      const title = typeof manualAnchor.title === 'string' ? manualAnchor.title.trim() : '';
-      const startTime = typeof manualAnchor.start_time === 'string' ? new Date(manualAnchor.start_time) : null;
-      const endTime = typeof manualAnchor.end_time === 'string' ? new Date(manualAnchor.end_time) : null;
+    if (parsedManualAnchor) {
+      const anchorDate = date.toISOString().split('T')[0];
+      const { data: existingManualAnchor, error: manualAnchorReadError } = await supabase
+        .from('manual_anchors')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('anchor_date', anchorDate)
+        .eq('title', parsedManualAnchor.title)
+        .eq('start_time', parsedManualAnchor.start_time)
+        .eq('end_time', parsedManualAnchor.end_time)
+        .maybeSingle();
 
-      if (title && startTime && endTime && !Number.isNaN(startTime.getTime()) && !Number.isNaN(endTime.getTime()) && endTime > startTime) {
-        const anchorTypeRaw = typeof manualAnchor.anchor_type === 'string' ? manualAnchor.anchor_type : 'other';
-        const allowedAnchorTypes = ['class', 'seminar', 'workshop', 'appointment', 'other'];
-        const anchorType = allowedAnchorTypes.includes(anchorTypeRaw) ? anchorTypeRaw : 'other';
+      if (manualAnchorReadError) {
+        throw manualAnchorReadError;
+      }
 
+      if (!existingManualAnchor) {
         const { error: manualAnchorError } = await supabase
           .from('manual_anchors')
           .insert({
             user_id: user.id,
-            anchor_date: date.toISOString().split('T')[0],
-            title,
-            start_time: startTime.toISOString(),
-            end_time: endTime.toISOString(),
-            location: typeof manualAnchor.location === 'string' ? manualAnchor.location : null,
-            anchor_type: anchorType,
-            must_attend: manualAnchor.must_attend !== false,
-            notes: typeof manualAnchor.notes === 'string' ? manualAnchor.notes : null,
+            anchor_date: anchorDate,
+            ...parsedManualAnchor,
           } as any);
 
         if (manualAnchorError) {
@@ -170,21 +217,23 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     const errorCode = (error as any)?.code;
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    // Duplicate insert race protection: return existing plan instead of failing.
+    // Duplicate insert race protection: return existing winner plan instead of failing.
     if (errorCode === '23505' || errorMessage.includes('duplicate') || errorMessage.includes('unique')) {
       try {
         const supabase = createServerClient(cookies);
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
-          const fallbackDate = new Date();
-          fallbackDate.setHours(0, 0, 0, 0);
-          const existingPlan = await getDailyPlanByDateWithBlocks(supabase, user.id, fallbackDate);
-          if (existingPlan) {
-            return new Response(JSON.stringify({ plan: existingPlan }), {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' }
-            });
+          const retryDelays = [50, 100, 150];
+          for (let index = 0; index < retryDelays.length; index++) {
+            const existingPlan = await getDailyPlanByDateWithBlocks(supabase, user.id, requestPlanDate);
+            if (existingPlan) {
+              return new Response(JSON.stringify({ plan: existingPlan }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            await new Promise((resolve) => setTimeout(resolve, retryDelays[index]));
           }
         }
       } catch (lookupError) {

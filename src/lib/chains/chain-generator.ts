@@ -16,6 +16,7 @@ import type { Location, TravelConditions, TravelPreferences } from '../../types/
 import { generateDailyContext, type DailyContext } from '../context/daily-context';
 import { enhanceChainWithContext, type ChainContextEnhancement } from './context-integration';
 import { DEFAULT_GATE_CONDITIONS } from './exit-gate';
+import { applyChainStepOverrides, type ChainStepOverrides } from './step-customization';
 
 /**
  * Chain Generator Configuration
@@ -43,6 +44,8 @@ export interface ChainGeneratorOptions {
   wakeTime?: Date;
   sleepTime?: Date;
   planStart?: Date;
+  allowNoAnchorFallback?: boolean;
+  chainStepOverrides?: ChainStepOverrides;
   config: ChainGeneratorConfig;
 }
 
@@ -106,7 +109,7 @@ export class ChainGenerator {
       console.error('[Chain Generator] Error fetching DailyContext, using defaults:', error);
     }
 
-    if (anchors.length === 0) {
+    if (anchors.length === 0 && options.allowNoAnchorFallback !== false) {
       try {
         const fallbackAnchor = this.createFallbackAnchor(options);
         const chain = await this.generateChainForAnchor(fallbackAnchor, options, dailyContext);
@@ -123,6 +126,10 @@ export class ChainGenerator {
         console.error('[Chain Generator] Failed to generate fallback chain:', error);
         return [];
       }
+    }
+
+    if (anchors.length === 0) {
+      return [];
     }
 
     for (const anchor of anchors) {
@@ -186,7 +193,8 @@ export class ChainGenerator {
 
     // Load chain template for anchor type (with fallback handling)
     // Requirements: Design - Error Handling - Chain Generation Failures
-    const template = getChainTemplate(anchor.type);
+    const baseTemplate = getChainTemplate(anchor.type);
+    const template = applyChainStepOverrides(baseTemplate, options.chainStepOverrides);
     const templateFallbackUsed = !CHAIN_TEMPLATES[anchor.type];
     
     if (templateFallbackUsed) {
@@ -452,6 +460,9 @@ export class ChainGenerator {
         can_skip_when_late: templateStep.can_skip_when_late,
         status: 'pending',
         role: templateStep.id === 'exit-gate' ? 'exit-gate' : 'chain-step',
+        metadata: {
+          template_step_id: templateStep.id,
+        },
       };
 
       steps.unshift(step); // Add to beginning since we're working backward

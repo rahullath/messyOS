@@ -7,6 +7,7 @@ interface ChainViewProps {
   exitGate: ExitGate;
   onStepComplete: (stepId: string) => void;
   onGateConditionToggle: (conditionId: string, satisfied: boolean) => void;
+  onStepEdit?: (stepId: string, payload: { name: string; durationMinutes: number; saveAsTemplate: boolean }) => Promise<void> | void;
   isStepPersistable?: (stepId: string) => boolean;
 }
 
@@ -28,10 +29,16 @@ export default function ChainView({
   exitGate,
   onStepComplete,
   onGateConditionToggle,
+  onStepEdit,
   isStepPersistable,
 }: ChainViewProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [dailyContext, setDailyContext] = useState<DailyContext | null>(null);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [draftDuration, setDraftDuration] = useState('');
+  const [saveAsTemplate, setSaveAsTemplate] = useState(true);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Fetch DailyContext for reliability indicators
   useEffect(() => {
@@ -152,6 +159,38 @@ export default function ChainView({
     return (
       <div className="w-5 h-5 border-2 border-gray-400 rounded-full" />
     );
+  };
+
+  const beginEdit = (step: ChainStepInstance) => {
+    setEditingStepId(step.step_id);
+    setDraftName(step.name);
+    setDraftDuration(String(step.duration));
+    setSaveAsTemplate(true);
+  };
+
+  const cancelEdit = () => {
+    setEditingStepId(null);
+    setDraftName('');
+    setDraftDuration('');
+    setSaveAsTemplate(true);
+  };
+
+  const submitEdit = async (stepId: string) => {
+    if (!onStepEdit) return;
+    const durationMinutes = Number.parseInt(draftDuration, 10);
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 0) return;
+
+    setIsSavingEdit(true);
+    try {
+      await onStepEdit(stepId, {
+        name: draftName.trim() || 'Untitled step',
+        durationMinutes,
+        saveAsTemplate,
+      });
+      cancelEdit();
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   return (
@@ -357,23 +396,82 @@ export default function ChainView({
                           )}
                         </div>
 
-                        {/* Expand Button */}
-                        {step.role === 'exit-gate' && (
-                          <button
-                            onClick={() => toggleStepExpansion(step.step_id)}
-                            className="ml-2 p-1 hover:bg-white/10 rounded transition-colors"
-                          >
-                            <svg
-                              className={`w-5 h-5 text-text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                        <div className="ml-2 flex items-center gap-1">
+                          {onStepEdit && isPersistable && (
+                            <button
+                              onClick={() => beginEdit(step)}
+                              className="px-2 py-1 text-xs rounded border border-border-primary text-text-muted hover:text-text-primary hover:border-border-secondary"
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        )}
+                              Edit
+                            </button>
+                          )}
+                          {step.role === 'exit-gate' && (
+                            <button
+                              onClick={() => toggleStepExpansion(step.step_id)}
+                              className="p-1 hover:bg-white/10 rounded transition-colors"
+                            >
+                              <svg
+                                className={`w-5 h-5 text-text-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {editingStepId === step.step_id && (
+                        <div className="mt-3 rounded-lg border border-border-primary bg-surface-secondary/70 p-3 space-y-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <label className="text-xs text-text-muted">
+                              Name
+                              <input
+                                value={draftName}
+                                onChange={(event) => setDraftName(event.target.value)}
+                                className="mt-1 w-full rounded border border-border-primary bg-surface-primary px-2 py-1 text-sm text-text-primary"
+                              />
+                            </label>
+                            <label className="text-xs text-text-muted">
+                              Duration (minutes)
+                              <input
+                                type="number"
+                                min={0}
+                                max={240}
+                                value={draftDuration}
+                                onChange={(event) => setDraftDuration(event.target.value)}
+                                className="mt-1 w-full rounded border border-border-primary bg-surface-primary px-2 py-1 text-sm text-text-primary"
+                              />
+                            </label>
+                          </div>
+                          <label className="flex items-center gap-2 text-xs text-text-muted">
+                            <input
+                              type="checkbox"
+                              checked={saveAsTemplate}
+                              onChange={(event) => setSaveAsTemplate(event.target.checked)}
+                            />
+                            Save as my default step
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => submitEdit(step.step_id)}
+                              disabled={isSavingEdit}
+                              className="px-3 py-1.5 text-xs rounded bg-accent-primary text-white disabled:opacity-50"
+                            >
+                              {isSavingEdit ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              disabled={isSavingEdit}
+                              className="px-3 py-1.5 text-xs rounded border border-border-primary text-text-muted"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
