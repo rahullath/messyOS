@@ -30,14 +30,12 @@ function normalizeGateConditions(rawConditions: unknown): GateCondition[] {
     })
     .filter((condition): condition is GateCondition => Boolean(condition));
 
+  // Preserve only what user saved when array is provided (supports delete/removal).
+  // Deduplicate by id while preserving last-write.
   const map = new Map<string, GateCondition>();
-  for (const defaultCondition of DEFAULT_GATE_CONDITIONS) {
-    map.set(defaultCondition.id, { ...defaultCondition });
-  }
   for (const condition of parsed) {
     map.set(condition.id, condition);
   }
-
   return Array.from(map.values());
 }
 

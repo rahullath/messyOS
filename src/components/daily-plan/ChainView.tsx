@@ -8,6 +8,9 @@ interface ChainViewProps {
   onStepComplete: (stepId: string) => void;
   onGateConditionToggle: (conditionId: string, satisfied: boolean) => void;
   onStepEdit?: (stepId: string, payload: { name: string; durationMinutes: number; saveAsTemplate: boolean }) => Promise<void> | void;
+  onStepAdd?: () => Promise<void> | void;
+  onStepDelete?: (stepId: string) => Promise<void> | void;
+  onStepReorder?: (sourceStepId: string, targetStepId: string) => Promise<void> | void;
   isStepPersistable?: (stepId: string) => boolean;
 }
 
@@ -30,6 +33,9 @@ export default function ChainView({
   onStepComplete,
   onGateConditionToggle,
   onStepEdit,
+  onStepAdd,
+  onStepDelete,
+  onStepReorder,
   isStepPersistable,
 }: ChainViewProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
@@ -39,6 +45,7 @@ export default function ChainView({
   const [draftDuration, setDraftDuration] = useState('');
   const [saveAsTemplate, setSaveAsTemplate] = useState(true);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [draggingStepId, setDraggingStepId] = useState<string | null>(null);
 
   // Fetch DailyContext for reliability indicators
   useEffect(() => {
@@ -273,6 +280,16 @@ export default function ChainView({
           </svg>
           Chain Steps
         </h3>
+        {onStepAdd && (
+          <div className="mb-3">
+            <button
+              onClick={() => onStepAdd()}
+              className="px-3 py-1.5 text-xs rounded border border-border-primary text-text-muted hover:text-text-primary hover:border-border-secondary"
+            >
+              + Add Step
+            </button>
+          </div>
+        )}
 
         <div className="space-y-2">
           {chain.steps.map((step, index) => {
@@ -283,12 +300,27 @@ export default function ChainView({
             return (
               <div
                 key={step.step_id}
+                draggable={Boolean(onStepReorder && isPersistable)}
+                onDragStart={() => setDraggingStepId(step.step_id)}
+                onDragOver={(event) => {
+                  if (!onStepReorder || !draggingStepId || draggingStepId === step.step_id) return;
+                  event.preventDefault();
+                }}
+                onDrop={async (event) => {
+                  if (!onStepReorder || !draggingStepId || draggingStepId === step.step_id) return;
+                  event.preventDefault();
+                  const sourceId = draggingStepId;
+                  setDraggingStepId(null);
+                  await onStepReorder(sourceId, step.step_id);
+                }}
+                onDragEnd={() => setDraggingStepId(null)}
                 className={`
                   rounded-lg border transition-all
                   ${isCurrentStep 
                     ? 'bg-accent-primary/10 border-accent-primary shadow-md' 
                     : 'bg-surface-primary border-border-primary hover:border-border-secondary'
                   }
+                  ${draggingStepId === step.step_id ? 'opacity-60' : ''}
                 `}
               >
                 <div className="p-4">
@@ -403,6 +435,14 @@ export default function ChainView({
                               className="px-2 py-1 text-xs rounded border border-border-primary text-text-muted hover:text-text-primary hover:border-border-secondary"
                             >
                               Edit
+                            </button>
+                          )}
+                          {onStepDelete && isPersistable && (
+                            <button
+                              onClick={() => onStepDelete(step.step_id)}
+                              className="px-2 py-1 text-xs rounded border border-red-500/40 text-red-400 hover:border-red-400"
+                            >
+                              Delete
                             </button>
                           )}
                           {step.role === 'exit-gate' && (

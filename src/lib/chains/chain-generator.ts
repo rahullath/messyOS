@@ -16,7 +16,7 @@ import type { Location, TravelConditions, TravelPreferences } from '../../types/
 import { generateDailyContext, type DailyContext } from '../context/daily-context';
 import { enhanceChainWithContext, type ChainContextEnhancement } from './context-integration';
 import { DEFAULT_GATE_CONDITIONS } from './exit-gate';
-import { applyChainStepOverrides, type ChainStepOverrides } from './step-customization';
+import { applyChainStepOverrides, type ChainCustomStep, type ChainStepOverrides } from './step-customization';
 
 /**
  * Chain Generator Configuration
@@ -46,6 +46,7 @@ export interface ChainGeneratorOptions {
   planStart?: Date;
   allowNoAnchorFallback?: boolean;
   chainStepOverrides?: ChainStepOverrides;
+  chainCustomSteps?: ChainCustomStep[];
   config: ChainGeneratorConfig;
 }
 
@@ -194,7 +195,7 @@ export class ChainGenerator {
     // Load chain template for anchor type (with fallback handling)
     // Requirements: Design - Error Handling - Chain Generation Failures
     const baseTemplate = getChainTemplate(anchor.type);
-    const template = applyChainStepOverrides(baseTemplate, options.chainStepOverrides);
+    const template = applyChainStepOverrides(baseTemplate, options.chainStepOverrides, options.chainCustomSteps || []);
     const templateFallbackUsed = !CHAIN_TEMPLATES[anchor.type];
     
     if (templateFallbackUsed) {

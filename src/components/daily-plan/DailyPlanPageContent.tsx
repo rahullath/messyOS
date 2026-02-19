@@ -574,6 +574,171 @@ export default function DailyPlanPageContent() {
     }
   };
 
+  const handleStepAdd = async () => {
+    if (!plan?.chains) return;
+
+    const chain = plan.chains[0];
+    if (!chain?.steps || chain.steps.length === 0) {
+      setError('Unable to locate insertion point.');
+      return;
+    }
+
+    // Insert before exit-gate when present, else after final step.
+    const exitGateIndex = chain.steps.findIndex((step) => step.role === 'exit-gate');
+    const insertAfterIndex = exitGateIndex > 0 ? exitGateIndex - 1 : chain.steps.length - 1;
+    const targetStep = chain.steps[insertAfterIndex] || null;
+    if (!targetStep) {
+      setError('Unable to locate insertion point.');
+      return;
+    }
+
+    const matchedBlock = resolvePersistedStepBlock(plan, targetStep);
+    if (!matchedBlock) {
+      setError('Unable to map chain step to a persisted time block.');
+      return;
+    }
+
+    const name = window.prompt('New step name', 'Quick prep');
+    if (!name || !name.trim()) return;
+
+    const durationInput = window.prompt('Duration (minutes)', '5');
+    if (!durationInput) return;
+    const durationMinutes = Number.parseInt(durationInput, 10);
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 0 || durationMinutes > 240) {
+      setError('Duration must be a number between 0 and 240.');
+      return;
+    }
+
+    const saveAsTemplate = window.confirm('Save this new step as your default for future plans?');
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+
+      const response = await fetch(`/api/time-blocks/${matchedBlock.id}/add-step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          durationMinutes,
+          saveAsTemplate,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to add step: ${response.statusText}`);
+      }
+
+      await fetchTodaysPlan();
+    } catch (err) {
+      console.error('Error adding chain step:', err);
+      setError(err instanceof Error ? err.message : 'Failed to add chain step');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleStepReorder = async (sourceStepId: string, targetStepId: string) => {
+    if (!plan?.chains) return;
+
+    let sourceStep: (NonNullable<DailyPlan['chains']>[number]['steps'][number]) | null = null;
+    let targetStep: (NonNullable<DailyPlan['chains']>[number]['steps'][number]) | null = null;
+    for (const chain of plan.chains) {
+      if (!sourceStep) sourceStep = chain.steps.find((item) => item.step_id === sourceStepId) || null;
+      if (!targetStep) targetStep = chain.steps.find((item) => item.step_id === targetStepId) || null;
+    }
+
+    if (!sourceStep || !targetStep) {
+      setError('Unable to reorder chain steps.');
+      return;
+    }
+
+    const sourceBlock = resolvePersistedStepBlock(plan, sourceStep);
+    if (!sourceBlock) {
+      setError('Unable to map source chain step to a persisted time block.');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+
+      const response = await fetch(`/api/time-blocks/${sourceBlock.id}/reorder-step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceStepId,
+          targetStepId,
+          planId: plan.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to reorder steps: ${response.statusText}`);
+      }
+
+      await fetchTodaysPlan();
+    } catch (err) {
+      console.error('Error reordering chain steps:', err);
+      setError(err instanceof Error ? err.message : 'Failed to reorder chain steps');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleStepDelete = async (stepId: string) => {
+    if (!plan?.chains) return;
+
+    let targetStep: (NonNullable<DailyPlan['chains']>[number]['steps'][number]) | null = null;
+    for (const chain of plan.chains) {
+      const step = chain.steps.find((item) => item.step_id === stepId);
+      if (step) {
+        targetStep = step;
+        break;
+      }
+    }
+    if (!targetStep) {
+      setError('Unable to locate step to delete.');
+      return;
+    }
+
+    const matchedBlock = resolvePersistedStepBlock(plan, targetStep);
+    if (!matchedBlock) {
+      setError('Unable to map chain step to a persisted time block.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete step "${targetStep.name}" from this chain?`);
+    if (!confirmed) return;
+
+    const saveAsTemplate = window.confirm('Also remove/disable this step from your future default chain?');
+
+    try {
+      setIsUpdating(true);
+      setError(null);
+
+      const response = await fetch(`/api/time-blocks/${matchedBlock.id}/delete-step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ saveAsTemplate }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to delete step: ${response.statusText}`);
+      }
+
+      await fetchTodaysPlan();
+    } catch (err) {
+      console.error('Error deleting chain step:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete chain step');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const fetchExitGateTemplate = async () => {
     try {
       const response = await fetch('/api/daily-plan/exit-gate-template');
@@ -826,6 +991,9 @@ export default function DailyPlanPageContent() {
               exitGate={exitGate}
               onStepComplete={handleStepComplete}
               onStepEdit={handleStepEdit}
+              onStepAdd={handleStepAdd}
+              onStepDelete={handleStepDelete}
+              onStepReorder={handleStepReorder}
               onGateConditionToggle={handleGateConditionToggle}
               isStepPersistable={isChainStepPersistable}
             />

@@ -38,7 +38,7 @@ import { LocationStateTracker } from '../chains/location-state';
 import { WakeRampGenerator } from '../chains/wake-ramp';
 import { DEFAULT_GATE_CONDITIONS } from '../chains/exit-gate';
 import type { ExecutionChain, HomeInterval, LocationPeriod, WakeRamp } from '../chains/types';
-import type { ChainStepOverrides } from '../chains/step-customization';
+import type { ChainCustomStep, ChainStepOverrides } from '../chains/step-customization';
 
 // Internal types for plan building
 interface Activity {
@@ -478,10 +478,52 @@ export class PlanBuilderService {
       overrides[stepId] = {
         name: typeof entry.name === 'string' ? entry.name : undefined,
         duration_estimate: typeof entry.duration_estimate === 'number' ? entry.duration_estimate : undefined,
+        disabled: entry.disabled === true,
       };
     }
 
     return Object.keys(overrides).length > 0 ? overrides : undefined;
+  }
+
+  private async getUserChainCustomSteps(userId: string): Promise<ChainCustomStep[]> {
+    const { data, error } = await this.supabase
+      .from('user_preferences')
+      .select('preferences')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[Plan Builder] Failed to load custom chain steps, using none:', error.message);
+      return [];
+    }
+
+    const preferences = data?.preferences && typeof data.preferences === 'object'
+      ? (data.preferences as Record<string, unknown>)
+      : {};
+    const rawCustomSteps = Array.isArray(preferences.chain_custom_steps)
+      ? preferences.chain_custom_steps
+      : [];
+
+    const customSteps: ChainCustomStep[] = [];
+    for (const raw of rawCustomSteps) {
+      if (!raw || typeof raw !== 'object') continue;
+      const record = raw as Record<string, unknown>;
+      const id = typeof record.id === 'string' ? record.id : '';
+      const name = typeof record.name === 'string' ? record.name : '';
+      const duration = typeof record.duration_estimate === 'number' ? record.duration_estimate : 1;
+      if (!id || !name) continue;
+
+      customSteps.push({
+        id,
+        name,
+        duration_estimate: duration,
+        is_required: record.is_required !== false,
+        can_skip_when_late: record.can_skip_when_late === true,
+        insert_after_id: typeof record.insert_after_id === 'string' ? record.insert_after_id : undefined,
+      });
+    }
+
+    return customSteps;
   }
 
   private async getUserExitGateTemplate(userId: string) {
@@ -503,27 +545,25 @@ export class PlanBuilderService {
       ? (preferences.exit_gate_template as Record<string, unknown>)
       : {};
     const gateConditions = Array.isArray(template.gate_conditions) ? template.gate_conditions : null;
-
-    if (!gateConditions) {
+    if (!gateConditions || gateConditions.length === 0) {
       return DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
     }
 
-    const merged = new Map(DEFAULT_GATE_CONDITIONS.map((condition) => [condition.id, { ...condition }]));
+    const parsed = [];
     for (const raw of gateConditions) {
       if (!raw || typeof raw !== 'object') continue;
       const record = raw as Record<string, unknown>;
       const id = typeof record.id === 'string' ? record.id : null;
       if (!id) continue;
-
-      const fallbackName = merged.get(id)?.name || id;
-      merged.set(id, {
+      parsed.push({
         id,
-        name: typeof record.name === 'string' ? record.name : fallbackName,
+        name: typeof record.name === 'string' ? record.name : id,
         satisfied: Boolean(record.satisfied),
       });
     }
-
-    return Array.from(merged.values());
+    return parsed.length > 0
+      ? parsed
+      : DEFAULT_GATE_CONDITIONS.map((condition) => ({ ...condition }));
   }
 
   /**
@@ -577,6 +617,7 @@ export class PlanBuilderService {
     // Step 4: Generate execution chains (V2)
     // Requirements: 12.1, 12.2, 12.3, 12.4
     const chainStepOverrides = await this.getUserChainStepOverrides(input.userId);
+    const chainCustomSteps = await this.getUserChainCustomSteps(input.userId);
 
     const chains = await this.chainGenerator.generateChainsForDate(
       anchors,
@@ -588,6 +629,7 @@ export class PlanBuilderService {
         planStart: planStartTime,
         allowNoAnchorFallback: false,
         chainStepOverrides,
+        chainCustomSteps,
         config: {
           currentLocation,
         },

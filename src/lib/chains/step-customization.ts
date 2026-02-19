@@ -3,7 +3,17 @@ import type { ChainStep, ChainTemplate } from './types';
 export type ChainStepOverrides = Record<string, {
   name?: string;
   duration_estimate?: number;
+  disabled?: boolean;
 }>;
+
+export type ChainCustomStep = {
+  id: string;
+  name: string;
+  duration_estimate: number;
+  is_required?: boolean;
+  can_skip_when_late?: boolean;
+  insert_after_id?: string;
+};
 
 export function normalizeStepDuration(duration: number, fallback: number): number {
   if (!Number.isFinite(duration)) return fallback;
@@ -14,13 +24,17 @@ export function normalizeStepDuration(duration: number, fallback: number): numbe
 
 export function applyChainStepOverrides(
   template: ChainTemplate,
-  overrides?: ChainStepOverrides
+  overrides?: ChainStepOverrides,
+  customSteps: ChainCustomStep[] = []
 ): ChainTemplate {
-  if (!overrides || Object.keys(overrides).length === 0) {
+  const hasOverrides = Boolean(overrides && Object.keys(overrides).length > 0);
+  const hasCustomSteps = customSteps.length > 0;
+
+  if (!hasOverrides && !hasCustomSteps) {
     return template;
   }
 
-  const steps: ChainStep[] = template.steps.map((step) => {
+  const mappedSteps: ChainStep[] = template.steps.map((step) => {
     const override = overrides[step.id];
     if (!override) return step;
 
@@ -34,6 +48,38 @@ export function applyChainStepOverrides(
         : step.duration_estimate,
     };
   });
+
+  const steps = mappedSteps.filter((step) => {
+    const override = overrides?.[step.id];
+    return override?.disabled !== true;
+  });
+
+  for (const customStep of customSteps) {
+    const normalizedCustomStep: ChainStep = {
+      id: customStep.id,
+      name: customStep.name,
+      duration_estimate: normalizeStepDuration(customStep.duration_estimate, 1),
+      is_required: customStep.is_required ?? true,
+      can_skip_when_late: customStep.can_skip_when_late ?? false,
+    };
+
+    const insertAfterId = customStep.insert_after_id;
+    const insertAfterIndex = insertAfterId
+      ? steps.findIndex((step) => step.id === insertAfterId)
+      : -1;
+
+    if (insertAfterIndex >= 0) {
+      steps.splice(insertAfterIndex + 1, 0, normalizedCustomStep);
+      continue;
+    }
+
+    const exitGateIndex = steps.findIndex((step) => step.id === 'exit-gate');
+    if (exitGateIndex >= 0) {
+      steps.splice(exitGateIndex, 0, normalizedCustomStep);
+    } else {
+      steps.push(normalizedCustomStep);
+    }
+  }
 
   return {
     ...template,
