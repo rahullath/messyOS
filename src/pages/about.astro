@@ -1,7 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { createServerClient } from '../lib/supabase/server';
 
 const canonical = 'https://messyos.vercel.app/about';
+const supabase = createServerClient(Astro.cookies);
+const { data: { user } } = await supabase.auth.getUser();
 ---
 
 <Layout
@@ -10,6 +13,20 @@ const canonical = 'https://messyos.vercel.app/about';
   canonical={canonical}
 >
   <main class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 text-slate-100">
+    <nav class="px-6 py-5 border-b border-white/10">
+      <div class="max-w-4xl mx-auto flex items-center justify-between gap-3">
+        <a href="/" class="text-cyan-300 font-semibold hover:text-cyan-200 transition-colors">MeshOS</a>
+        <div class="flex items-center gap-2 sm:gap-3 text-sm">
+          <a href="/" class="px-3 py-2 rounded-lg border border-white/15 text-slate-200 hover:bg-white/10 transition-colors">Home</a>
+          {user ? (
+            <a href="/dashboard" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition-colors">Dashboard</a>
+          ) : (
+            <a href="/login" class="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition-colors">Sign In</a>
+          )}
+        </div>
+      </div>
+    </nav>
+
     <section class="px-6 py-14">
       <div class="max-w-4xl mx-auto space-y-8">
         <header class="space-y-4">
