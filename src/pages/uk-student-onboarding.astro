@@ -1,0 +1,34 @@
+---
+// UK Student Onboarding Page
+import Layout from '../layouts/Layout.astro';
+import { UKStudentOnboarding } from '../components/uk-student/UKStudentOnboarding';
+import { createServerAuth } from '../lib/auth/simple-multi-user';
+
+// Require authentication
+const serverAuth = createServerAuth(Astro.cookies);
+const user = await serverAuth.getUser();
+
+if (!user) {
+  return Astro.redirect('/login');
+}
+
+const userId = user.id;
+---
+
+<Layout title="UK Student Setup">
+  <UKStudentOnboarding
+    userId={userId}
+    onComplete={() => {
+      window.location.href = '/uk-student-dashboard';
+    }}
+    client:load
+  />
+</Layout>
+
+<style>
+  /* Force light theme for onboarding */
+  body {
+    background-color: #f9fafb !important;
+    color: #111827 !important;
+  }
+</style>
