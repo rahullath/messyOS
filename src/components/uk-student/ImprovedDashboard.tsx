@@ -1,6 +1,10 @@
 // Improved UK Student Dashboard - Modern, Clean, Actually Useful
 import React, { useState, useEffect } from 'react';
 import type { UKStudentProfile } from '../../types/uk-student';
+import { WeatherCard } from './WeatherCard';
+import { BudgetBreakdown } from './BudgetBreakdown';
+import { InventoryWidget } from './InventoryWidget';
+import { QuickExpenseEntry } from './QuickExpenseEntry';
 
 interface ImprovedDashboardProps {
   userId: string;
@@ -42,6 +46,9 @@ export const ImprovedDashboard: React.FC<ImprovedDashboardProps> = ({ userId, pr
   const [upcomingDeadlines, setUpcomingDeadlines] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [expiringInventory, setExpiringInventory] = useState<any[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -87,11 +94,36 @@ export const ImprovedDashboard: React.FC<ImprovedDashboardProps> = ({ userId, pr
       setTodaySchedule(data.today_schedule || []);
       setUpcomingDeadlines(data.upcoming_deadlines || []);
       setAlerts(data.alerts || []);
+
+      // Load inventory items
+      await loadInventory();
     } catch (error) {
       console.error('Error loading dashboard:', error);
       setError(error instanceof Error ? error.message : 'Failed to load dashboard');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInventory = async () => {
+    try {
+      const response = await fetch(`/api/uk-student/inventory?userId=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInventoryItems(data.items || []);
+
+        // Filter expiring items (within 3 days)
+        const now = new Date();
+        const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+        const expiring = (data.items || []).filter((item: any) => {
+          if (!item.expiry_date) return false;
+          const expiryDate = new Date(item.expiry_date);
+          return expiryDate <= threeDaysFromNow && expiryDate > now;
+        });
+        setExpiringInventory(expiring);
+      }
+    } catch (error) {
+      console.error('Error loading inventory:', error);
     }
   };
 
@@ -101,7 +133,7 @@ export const ImprovedDashboard: React.FC<ImprovedDashboardProps> = ({ userId, pr
       title: 'Log Expense',
       description: 'Quick expense entry',
       icon: '💰',
-      action: () => window.location.href = '#expenses',
+      action: () => setShowExpenseModal(true),
       color: 'bg-green-500'
     },
     {
@@ -337,36 +369,21 @@ export const ImprovedDashboard: React.FC<ImprovedDashboardProps> = ({ userId, pr
           </div>
         )}
 
+        {/* Weather & Inventory Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {weather && <WeatherCard conditions={weather} />}
+          <InventoryWidget items={inventoryItems} expiringItems={expiringInventory} />
+        </div>
+
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Budget Overview */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Weekly Budget</h3>
-            <div className="mb-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">
-                  £{stats.weeklySpent.toFixed(2)} spent
-                </span>
-                <span className="text-sm text-gray-600">
-                  {budgetPercentage.toFixed(0)}% of budget
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className={`h-3 rounded-full transition-all ${
-                    budgetStatus === 'critical' ? 'bg-red-500' :
-                    budgetStatus === 'warning' ? 'bg-yellow-500' :
-                    'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
-                />
-              </div>
-            </div>
-            <div className="text-sm text-gray-600">
-              {budgetStatus === 'critical' && '⚠️ You\'re over budget this week!'}
-              {budgetStatus === 'warning' && '⚡ Getting close to your weekly limit'}
-              {budgetStatus === 'good' && '✅ You\'re on track with your budget'}
-            </div>
+          <div className="lg:col-span-2">
+            <BudgetBreakdown
+              totalSpent={stats.weeklySpent}
+              totalBudget={stats.weeklyBudget}
+              categories={[]}
+            />
           </div>
 
           {/* Today's Schedule */}
@@ -432,6 +449,18 @@ export const ImprovedDashboard: React.FC<ImprovedDashboardProps> = ({ userId, pr
           </div>
         )}
       </div>
+
+      {/* Expense Entry Modal */}
+      {showExpenseModal && (
+        <QuickExpenseEntry
+          userId={userId}
+          onClose={() => setShowExpenseModal(false)}
+          onSuccess={() => {
+            setShowExpenseModal(false);
+            loadDashboardData();
+          }}
+        />
+      )}
     </div>
   );
 };
